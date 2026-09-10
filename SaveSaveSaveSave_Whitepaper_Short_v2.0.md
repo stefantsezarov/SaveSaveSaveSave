@@ -1,6 +1,6 @@
 # SaveSaveSaveSave — Short Edition
 
-**Free. Verified. Constantly Improving.**
+**Verified. Constantly Improving.**
 *Whitepaper v2.0 — September 2026 — Formerly RiskPass*
 
 ---
@@ -48,4 +48,4 @@ A clean result isn't a safety guarantee — it means nothing was found among wha
 
 ## Closing
 
-Free, because risk information shouldn't sit behind a paywall. Verified, because a tool asking to be trusted has to earn it. Constantly improving, because the risk landscape doesn't hold still.
+Verified, because a tool asking to be trusted has to earn it. Constantly improving, because the risk landscape doesn't hold still.

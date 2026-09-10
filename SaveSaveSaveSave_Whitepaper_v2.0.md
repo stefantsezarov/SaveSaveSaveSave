@@ -1,6 +1,6 @@
 # SaveSaveSaveSave — A Transparent Risk Tool for Everyone in Crypto
 
-**Free. Verified. Constantly Improving.**
+**Verified. Constantly Improving.**
 
 *Whitepaper v2.0 — September 2026*
 *Formerly RiskPass*
@@ -59,7 +59,7 @@ None of these require bad luck. They require the absence of one thing: a clear, 
 
 A person trying to check risk today has, broadly, two options. Price charts and trackers tell you what happened to a price — nothing about whether a contract can trap funds, whether an address carries a sanctions designation, or whether a wallet has recently moved funds through one that does. Institutional-grade compliance platforms exist and are often genuinely good, but they are priced, scoped, and sold for enterprise compliance teams — a sales conversation and a five- or six-figure annual contract stand between an ordinary user and that data, confirmed directly against how those vendors' own products are actually sold today, not assumed.
 
-There is very little built for the space between those two — free, evidence-based, and legible to someone without a compliance background. That gap is what this product exists to fill.
+There is very little built for the space between those two — evidence-based and legible to someone without a compliance background. That gap is what this product exists to fill.
 
 ---
 
@@ -110,7 +110,7 @@ This is the newest and, in a specific sense, the most significant part of the pr
 
 ### The premise this section starts from
 
-Commercial blockchain-intelligence platforms — the well-known names in this space — are real, sophisticated, and in most cases entirely reasonable for what they're built to do. They are also, without exception in the direct experience of building this product, sold through enterprise sales conversations with no public self-serve pricing. That's a legitimate business model. It's also not a foundation a free consumer tool can build on. The wallet-risk intelligence in this product was built specifically around sources that are genuinely free, genuinely verifiable, and don't require a contract to use.
+Commercial blockchain-intelligence platforms — the well-known names in this space — are real, sophisticated, and in most cases entirely reasonable for what they're built to do. They are also, without exception in the direct experience of building this product, sold through enterprise sales conversations with no public self-serve pricing. That's a legitimate business model. It's also not a foundation this product can build on. The wallet-risk intelligence in this product was built specifically around sources that are genuinely free, genuinely verifiable, and don't require a contract to use.
 
 ### Malicious-address screening
 
@@ -165,4 +165,4 @@ Two categories of future work, kept honestly separate. The first is scoped, veri
 
 ## 10. Closing
 
-Most tools in this space ask for trust. This one is built to need less of it — every verdict shows its sources, every limitation is stated instead of buried, and every technical claim in this document was verified against a primary source before being written down, not assumed because it sounded right. Four chains, several independently verified data sources, one evidence model applied consistently across all of them. Free, because risk information protecting people from real financial harm shouldn't sit behind a paywall. Verified, because a security tool that asks to be trusted has an obligation to earn it. Constantly improving, because the risk landscape doesn't hold still, and neither should the tool built to read it.
+Most tools in this space ask for trust. This one is built to need less of it — every verdict shows its sources, every limitation is stated instead of buried, and every technical claim in this document was verified against a primary source before being written down, not assumed because it sounded right. Four chains, several independently verified data sources, one evidence model applied consistently across all of them. Verified, because a security tool that asks to be trusted has an obligation to earn it. Constantly improving, because the risk landscape doesn't hold still, and neither should the tool built to read it.
