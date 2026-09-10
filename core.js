@@ -1,5 +1,5 @@
 /* =====================================================================
-   RISKPASS CORE
+   SAVESAVESAVESAVE CORE (formerly RiskPass)
    Layers 0-6 from the architecture: input validation, data acquisition,
    evidence normalization, chain adapters, verdict engine, confidence.
    This block has NO DOM dependency except an optional escapeHtml path,
@@ -225,7 +225,7 @@ async function fetchCounterpartyChecks(addr, chainId, fetchImpl){
   if(!COUNTERPARTY_CHECK_SUPPORTED_CHAINS.has(String(chainId))) return { checks: [], attempted: false };
   if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')) return { checks: [], attempted: false };
 
-  const SOURCE = 'RiskPass (on-chain, via Chainalysis Sanctions Oracle)';
+  const SOURCE = 'SaveSaveSaveSave (on-chain, via Chainalysis Sanctions Oracle)';
   try {
     const endpoint = `${SOLANA_PROXY_URL}?counterparty_check=${addr}&chain=${chainId}`;
     const res = await fetchImpl(endpoint);
@@ -587,7 +587,7 @@ const SuiAdapter = {
   // requirement, so this stays permissive on length and strict on shape.
   validateAddress(addr){ return /^0x[a-fA-F0-9]{1,64}::.+$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
-    if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in RiskPass — token scans only.');
+    if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in SaveSaveSaveSave — token scans only.');
     if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
       throw new Error('Sui scanning needs the CORS proxy deployed first — see setup instructions.');
     }
@@ -642,7 +642,7 @@ const TronAdapter = {
   // broader base58 pattern.
   validateAddress(addr){ return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
-    if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in RiskPass — token scans only.');
+    if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in SaveSaveSaveSave — token scans only.');
     if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
       throw new Error('TRON scanning needs the CORS proxy deployed first — see setup instructions.');
     }

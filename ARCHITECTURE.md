@@ -1,10 +1,15 @@
-# RiskPass Architecture
+# SaveSaveSaveSave Architecture
+
+*Formerly RiskPass — rebranded, engine and evidence model unchanged. The
+name is deliberate, not a placeholder: four repetitions, four product
+pillars — save your funds, save your time, save your trust, save the
+regret. See the whitepaper for the full rationale.*
 
 ## Philosophy
 
-- RiskPass never treats absence of evidence as evidence of safety.
-- RiskPass never claims more coverage than it actually obtained.
-- RiskPass treats external data as untrusted, always.
+- SaveSaveSaveSave never treats absence of evidence as evidence of safety.
+- SaveSaveSaveSave never claims more coverage than it actually obtained.
+- SaveSaveSaveSave treats external data as untrusted, always.
 - Critical evidence overrides uncertainty.
 - Uncertainty overrides PASS.
 - Every blockchain is analyzed according to its own native security model.
@@ -13,7 +18,7 @@
 ## Layers
 
 ```
-RiskPass Core
+SaveSaveSaveSave Core
 │
 ├── Input validation        (Layer 0 — per-chain address validators)
 ├── Data acquisition        (Layer 1 — adapters treat provider responses as hostile)
@@ -285,7 +290,7 @@ endpoint, no proxy change. Two things were added:
 - A separate, non-scored "Liquidity" panel in the UI (`renderLiquidityPanel()`)
   showing pool count, combined TVL, and top-LP-holder lock status per pool.
   This is explicitly informational, not part of the verdict — TVL and lock
-  status are context for a human to weigh, not a pass/fail signal RiskPass
+  status are context for a human to weigh, not a pass/fail signal SaveSaveSaveSave
   is confident enough to score on its own.
 
 Note the Solana wallet-scan tab is no longer disabled in the UI — it was,
@@ -358,7 +363,7 @@ rejected valid addresses. This was caught and fixed before shipping, not
 after a user report.
 
 **Scope is honestly limited by what GoPlus actually returns for Sui
-today**, not by what RiskPass chose to build: GoPlus's own announcement
+today**, not by what SaveSaveSaveSave chose to build: GoPlus's own announcement
 states holder and DEX data for Sui are "awaiting ecosystem infra." No
 liquidity panel exists for Sui, and wallet screening isn't offered for
 it, because that data doesn't exist upstream yet — the capability table
@@ -522,7 +527,7 @@ relationship, per Chainalysis's own documentation. It has a real,
 independently-documented limitation worth taking seriously: a technical
 analysis found actual gaps between an OFAC designation and the oracle
 reflecting it, in one case over 90 days. Chainalysis's own docs carry the
-disclaimer directly — they don't guarantee timeliness. RiskPass's UI
+disclaimer directly — they don't guarantee timeliness. SaveSaveSaveSave's UI
 language for this reflects that: a sanctioned-address match is reported
 as what the oracle currently shows, not as a real-time, always-current
 guarantee.

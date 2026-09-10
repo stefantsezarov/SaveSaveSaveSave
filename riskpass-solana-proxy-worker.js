@@ -1,5 +1,5 @@
 /**
- * RiskPass — CORS proxy for GoPlus's newer, chain-specific APIs, and a
+ * SaveSaveSaveSave — CORS proxy for GoPlus's newer, chain-specific APIs, and a
  * server-side relay for the Chainalysis Sanctions Oracle smart contract
  *
  * GoPlus's Solana Token Security API (Beta) does not send an
@@ -33,7 +33,7 @@
  * sanctions oracle above. It does NOT see native ETH transfers, which
  * don't emit events, and does NOT claim to be a transaction history.
  *
- * The wallet route is only used as a fallback: RiskPass's client code
+ * The wallet route is only used as a fallback: SaveSaveSaveSave's client code
  * tries GoPlus's general Malicious Address API directly first, since
  * that's the same mature endpoint the EVM adapter already calls
  * successfully — this proxy route only gets used if that direct call

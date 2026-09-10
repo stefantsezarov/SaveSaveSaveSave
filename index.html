@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <!--
-  RiskPass
+  SaveSaveSaveSave
   © 2026 Stefan Tsezarov. All rights reserved.
   This source code, design, and content may not be copied, redistributed,
   or used to create a derivative product without prior written permission.
 
-  ARCHITECTURE NOTE: the RISKPASS CORE block below (evidence model, verdict
-  engine, chain adapters) is copied verbatim from core.js, which is the
-  file the permanent regression suite (riskpass.regression.test.js) tests
-  directly via require(). If you edit the core logic, edit core.js first,
-  run the regression suite, then paste the verified result here — don't
-  edit the two copies independently or they will drift out of sync.
+  Formerly RiskPass — rebranded, same underlying engine and evidence model.
+
+  ARCHITECTURE NOTE: the SAVESAVESAVESAVE CORE block below (evidence model,
+  verdict engine, chain adapters) is copied verbatim from core.js, which is
+  the file the permanent regression suite (riskpass.regression.test.js)
+  tests directly via require(). If you edit the core logic, edit core.js
+  first, run the regression suite, then paste the verified result here —
+  don't edit the two copies independently or they will drift out of sync.
 -->
 <html lang="en">
 <head>
@@ -18,7 +20,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
-<title>RiskPass — Wallet &amp; Token Risk Screening</title>
+<title>SaveSaveSaveSave — Wallet &amp; Token Risk Screening</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -63,8 +65,16 @@
   }
 
   header.top{display:flex; align-items:center; justify-content:space-between; padding:22px 20px; max-width:960px; margin:0 auto; gap:16px; flex-wrap:wrap;}
-  .brand{display:flex; align-items:center; gap:10px; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.15rem;}
-  .brand-mark{width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--accent), #2E9C92); display:flex; align-items:center; justify-content:center; color:var(--ink); font-size:0.85rem; font-weight:700;}
+  .brand{display:flex; align-items:center; gap:12px; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.15rem;}
+  .brand-mark{width:28px; height:28px; border-radius:8px; background:var(--accent);
+    box-shadow: -4px 4px 0 -2px rgba(79,209,197,0.5), -8px 8px 0 -4px rgba(79,209,197,0.25);
+    margin-right:6px;}
+  .wordmark{display:flex; white-space:nowrap;}
+  .wordmark .wm{margin-right:0.14em; transition:opacity .2s;}
+  .wordmark .wm:nth-child(1){opacity:1; color:var(--text);}
+  .wordmark .wm:nth-child(2){opacity:0.68; color:var(--text);}
+  .wordmark .wm:nth-child(3){opacity:0.42; color:var(--text);}
+  .wordmark .wm:nth-child(4){opacity:1; color:var(--accent); margin-right:0;}
   .brand-tag{color:var(--text-muted); font-size:0.78rem; font-family:'IBM Plex Mono', monospace; font-weight:400;}
   .top-nav{display:flex; align-items:center; gap:20px;}
   .nav-link{color:var(--text-muted); font-size:0.85rem; font-family:'IBM Plex Sans', sans-serif; text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--border);}
@@ -77,6 +87,7 @@
   h1{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:clamp(1.9rem, 5vw, 2.9rem); line-height:1.12; margin:0 0 14px; letter-spacing:-0.01em;}
   h1 .accent{color:var(--accent);}
   .sub{color:var(--text-muted); font-size:clamp(0.95rem, 2vw, 1.05rem); max-width:560px; margin:0 auto 34px;}
+  .four-saves{font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--text-muted); letter-spacing:0.02em; margin:0 auto 34px; max-width:560px;}
 
   .scanner{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; text-align:left; box-shadow:0 20px 60px -20px rgba(0,0,0,0.5);}
 
@@ -175,10 +186,10 @@
 <body>
 
 <header class="top">
-  <div class="brand"><div class="brand-mark">R</div>RiskPass</div>
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
   <div class="top-nav">
     <a class="nav-link" href="whitepaper.html">Whitepaper</a>
-    <div class="brand-tag">v0.4 — EVM + Solana + Sui + TRON</div>
+    <div class="brand-tag">v0.5 — EVM + Solana + Sui + TRON</div>
   </div>
 </header>
 
@@ -187,6 +198,7 @@
     <div class="eyebrow"><span class="dot"></span> Free automated risk pass</div>
     <h1>Know before you sign.<br>Screen any <span class="accent">wallet or token</span> in seconds.</h1>
     <p class="sub">Paste an address, get a plain-English risk pass — honeypots, mint authority, sanctioned addresses, and more, checked against each chain's own security model.</p>
+    <p class="four-saves">Save your funds. Save your time. Save your trust. Save the regret.</p>
 
     <div class="scanner">
       <div class="tabrow">
@@ -254,9 +266,9 @@
 </div>
 
 <footer>
-  <p>RiskPass is an independent screening aid built on free, public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
-  <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — RiskPass itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
-  <p><a class="nav-link" href="whitepaper.html">Read the Whitepaper</a> &nbsp;·&nbsp; <a class="nav-link" href="RiskPass-Whitepaper.pdf">Download PDF</a></p>
+  <p>SaveSaveSaveSave is an independent screening aid built on free, public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
+  <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — SaveSaveSaveSave itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
+  <p><a class="nav-link" href="whitepaper.html">Read the Whitepaper</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a></p>
   <p style="margin-top:14px; color:var(--text-muted);">© 2026 Stefan Tsezarov. All rights reserved.</p>
 </footer>
 
@@ -452,7 +464,7 @@ async function fetchCounterpartyChecks(addr, chainId, fetchImpl){
   if(!COUNTERPARTY_CHECK_SUPPORTED_CHAINS.has(String(chainId))) return { checks: [], attempted: false };
   if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')) return { checks: [], attempted: false };
 
-  const SOURCE = 'RiskPass (on-chain, via Chainalysis Sanctions Oracle)';
+  const SOURCE = 'SaveSaveSaveSave (on-chain, via Chainalysis Sanctions Oracle)';
   try {
     const endpoint = `${SOLANA_PROXY_URL}?counterparty_check=${addr}&chain=${chainId}`;
     const res = await fetchImpl(endpoint);
@@ -763,7 +775,7 @@ const SuiAdapter = {
   chains: { 'sui': 'Sui Mainnet' },
   validateAddress(addr){ return /^0x[a-fA-F0-9]{1,64}::.+$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
-    if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in RiskPass — token scans only.');
+    if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in SaveSaveSaveSave — token scans only.');
     if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
       throw new Error('Sui scanning needs the CORS proxy deployed first — see setup instructions.');
     }
@@ -793,7 +805,7 @@ const TronAdapter = {
   chains: { 'tron': 'TRON Mainnet' },
   validateAddress(addr){ return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
-    if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in RiskPass — token scans only.');
+    if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in SaveSaveSaveSave — token scans only.');
     if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
       throw new Error('TRON scanning needs the CORS proxy deployed first — see setup instructions.');
     }
