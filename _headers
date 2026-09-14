@@ -1,0 +1,35 @@
+# Cloudflare Pages response headers.
+# Ignored by GitHub Pages, which cannot set headers at all -- that inability
+# is one of the reasons for moving. Safe to commit before the migration.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# HTML must revalidate, or a visitor keeps yesterday's verdict engine after
+# a deploy. These files are small; the round-trip costs nothing worth saving.
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Static assets never change without changing name, so cache them hard.
+/og-image.png
+  Cache-Control: public, max-age=604800, immutable
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=604800, immutable
+
+/favicon.svg
+  Cache-Control: public, max-age=604800, immutable
+
+# Crawler-facing files: fresh enough that a fix is picked up the same day.
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=3600

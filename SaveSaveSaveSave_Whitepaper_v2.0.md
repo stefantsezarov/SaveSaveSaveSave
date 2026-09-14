@@ -3,7 +3,6 @@
 **Verified. Constantly Improving.**
 
 *Whitepaper v2.0 — September 2026*
-*Formerly RiskPass*
 
 > Four chains. Four data sources. Four reasons for the name: save your funds, save your time, save your trust, save the regret.
 

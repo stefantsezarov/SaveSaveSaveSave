@@ -202,7 +202,7 @@ function normalizeEvmRecord(record, assetType){
 
 // Chains where the counterparty_check Worker route has a real RPC endpoint
 // configured, not a placeholder. Must be kept in sync with
-// CHAIN_RPC_ENDPOINTS in riskpass-solana-proxy-worker.js by hand — there's
+// CHAIN_RPC_ENDPOINTS in goplus-proxy-worker.js by hand — there's
 // no shared config between the static client and the Worker, the same
 // constraint every other cross-file constant in this project already has.
 const COUNTERPARTY_CHECK_SUPPORTED_CHAINS = new Set(['1','56','137','42161','10','43114','81457','8453']);
@@ -437,7 +437,7 @@ function normalizeSolanaWalletRecord(record){
   });
   return { checks, expected: defs.length, criticalDefsTotal };
 }
-// riskpass-solana-proxy-worker.js.
+// goplus-proxy-worker.js.
 //
 // CORRECTION (verified 2026-09-14): GoPlus DOES send CORS headers on these
 // endpoints -- it reflects the Origin header back. Confirmed against

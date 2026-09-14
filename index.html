@@ -9,7 +9,7 @@
 
   ARCHITECTURE NOTE: the SAVESAVESAVESAVE CORE block below (evidence model,
   verdict engine, chain adapters) is copied verbatim from core.js, which is
-  the file the permanent regression suite (riskpass.regression.test.js)
+  the file the permanent regression suite (savesavesavesave.regression.test.js)
   tests directly via require(). If you edit the core logic, edit core.js
   first, run the regression suite, then paste the verified result here —
   don't edit the two copies independently or they will drift out of sync.
@@ -353,8 +353,18 @@
 
 <script>
 /* =====================================================================
-   RISKPASS CORE  (verbatim from core.js — see note at top of this file)
+   SAVESAVESAVESAVE CORE  (verbatim from core.js — see note at top of this file)
    ===================================================================== */
+/* =====================================================================
+   SAVESAVESAVESAVE CORE (formerly RiskPass)
+   Layers 0-6 from the architecture: input validation, data acquisition,
+   evidence normalization, chain adapters, verdict engine, confidence.
+   This block has NO DOM dependency except an optional escapeHtml path,
+   so it can be eval()'d in Node for regression testing, unmodified,
+   exactly as it ships in the browser.
+   ===================================================================== */
+
+// ---------- Sanitization ----------
 function escapeHtml(str){
   if(typeof document !== 'undefined'){
     const div = document.createElement('div');
@@ -377,6 +387,11 @@ function getPath(obj, path){
   return cur;
 }
 
+// ---------- Layer 1/2: flag classification + evidence model ----------
+// Every raw provider value is classified into exactly one bucket.
+// 'missing' fields never become a CHECK object at all — they are simply
+// absent, and absence is accounted for via checksExpected vs checksValid,
+// never silently treated as clear.
 function flagState(v){
   if(v === '1' || v === 1 || v === true) return 'on';
   if(v === '0' || v === 0 || v === false) return 'off';
@@ -384,6 +399,7 @@ function flagState(v){
   return 'unrecognized';
 }
 
+// CHECK = { id, category, status: 'PASS'|'RISK'|'UNKNOWN', critical, severityWeight, label, detail, source }
 function buildCheck(def, rawValue, source){
   const state = flagState(rawValue);
   if(state === 'missing') return null;
@@ -396,6 +412,7 @@ function buildCheck(def, rawValue, source){
     critical: !!def.critical, severityWeight: def.sev === 'bad' ? 3 : 1, label: def.label, detail: def.detail, source };
 }
 
+// ---------- Layer 5/6: Verdict engine — knows NOTHING about any provider or chain ----------
 const VerdictEngine = {
   evaluate(checks, expectedChecks, source, criticalDefsTotal){
     const risks = checks.filter(c => c.status === 'RISK');
@@ -403,12 +420,12 @@ const VerdictEngine = {
     const valid = checks.filter(c => c.status === 'PASS' || c.status === 'RISK').length;
     const criticalFindings = risks.filter(c => c.critical).length;
     const criticalHit = criticalFindings > 0;
-    const criticalSeen = checks.filter(c => c.critical).length;
+    const criticalSeen = checks.filter(c => c.critical).length; // critical-tier checks we got ANY answer for, PASS/RISK/UNKNOWN alike
     const criticalMissing = typeof criticalDefsTotal === 'number' ? Math.max(0, criticalDefsTotal - criticalSeen) : 0;
 
     let score = 0;
     risks.forEach(c => { score += c.severityWeight; });
-    score += unknowns.length;
+    score += unknowns.length; // each unreadable field nudges toward caution, doesn't force it alone
 
     const coverage = expectedChecks ? valid / expectedChecks : 0;
     const insufficientData = valid === 0 || coverage < 0.4;
@@ -433,17 +450,37 @@ const VerdictEngine = {
       sub = `No major risk indicators across ${valid}/${expectedChecks} checks — not a safety guarantee`;
     }
 
+    // Additive disclosure: even a well-covered, otherwise-clean scan should
+    // say so plainly if one of the specific high-stakes checks (e.g.
+    // honeypot detection) simply wasn't answered by the provider. This is
+    // deliberately separate from the coverage-driven INSUFFICIENT DATA
+    // state above — losing one decisive check is a different, more
+    // targeted kind of uncertainty than losing most of the response.
     if(criticalMissing > 0 && (verdict === 'pass' || verdict === 'caution')){
       sub += ` Note: ${criticalMissing} high-severity check${criticalMissing===1?'':'s'} could not be evaluated (no data returned) — treat this result as incomplete on that point.`;
     }
 
     const confidence = insufficientData ? 'low' : (unknowns.length > 0 || criticalMissing > 0 ? 'medium' : 'high');
 
-    return { verdict, label, sub, score, checksExpected: expectedChecks, checksReceived: checks.length,
-      checksValid: valid, checksUnknown: unknowns.length, criticalFindings, criticalMissing, coverage, confidence, source, checks };
+    return {
+      verdict, label, sub, score,
+      checksExpected: expectedChecks,
+      checksReceived: checks.length,
+      checksValid: valid,
+      checksUnknown: unknowns.length,
+      criticalFindings,
+      criticalMissing,
+      coverage,
+      confidence,
+      source,
+      checks
+    };
   }
 };
 
+// ---------- Layer 3: chain adapters ----------
+
+// -- EVM adapter --
 const EVM_TOKEN_CHECK_DEFS = [
   {key:'is_honeypot', category:'liquidity', label:'Honeypot pattern', detail:'Token can be bought but may not be sellable.', sev:'bad', critical:true},
   {key:'cannot_sell_all', category:'liquidity', label:'Cannot sell full balance', detail:'Contract may block selling 100% of holdings.', sev:'bad', critical:true},
@@ -487,7 +524,7 @@ function normalizeEvmRecord(record, assetType){
   });
 
   if(assetType === 'token'){
-    expected += 2;
+    expected += 2; // is_open_source + tax are extra checks beyond the base list
     if(record.is_open_source !== undefined){
       const openState = flagState(record.is_open_source);
       if(openState === 'on'){
@@ -495,6 +532,7 @@ function normalizeEvmRecord(record, assetType){
       } else if(openState === 'off'){
         checks.push({id:'is_open_source', category:'transparency', status:'RISK', critical:false, severityWeight:2, label:'Source code not verified', detail:'Contract code has not been published/verified.', source:'GoPlus Security (EVM)'});
       }
+      // unrecognized type for is_open_source: leave unclassified rather than guess a boolean meaning
     }
     if(record.buy_tax !== undefined || record.sell_tax !== undefined){
       const buyNum = parseFloat(record.buy_tax);
@@ -515,12 +553,13 @@ function normalizeEvmRecord(record, assetType){
       }
     }
   }
+
   return { checks, expected, criticalDefsTotal };
 }
 
 // Chains where the counterparty_check Worker route has a real RPC endpoint
 // configured, not a placeholder. Must be kept in sync with
-// CHAIN_RPC_ENDPOINTS in riskpass-solana-proxy-worker.js by hand — there's
+// CHAIN_RPC_ENDPOINTS in goplus-proxy-worker.js by hand — there's
 // no shared config between the static client and the Worker, the same
 // constraint every other cross-file constant in this project already has.
 const COUNTERPARTY_CHECK_SUPPORTED_CHAINS = new Set(['1','56','137','42161','10','43114','81457','8453']);
@@ -625,6 +664,11 @@ const EvmAdapter = {
   }
 };
 
+// -- Solana adapter --
+// Field names verified against GoPlus's published Solana Token Security
+// response schema (nested {status} objects) — deliberately NOT the same
+// shape as the EVM adapter's flat fields, per the architecture principle
+// that each chain's native security model gets its own representation.
 const SOLANA_CHECK_DEFS = [
   {key:'closable', path:['closable','status'], category:'control', label:'Program can be closed', detail:'Developer can close the token program, eliminating all associated assets.', sev:'bad', critical:true},
   {key:'balance_mutable', path:['balance_mutable_authority','status'], category:'control', label:'Balance can be altered', detail:'Developer retains authority to directly change user token balances.', sev:'bad', critical:true},
@@ -638,12 +682,15 @@ const SOLANA_CHECK_DEFS = [
 
 function normalizeSolanaRecord(record){
   const checks = [];
-  let expected = SOLANA_CHECK_DEFS.length + 4;
-  let criticalDefsTotal = SOLANA_CHECK_DEFS.filter(d => d.critical).length + 3;
+  let expected = SOLANA_CHECK_DEFS.length + 4; // + non_transferable, transfer_hook presence, creator malicious, mint-authority malicious
+  let criticalDefsTotal = SOLANA_CHECK_DEFS.filter(d => d.critical).length + 3; // non_transferable, creator_malicious, mint_authority_malicious are critical:true; transfer_hook_present is not
   const trusted = flagState(record.trusted_token) === 'on';
 
   SOLANA_CHECK_DEFS.forEach(def => {
     const raw = getPath(record, def.path);
+    // GoPlus documents that trusted, well-known tokens (e.g. USDC) can
+    // legitimately have functions like mint enabled without being a risk.
+    // Only the mint check gets this exception, per GoPlus's own guidance.
     if(def.key === 'mintable' && trusted && flagState(raw) === 'on'){
       checks.push({id:'mintable', category:'supply', status:'PASS', critical:false, severityWeight:0,
         label:'Mint function present, but token is GoPlus-verified trusted', detail:'This token is on GoPlus\'s trusted-token list; mint authority is a known, accepted design choice for it.', source:'GoPlus Security (Solana)'});
@@ -680,6 +727,10 @@ function normalizeSolanaRecord(record){
 
   const mintAuthority = getPath(record, ['mintable','authority']);
   if(mintAuthority === undefined || mintAuthority === null){
+    // No authority object at all is consistent with mint authority having
+    // been revoked (a positive signal) — but GoPlus's docs don't guarantee
+    // that's the only reason it could be absent, so the wording below stays
+    // deliberately hedged rather than asserting "revoked" as fact.
     checks.push({id:'mint_authority_malicious', category:'reputation', status:'PASS', critical:false, severityWeight:0,
       label:'No mint authority to check', detail:'No mint authority address was returned — consistent with mint authority having been revoked, though this cannot be confirmed from this field alone.', source:'GoPlus Security (Solana)'});
   } else {
@@ -687,9 +738,15 @@ function normalizeSolanaRecord(record){
     if(state === 'on') checks.push({id:'mint_authority_malicious', category:'reputation', status:'RISK', critical:true, severityWeight:3, label:'Mint authority flagged malicious', detail:'The address holding mint authority appears on a known malicious-address record.', source:'GoPlus Security (Solana)'});
     else if(state === 'off') checks.push({id:'mint_authority_malicious', category:'reputation', status:'PASS', critical:false, severityWeight:0, label:'Mint authority not flagged', detail:'Mint authority address does not appear on known malicious-address records.', source:'GoPlus Security (Solana)'});
     else if(state === 'unrecognized') checks.push({id:'mint_authority_malicious', category:'reputation', status:'UNKNOWN', critical:true, severityWeight:1, label:'Mint authority flagged malicious', detail:'A mint authority exists, but the malicious-address field for it returned an unreadable value.', source:'GoPlus Security (Solana)'});
+    // state === 'missing' here (authority object present, malicious_address key absent within it) is a genuine
+    // data gap and is deliberately left unpushed, so it still counts toward criticalMissing honestly.
   }
 
   // ---- Liquidity (Dex Info) ----
+  // Field names verified against GoPlus's documented Solana schema: dexname,
+  // type, id, tvl, lp_amount, fee_rate, day/week/month volume, price,
+  // open_time, lp_holders[]. This data was already present in the response
+  // this adapter was already fetching — it just wasn't being read before.
   let liquiditySummary = null;
   if(Array.isArray(record.dex)){
     if(record.dex.length === 0){
@@ -720,6 +777,13 @@ function normalizeSolanaRecord(record){
   return { checks, expected, criticalDefsTotal, liquiditySummary };
 }
 
+// ---------- Solana wallet/address screening ----------
+// Reuses the same check definitions as EVM wallet screening deliberately:
+// the underlying provider endpoint (GoPlus's Malicious Address API) and its
+// field names (sanctioned, phishing_activities, etc.) are the same across
+// chains — this data describes address *reputation*, which is not a
+// chain-specific mechanic the way token contract functions are. Reusing
+// EVM_WALLET_CHECK_DEFS here is intentional, not a shortcut.
 function normalizeSolanaWalletRecord(record){
   const defs = EVM_WALLET_CHECK_DEFS;
   const checks = [];
@@ -730,12 +794,47 @@ function normalizeSolanaWalletRecord(record){
   });
   return { checks, expected: defs.length, criticalDefsTotal };
 }
-
-// SETUP: after deploying riskpass-solana-proxy-worker.js to Cloudflare Workers,
-// replace this with your actual *.workers.dev URL (see deployment steps provided
-// separately). Until replaced, Solana scans will fail with a clear setup message
-// rather than a confusing generic error.
+// goplus-proxy-worker.js.
+//
+// CORRECTION (verified 2026-09-14): GoPlus DOES send CORS headers on these
+// endpoints -- it reflects the Origin header back. Confirmed against
+// solana/token_security, sui/token_security, token_security/tron and
+// address_security, all returning access-control-allow-origin for this
+// site's origin. Direct browser requests are allowed, so every adapter
+// below now tries direct first.
+//
+// This matters for more than tidiness. Routing every user through one
+// Worker meant every user shared a single egress IP, and GoPlus's
+// anonymous rate limit is per-IP -- so one Cloudflare address, shared with
+// other Cloudflare customers rather than reserved for this project,
+// carried the whole world's scans. That is what produced the intermittent
+// "too many requests" failures, most visibly on TRON. Calling GoPlus
+// directly gives each visitor their own quota, which no realistic single
+// user can exhaust.
+//
+// Privacy note: with direct calls GoPlus observes each visitor's IP
+// address rather than only this proxy. Nothing is retained here, but that
+// change is visible to a third party and is stated in the privacy section.
+//
+// The proxy is kept as a fallback for a direct call that THROWS (a future
+// CORS policy change, or a network blocking the API host), and remains
+// REQUIRED for the sanctions and counterparty routes, which are JSON-RPC
+// calls to endpoints configured inside the Worker.
 const SOLANA_PROXY_URL = 'https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev';
+
+// Try GoPlus directly; fall back to the Worker only when the direct call
+// THROWS. Deliberately does NOT fall back on a non-ok HTTP status: a 429
+// from a direct call is this visitor's own rate limit, and retrying it
+// through the shared-IP proxy is more likely to fail than less -- and
+// would hide the real cause, which is the bug this change exists to fix.
+async function fetchGoPlus(directUrl, proxyUrl, fetchImpl){
+  try {
+    return await fetchImpl(directUrl);
+  } catch(directErr){
+    if(!proxyUrl || proxyUrl.includes('REPLACE-WITH-YOUR-WORKER-URL')) throw directErr;
+    return fetchImpl(proxyUrl);
+  }
+}
 
 const SolanaAdapter = {
   id: 'solana', name: 'Solana',
@@ -753,11 +852,10 @@ const SolanaAdapter = {
 
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType === 'wallet') return this._fetchWalletChecks(addr, fetchImpl);
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('Solana scanning needs the CORS proxy deployed first — see setup instructions. GoPlus\'s Solana API blocks direct browser requests.');
-    }
-    const endpoint = `${SOLANA_PROXY_URL}?contract_addresses=${addr}`;
-    const res = await fetchImpl(endpoint);
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?contract_addresses=${addr}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -803,6 +901,12 @@ const Adapters = { evm: EvmAdapter, solana: SolanaAdapter };
 // ---------------------------------------------------------------------
 // Sui adapter
 // ---------------------------------------------------------------------
+// Sui's Token Security API uses a genuinely different value convention
+// from EVM and Solana: "0" means unavailable, but BOTH "1" and "2" mean
+// the function is available (the distinction between 1 and 2 isn't
+// documented at the field level GoPlus exposes). Reusing flagState() here
+// would silently misread "2" as neither on nor off — this needed its own
+// classifier, not a shortcut.
 function suiFlagState(v){
   if(v === '0' || v === 0 || v === false) return 'off';
   if(v === '1' || v === '2' || v === 1 || v === 2 || v === true) return 'on';
@@ -822,6 +926,8 @@ function buildSuiCheck(def, rawValue, source){
     critical: !!def.critical, severityWeight: def.sev === 'bad' ? 3 : 1, label: def.label, detail: def.detail, source };
 }
 
+// Each of these fields is an object shaped { value, cap_owner } per GoPlus's
+// documented Sui schema — buildSuiCheck reads def.path into that object.
 const SUI_CHECK_DEFS = [
   {key:'contract_upgradeable', path:['contract_upgradeable','value'], category:'control', label:'Contract is upgradeable', detail:'Developers can arbitrarily modify contract functions after deployment.', sev:'bad', critical:true},
   {key:'blacklist', path:['blacklist','value'], category:'control', label:'Blacklist function present', detail:'Owner can block specific addresses from trading.', sev:'warn', critical:false},
@@ -845,21 +951,40 @@ function normalizeSuiRecord(record){
     if(c) checks.push(c);
   });
 
+  // GoPlus does not yet return holder or DEX data for Sui ("awaiting
+  // ecosystem infra", per GoPlus's own announcement) — no liquidity
+  // summary is possible here, unlike the Solana adapter. Not a gap in
+  // this adapter; a real gap in the upstream data as of this writing.
   return { checks, expected: SUI_CHECK_DEFS.length, criticalDefsTotal, liquiditySummary: null };
 }
 
+// SETUP: same requirement as Solana — GoPlus's Sui Token Security API is
+// a newly-added, chain-specific endpoint. Its CORS behavior has not been
+// confirmed (no network path to test it from this environment), so this
+// routes through the proxy from the start rather than assuming a direct
+// call will work and discovering otherwise via a user bug report.
 const SuiAdapter = {
   id: 'sui', name: 'Sui',
   capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:false, contractAnalysis:false },
   chains: { 'sui': 'Sui Mainnet' },
+  // Sui "addresses" for token security purposes are Move type identifiers:
+  // 0x + 64 hex chars, then ::module::TypeName. This is intentionally
+  // lenient on the module/type suffix (generic types like ::coin::COIN<...>
+  // exist in Move and aren't fully characterized here) but strict on the
+  // address prefix, which is the part actually confirmed against a real
+  // GoPlus example URL.
+  // Sui's canonical address is 32 bytes (64 hex chars), but well-known
+  // system packages are commonly referenced in short form (e.g. 0x2 for
+  // the sui framework, as in the native coin type 0x2::sui::SUI) — being
+  // strict about exact padding here isn't confirmed as GoPlus's actual
+  // requirement, so this stays permissive on length and strict on shape.
   validateAddress(addr){ return /^0x[a-fA-F0-9]{1,64}::.+$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in SaveSaveSaveSave — token scans only.');
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('Sui scanning needs the CORS proxy deployed first — see setup instructions.');
-    }
-    const endpoint = `${SOLANA_PROXY_URL}?sui_contract_addresses=${encodeURIComponent(addr)}`;
-    const res = await fetchImpl(endpoint);
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/sui/token_security?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?sui_contract_addresses=${encodeURIComponent(addr)}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -878,18 +1003,46 @@ const SuiAdapter = {
 
 Adapters.sui = SuiAdapter;
 
+// ---------------------------------------------------------------------
+// TRON adapter
+// ---------------------------------------------------------------------
+// Unlike Solana and Sui, TRON does not appear to have its own dedicated
+// Token Security endpoint or schema page in GoPlus's docs — it shows up
+// as just another chain_id value ("tron", a string rather than numeric)
+// on the same generic token_security/{chain_id} endpoint EVM chains use.
+// Combined with TVM being documented as broadly Solidity-compatible,
+// this is a well-justified inference that the response schema is the
+// same flat "1"/"0" EVM shape — but it's an inference from endpoint
+// structure, not a confirmed field-by-field schema the way Solana and
+// Sui's dedicated docs pages provided. Worth re-checking against a real
+// response if scans return unexpected results.
+//
+// Aptos was considered alongside TRON and deliberately NOT built: it
+// appears in GoPlus's marketing chain lists, but no dedicated technical
+// endpoint or schema reference could be found to verify against, the
+// way one was found for Solana, Sui, and (with the caveat above) TRON.
+// Guessing at an unverified schema is exactly the mistake this project
+// has already made once with Solana wallet screening — not repeating it
+// on a whole new adapter.
 const TronAdapter = {
   id: 'tron', name: 'TRON',
   capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:false, contractAnalysis:true },
   chains: { 'tron': 'TRON Mainnet' },
+  // TRON addresses are Base58Check-encoded, always exactly 34 characters,
+  // always starting with 'T'. See the note on detectEcosystem() below for
+  // why this specific, stricter pattern is checked before Solana's
+  // broader base58 pattern.
   validateAddress(addr){ return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in SaveSaveSaveSave — token scans only.');
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('TRON scanning needs the CORS proxy deployed first — see setup instructions.');
-    }
-    const endpoint = `${SOLANA_PROXY_URL}?tron_contract_addresses=${encodeURIComponent(addr)}`;
-    const res = await fetchImpl(endpoint);
+    // Direct-first. The defensive proxy routing that used to sit here was
+    // justified by CORS being unconfirmed for the string chain_id "tron".
+    // It has since been confirmed to work (Origin is reflected), and the
+    // proxy was itself the cause of this chain's rate-limit failures.
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/token_security/tron?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?tron_contract_addresses=${encodeURIComponent(addr)}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -901,6 +1054,10 @@ const TronAdapter = {
     const keys = Object.keys(data.result);
     if(keys.length === 0) throw new Error('This address does not appear to be a recognized token contract on TRON.');
     const record = data.result[keys[0]];
+    // Deliberately reusing the EVM normalizer, not writing a near-duplicate
+    // one — the whole justification for this adapter's design is that the
+    // schema is the same family. If that inference turns out to be wrong,
+    // the fix belongs here, not in a parallel TRON-specific normalizer.
     const { checks, expected, criticalDefsTotal } = normalizeEvmRecord(record, 'token');
     return { checks, expected, criticalDefsTotal, record, raw: data, liquiditySummary: null };
   }
@@ -908,6 +1065,24 @@ const TronAdapter = {
 
 Adapters.tron = TronAdapter;
 
+// ---------------------------------------------------------------------
+// Address-type auto-detection
+// ---------------------------------------------------------------------
+// Four validators, checked in a specific order. EVM, Sui, and Solana are
+// mutually exclusive by construction (see below); TRON needed one real
+// tie-break decision: a 34-character, T-prefixed Solana address is
+// theoretically possible but requires an ed25519 key with ~7 leading
+// zero bytes — roughly 1-in-4×10^17 for a real generated key (verified
+// by calculation, not assumed). TRON is checked first specifically to
+// resolve that near-zero-probability overlap deterministically rather
+// than leaving it to chance ordering.
+//
+// EVM requires exactly 40 hex chars after 0x with nothing following; Sui
+// requires 0x + hex, but ONLY matches if '::' follows, which no valid EVM
+// address contains; Solana's base58 alphabet excludes '0' entirely, so no
+// Solana address can ever start with '0x' in the first place. These three
+// remain genuinely non-overlapping, not just practically unlikely to
+// collide.
 function detectEcosystem(addr){
   const trimmed = String(addr || '').trim();
   if(!trimmed) return null;
@@ -918,8 +1093,22 @@ function detectEcosystem(addr){
   return null;
 }
 
+// Guarded export: in a browser <script> tag, `module` doesn't exist, so this
+// block is skipped and every const/function above simply lives in script
+// scope, same as before. In Node (the regression suite), this makes the
+// exact same source file directly require()-able with no duplication.
+if(typeof module !== 'undefined' && module.exports){
+  module.exports = {
+    escapeHtml, stripSpoofChars, getPath, flagState, buildCheck, VerdictEngine, fetchGoPlus,
+    EVM_TOKEN_CHECK_DEFS, EVM_WALLET_CHECK_DEFS, EVM_CHAINS, normalizeEvmRecord, EvmAdapter,
+    COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
+    SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
+    SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem
+  };
+}
+
 /* =====================================================================
-   RISKPASS UI LAYER — the only part of this file allowed to touch the
+   SAVESAVESAVESAVE UI LAYER — the only part of this file allowed to touch the
    DOM. It knows about Adapters and VerdictEngine, but nothing in the
    core above knows this UI exists.
    ===================================================================== */

@@ -1,7 +1,7 @@
 # SaveSaveSaveSave — Short Edition
 
 **Verified. Constantly Improving.**
-*Whitepaper v2.0 — September 2026 — Formerly RiskPass*
+*Whitepaper v2.0 — September 2026*
 
 ---
 

@@ -142,7 +142,7 @@ on each other: the browser was never going to be allowed to read the
 response, and GoPlus's Solana endpoint (documented by GoPlus as Beta) is
 also, separately, sometimes slow to answer.
 
-**The fix:** `riskpass-solana-proxy-worker.js`, deployed on Cloudflare
+**The fix:** `goplus-proxy-worker.js`, deployed on Cloudflare
 Workers. It receives the request in place of GoPlus, forwards it
 server-to-server (CORS is a browser-enforced restriction — it does not
 apply between two servers), and returns the response with an
@@ -300,12 +300,11 @@ automatically re-enables it; no separate UI change was needed for that part.
 
 ## Permanent regression suite
 
-`riskpass.regression.test.js` requires `core.js` directly and asserts the
+`savesavesavesave.regression.test.js` requires `core.js` directly and asserts the
 resulting **verdict label** for each case, not merely that nothing threw.
 It should be run after any change to `core.js`, and `core.js` is the
-source of truth — the copy embedded in `riskpass.html`'s `<script>` tag
-must be pasted from `core.js` verbatim after any edit. `verify_embedded.js`
-exists to catch drift between the two if that discipline slips.
+source of truth — the copy embedded in `index.html`'s `<script>` tag
+must be pasted from `core.js` verbatim after any edit.
 
 Current coverage: 61 assertions across malicious input, benign input,
 empty/malformed/partial provider responses, contradictory indicators,
