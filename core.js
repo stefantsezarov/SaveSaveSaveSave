@@ -437,10 +437,47 @@ function normalizeSolanaWalletRecord(record){
   });
   return { checks, expected: defs.length, criticalDefsTotal };
 }
-// riskpass-solana-proxy-worker.js. GoPlus's Solana API does not send CORS
-// headers, so direct browser requests are blocked; this proxy is required,
-// not optional, for Solana scanning to work at all.
+// riskpass-solana-proxy-worker.js.
+//
+// CORRECTION (verified 2026-09-14): GoPlus DOES send CORS headers on these
+// endpoints -- it reflects the Origin header back. Confirmed against
+// solana/token_security, sui/token_security, token_security/tron and
+// address_security, all returning access-control-allow-origin for this
+// site's origin. Direct browser requests are allowed, so every adapter
+// below now tries direct first.
+//
+// This matters for more than tidiness. Routing every user through one
+// Worker meant every user shared a single egress IP, and GoPlus's
+// anonymous rate limit is per-IP -- so one Cloudflare address, shared with
+// other Cloudflare customers rather than reserved for this project,
+// carried the whole world's scans. That is what produced the intermittent
+// "too many requests" failures, most visibly on TRON. Calling GoPlus
+// directly gives each visitor their own quota, which no realistic single
+// user can exhaust.
+//
+// Privacy note: with direct calls GoPlus observes each visitor's IP
+// address rather than only this proxy. Nothing is retained here, but that
+// change is visible to a third party and is stated in the privacy section.
+//
+// The proxy is kept as a fallback for a direct call that THROWS (a future
+// CORS policy change, or a network blocking the API host), and remains
+// REQUIRED for the sanctions and counterparty routes, which are JSON-RPC
+// calls to endpoints configured inside the Worker.
 const SOLANA_PROXY_URL = 'https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev';
+
+// Try GoPlus directly; fall back to the Worker only when the direct call
+// THROWS. Deliberately does NOT fall back on a non-ok HTTP status: a 429
+// from a direct call is this visitor's own rate limit, and retrying it
+// through the shared-IP proxy is more likely to fail than less -- and
+// would hide the real cause, which is the bug this change exists to fix.
+async function fetchGoPlus(directUrl, proxyUrl, fetchImpl){
+  try {
+    return await fetchImpl(directUrl);
+  } catch(directErr){
+    if(!proxyUrl || proxyUrl.includes('REPLACE-WITH-YOUR-WORKER-URL')) throw directErr;
+    return fetchImpl(proxyUrl);
+  }
+}
 
 const SolanaAdapter = {
   id: 'solana', name: 'Solana',
@@ -458,11 +495,10 @@ const SolanaAdapter = {
 
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType === 'wallet') return this._fetchWalletChecks(addr, fetchImpl);
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('Solana scanning needs the CORS proxy deployed first — see setup instructions. GoPlus\'s Solana API blocks direct browser requests.');
-    }
-    const endpoint = `${SOLANA_PROXY_URL}?contract_addresses=${addr}`;
-    const res = await fetchImpl(endpoint);
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?contract_addresses=${addr}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -588,11 +624,10 @@ const SuiAdapter = {
   validateAddress(addr){ return /^0x[a-fA-F0-9]{1,64}::.+$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType !== 'token') throw new Error('Wallet screening is not supported for Sui in SaveSaveSaveSave — token scans only.');
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('Sui scanning needs the CORS proxy deployed first — see setup instructions.');
-    }
-    const endpoint = `${SOLANA_PROXY_URL}?sui_contract_addresses=${encodeURIComponent(addr)}`;
-    const res = await fetchImpl(endpoint);
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/sui/token_security?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?sui_contract_addresses=${encodeURIComponent(addr)}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -643,15 +678,14 @@ const TronAdapter = {
   validateAddress(addr){ return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(addr).trim()); },
   async fetchChecks(addr, assetType, chainId, fetchImpl){
     if(assetType !== 'token') throw new Error('Wallet screening is not supported for TRON in SaveSaveSaveSave — token scans only.');
-    if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-      throw new Error('TRON scanning needs the CORS proxy deployed first — see setup instructions.');
-    }
-    // Routed through the same proxy used for Solana and Sui, defensively:
-    // CORS support has only actually been confirmed for numeric EVM
-    // chain_ids on this endpoint family, not for the non-standard string
-    // chain_id "tron" — the same reasoning applied to Sui from day one.
-    const endpoint = `${SOLANA_PROXY_URL}?tron_contract_addresses=${encodeURIComponent(addr)}`;
-    const res = await fetchImpl(endpoint);
+    // Direct-first. The defensive proxy routing that used to sit here was
+    // justified by CORS being unconfirmed for the string chain_id "tron".
+    // It has since been confirmed to work (Origin is reflected), and the
+    // proxy was itself the cause of this chain's rate-limit failures.
+    const res = await fetchGoPlus(
+      `https://api.gopluslabs.io/api/v1/token_security/tron?contract_addresses=${encodeURIComponent(addr)}`,
+      `${SOLANA_PROXY_URL}?tron_contract_addresses=${encodeURIComponent(addr)}`,
+      fetchImpl);
     if(!res.ok){
       let detail = '';
       try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
@@ -708,7 +742,7 @@ function detectEcosystem(addr){
 // exact same source file directly require()-able with no duplication.
 if(typeof module !== 'undefined' && module.exports){
   module.exports = {
-    escapeHtml, stripSpoofChars, getPath, flagState, buildCheck, VerdictEngine,
+    escapeHtml, stripSpoofChars, getPath, flagState, buildCheck, VerdictEngine, fetchGoPlus,
     EVM_TOKEN_CHECK_DEFS, EVM_WALLET_CHECK_DEFS, EVM_CHAINS, normalizeEvmRecord, EvmAdapter,
     COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
     SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
