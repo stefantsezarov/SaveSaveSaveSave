@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://savesavesavesave.pages.dev/sitemap.xml
+Sitemap: https://savesavesavesavecrypto.pages.dev/sitemap.xml
