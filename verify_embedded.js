@@ -88,8 +88,49 @@ for (const marker of ['VerdictEngine', 'buildCheck', 'flagState', 'fetchGoPlus']
   }
 }
 
+// ---- the same check for the prompt-scan engine -------------------------
+// promptscan.js is embedded exactly the way core.js is, so it can drift
+// exactly the way core.js did — the fix living in the file nobody loads.
+const psPath = path.join(here, 'promptscan.js');
+if (fs.existsSync(psPath)) {
+  const psSrc = fs.readFileSync(psPath, 'utf8');
+  const psStart = pageSrc.indexOf('PROMPT SAFETY SCAN ENGINE');
+  const psEnd = pageSrc.indexOf('SAVESAVESAVESAVE UI LAYER');
+
+  if (psStart === -1) {
+    failed = true;
+    console.error('FAIL: promptscan.js exists but is not embedded in index.html.');
+  } else {
+    const psEmbedded = normalise(pageSrc.slice(psStart, psEnd));
+    const psDecls = [...psSrc.matchAll(/^(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+    const psMissing = psDecls.filter(n => !new RegExp(`(?:function|const|class) ${n}\\b`).test(psEmbedded));
+    if (psMissing.length) {
+      failed = true;
+      console.error(`FAIL: ${psMissing.length} promptscan.js declaration(s) absent from index.html:`);
+      psMissing.forEach(m => console.error(`      - ${m}`));
+    }
+    // Rule count is the cheapest way to catch "added a detector, forgot to re-paste".
+    const srcRules = (psSrc.match(/id: '[A-Z_0-9]+'/g) || []).length;
+    const pageRules = (psEmbedded.match(/id: '[A-Z_0-9]+'/g) || []).length;
+    if (srcRules !== pageRules) {
+      failed = true;
+      console.error(`FAIL: detection-rule count differs — promptscan.js has ${srcRules}, index.html has ${pageRules}.`);
+    }
+    const srcVer = (psSrc.match(/SCANNER_VERSION\s*=\s*'([^']+)'/) || [])[1];
+    const pageVer = (psEmbedded.match(/SCANNER_VERSION = '([^']+)'/) || [])[1];
+    if (srcVer !== pageVer) {
+      failed = true;
+      console.error(`FAIL: scanner version differs — source ${srcVer}, page ${pageVer}.`);
+    }
+    if (!psMissing.length && srcRules === pageRules && srcVer === pageVer) {
+      console.log(`PASS: all ${psDecls.length} promptscan.js declarations present in index.html`);
+      console.log(`PASS: ${srcRules} detection rules embedded, scanner v${pageVer}`);
+    }
+  }
+}
+
 if (failed) {
-  console.error('\nRe-paste core.js into the <script> block in index.html.');
+  console.error('\nRe-paste the changed engine into the <script> block in index.html.');
   process.exit(1);
 }
 
