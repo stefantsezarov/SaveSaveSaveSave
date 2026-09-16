@@ -2077,6 +2077,107 @@ function detectChains(findings) {
   return chains;
 }
 
+// --------------------------------------------------------------- stage 6b
+// Address extraction — THE BRIDGE.
+//
+// Every other prompt scanner stops at "this text is trying to manipulate
+// an AI". This product already knows how to answer "is this contract a
+// honeypot" across four chains. A crypto scam message usually carries
+// both halves of the attack, so pulling the addresses out of the text and
+// handing them to the engine already running on this page turns two
+// half-answers into one. No competitor can copy that quickly: the prompt
+// scanner is a weekend, the chain adapters were months.
+//
+// The entire difficulty is false positives. Solana's base58 alphabet
+// overlaps ordinary words and hex digests, and a 64-character transaction
+// hash contains a perfectly valid-looking 40-hex EVM address inside it.
+// Offering to "scan" a word lifted out of a sentence would make the
+// feature embarrassing, so every candidate has to survive a guard.
+
+const ADDRESS_PATTERNS = [
+  // Sui first: it starts with 0x and would otherwise be eaten by the EVM
+  // pattern. Most specific wins.
+  { chain: 'sui', re: /(?<![0-9a-zA-Z])0x[0-9a-fA-F]{1,64}::[A-Za-z_]\w{0,40}::[A-Za-z_]\w{0,40}/g },
+  // EVM: 0x + exactly 40 hex. The trailing guard is what stops a 64-hex
+  // transaction hash from yielding a bogus address out of its prefix.
+  { chain: 'evm', re: /(?<![0-9a-zA-Z])0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g },
+  // TRON: T + 33 base58 characters, 34 total.
+  { chain: 'tron', re: /(?<![0-9a-zA-Z])T[1-9A-HJ-NP-Za-km-z]{33}(?![0-9a-zA-Z])/g },
+  // Solana: base58, 32-44. Guarded hard below.
+  { chain: 'solana', re: /(?<![0-9a-zA-Z])[1-9A-HJ-NP-Za-km-z]{32,44}(?![0-9a-zA-Z])/g },
+];
+
+function looksLikeSolanaAddress(s) {
+  // A real base58 key is dense noise: digits, upper and lower all present.
+  // Long words, hex digests and base64 fragments each fail at least one.
+  if (!/[0-9]/.test(s)) return false;           // no digits -> a word, not a key
+  if (!/[A-Z]/.test(s)) return false;
+  if (!/[a-z]/.test(s)) return false;
+  if (/^[0-9a-fA-F]+$/.test(s)) return false;   // pure hex -> a hash
+  if (/[0OIl]/.test(s)) return false;           // not in the base58 alphabet at all
+  if (/[a-z]{12,}/.test(s) || /[A-Z]{12,}/.test(s)) return false; // reads as text
+  // Bitcoin legacy addresses are base58 too — P2PKH starts with 1, P2SH
+  // with 3, both 26-35 characters — and they sail past every test above.
+  // A Solana pubkey is 32 bytes, which lands at 43-44 base58 characters in
+  // practice, so a short candidate with a Bitcoin prefix is a Bitcoin
+  // address. Offering a Solana scan on one would be worse than silence.
+  if (/^[13]/.test(s) && s.length <= 35) return false;
+  return true;
+}
+
+// KNOWN GAPS in address extraction, recorded so they stay choices rather
+// than surprises: Bitcoin (excluded above — there is no adapter for it),
+// bech32 addresses such as bc1… (excluded by the base58 alphabet itself),
+// Cosmos-family chains, Cardano, and ENS names like vitalik.eth, which do
+// resolve to an address but only through a lookup this page never makes.
+
+function extractAddresses(text) {
+  const found = [];
+  const claimed = [];
+  const overlaps = (a, b) => claimed.some(r => a < r.end && b > r.start);
+
+  for (const { chain, re } of ADDRESS_PATTERNS) {
+    re.lastIndex = 0;
+    let m, guard = 0;
+    while ((m = re.exec(text)) !== null && guard++ < 400) {
+      const addr = m[0];
+      const start = m.index, end = start + addr.length;
+      if (overlaps(start, end)) continue;
+      if (chain === 'solana' && !looksLikeSolanaAddress(addr)) continue;
+      claimed.push({ start, end });
+      found.push({ chain, address: addr, start, end });
+      if (found.length >= 25) return found.sort((a, b) => a.start - b.start);
+    }
+  }
+  return found.sort((a, b) => a.start - b.start);
+}
+
+// Reported as INFO on purpose. An address in a message is not itself a
+// risk, and scoring it as one would punish every legitimate mention of a
+// token. The value is the offer to check it, which the UI turns into
+// buttons wired to the chain adapters already on the page.
+function addressFindings(addresses) {
+  if (!addresses.length) return [];
+  const byChain = {};
+  addresses.forEach(a => { byChain[a.chain] = (byChain[a.chain] || 0) + 1; });
+  const summary = Object.entries(byChain).map(([c, n]) => `${n} ${c.toUpperCase()}`).join(', ');
+  return [makeFinding({
+    ruleId: 'ADDRESS_PRESENT_001',
+    category: 'BENIGN_INFORMATIONAL',
+    severity: 'INFO',
+    confidence: 0.9,
+    title: `${addresses.length} crypto address${addresses.length === 1 ? '' : 'es'} found in this text`,
+    plain: 'A message pushing you to act on a token or wallet can be checked further. These addresses can go straight through the chain scanner without leaving this page.',
+    technical: `Extracted: ${summary}. Candidates are filtered for base58 density and hex-digest collisions before being offered.`,
+    evidence: {
+      excerpt: addresses.slice(0, 3).map(a => `${a.chain}: ${a.address}`).join('\n'),
+      start: addresses[0].start, end: addresses[0].end, fromNormalized: false,
+    },
+    action: 'Scan each address before sending anything to it, or approving anything for it.',
+    source: 'deterministic',
+  })];
+}
+
 // --------------------------------------------------------------- stage 7
 // Policy. Deterministic, ordered, and testable. One critical finding
 // outranks any number of clean signals; missing analysis never becomes
@@ -2138,7 +2239,7 @@ function scanPrompt(input, opts) {
     return {
       verdict: 'unknown', label: 'INSUFFICIENT DATA',
       sub: 'Nothing readable was submitted.',
-      findings: [], urls: [], decoded: [],
+      findings: [], urls: [], decoded: [], addresses: [],
       coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
       limitations: [{ text: 'Input was not text.', material: true }],
       input: { characters: 0, truncated: false },
@@ -2158,7 +2259,7 @@ function scanPrompt(input, opts) {
     return {
       verdict: 'unknown', label: 'INSUFFICIENT DATA',
       sub: 'Nothing to analyse — the prompt was empty.',
-      findings: [], urls: [], decoded: [],
+      findings: [], urls: [], decoded: [], addresses: [],
       coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
       limitations: [{ text: 'No text was submitted.', material: true }],
       input: { characters: 0, truncated: false },
@@ -2216,6 +2317,10 @@ function scanPrompt(input, opts) {
     limitations.push({ text: 'Encoded-content analysis was switched off for this scan.', material: true });
   }
 
+  // Addresses — the bridge to the chain scanner.
+  const addresses = extractAddresses(uni.visible);
+  findings.push(...addressFindings(addresses));
+
   // Chains
   findings.push(...detectChains(findings));
 
@@ -2240,6 +2345,7 @@ function scanPrompt(input, opts) {
     findings,
     urls,
     decoded,
+    addresses,
     coverage,
     limitations,
     input: {
@@ -2260,6 +2366,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     scanPrompt, analyseUnicode, analyseMarkup, analyseUrls, analyseEncoding,
     runRules, detectChains, decideVerdict, directiveScore, registrable, sameSite,
+    extractAddresses, addressFindings, looksLikeSolanaAddress,
     RULES, LIMITS, SEVERITY_ORDER, SCANNER_VERSION,
   };
 }

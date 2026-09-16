@@ -298,6 +298,96 @@ check('no finding leaks a whole secret verbatim', (() => {
   return r.findings.every(f => !f.evidence || (f.evidence.excerpt.match(/abandon/g) || []).length < 11);
 })(), 'evidence excerpts are bounded so the UI cannot re-publish a secret');
 
+// ---------------------------------------------------------- the bridge
+section('Address extraction — the bridge to the chain scanner');
+
+const addrsIn = (t) => S.extractAddresses(t);
+const chainsIn = (t) => addrsIn(t).map(a => a.chain).sort();
+
+check('EVM address found in a sentence',
+  addrsIn('Send it to 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 right now.')
+    .some(a => a.chain === 'evm'));
+
+check('TRON address found',
+  addrsIn('Deposit to TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t to claim.')
+    .some(a => a.chain === 'tron'));
+
+check('Solana address found',
+  addrsIn('The mint is EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v ok?')
+    .some(a => a.chain === 'solana'));
+
+check('Sui type found and NOT mistaken for EVM', (() => {
+  const a = addrsIn('Token 0xbc732bc5f1e9a9f4bdf4c0672ee538dbf56c161afe04ff1de2176efabdf41f92::suai::SUAI here');
+  return a.length === 1 && a[0].chain === 'sui';
+})());
+
+// ---- the false positives that would make this embarrassing ----
+check('a 64-hex transaction hash yields NO address', (() => {
+  const tx = '0x' + 'a1b2c3d4'.repeat(8);
+  return addrsIn(`tx ${tx} confirmed`).length === 0;
+})(), 'its first 40 hex chars look exactly like an EVM address');
+
+check('a long English word is not a Solana address',
+  addrsIn('antidisestablishmentarianismxxxxxxxxx is a long word').length === 0);
+
+check('a sha256 hex digest is not a Solana address',
+  addrsIn('digest e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934c').length === 0);
+
+check('a base64 blob is not reported as an address', (() => {
+  const b64 = Buffer.from('the quick brown fox jumps over the lazy dog again').toString('base64');
+  return addrsIn('data: ' + b64).every(a => a.chain !== 'solana');
+})());
+
+check('ordinary prose yields no addresses',
+  addrsIn('Summarise this article about decentralised finance in five bullet points.').length === 0);
+
+check('a UUID is not an address',
+  addrsIn('id 8f795269-2278-4ee4-b02f-3675ac08c6a4').length === 0);
+
+check('an address glued to other characters is not matched',
+  addrsIn('x0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48x').length === 0);
+
+check('several addresses on different chains all surface', (() => {
+  const c = chainsIn('evm 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 '
+    + 'tron TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t '
+    + 'sol EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+  return JSON.stringify(c) === JSON.stringify(['evm','solana','tron']);
+})());
+
+check('offsets point at the real characters', (() => {
+  const t = 'pay 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 now';
+  const a = addrsIn(t)[0];
+  return t.slice(a.start, a.end) === a.address;
+})());
+
+check('extraction is bounded on hostile input', (() => {
+  const t0 = Date.now();
+  addrsIn(('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 ').repeat(3000));
+  return Date.now() - t0 < 3000;
+})());
+
+// ---- integration with the verdict ----
+const dm = S.scanPrompt('Claim your airdrop! Connect your wallet and approve unlimited spend for 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 at https://uniswap.claim-rewards.example.com');
+check('a scam DM surfaces both the prompt risk and the address',
+  dm.label !== 'PASS' && dm.addresses.length === 1 && dm.addresses[0].chain === 'evm');
+check('...and the address finding is INFO, not a risk in itself',
+  dm.findings.some(f => f.ruleId === 'ADDRESS_PRESENT_001' && f.severity === 'INFO'));
+check('a Bitcoin address is NOT offered as a Solana scan',
+  S.extractAddresses('BTC 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa please send').length === 0,
+  'base58 too, and it passed every density guard until a red-team case caught it');
+check('a bech32 address is not matched either',
+  S.extractAddresses('bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq').length === 0);
+check('an IPFS CID is not matched',
+  S.extractAddresses('QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG').length === 0);
+check('a real Solana mint still survives the Bitcoin guard',
+  S.extractAddresses('mint So11111111111111111111111111111111111111112').some(a => a.chain === 'solana'));
+
+check('a clean prompt with no address reports an empty list',
+  S.scanPrompt('Write a haiku about rain.').addresses.length === 0);
+check('early-return results still carry an addresses array',
+  Array.isArray(S.scanPrompt('   ').addresses) && Array.isArray(S.scanPrompt(null).addresses),
+  'the UI reads this unconditionally');
+
 // ----------------------------------------------------------------- done
 console.log('\n' + '='.repeat(60));
 console.log(`${pass}/${pass + fail} prompt-scan tests passed`);
@@ -307,3 +397,4 @@ if (failures.length) {
 }
 console.log('='.repeat(60));
 process.exit(fail ? 1 : 0);
+

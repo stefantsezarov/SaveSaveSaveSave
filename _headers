@@ -1,23 +1,52 @@
-# Cloudflare Pages response headers.
-# Ignored by GitHub Pages, which cannot set headers at all -- that inability
-# is one of the reasons for moving. Safe to commit before the migration.
+# Response headers for the static assets served by the savesavesavesave
+# Worker.
+#
+# FORMAT: Cloudflare `_headers` syntax — a path pattern on its own line,
+# then indented `Header: value` lines. Cloudflare Workers with static
+# assets read this file the same way Pages does; it is consumed at deploy
+# time and is not served as a public URL.
+#
+# DO NOT ASSUME IT WORKS BECAUSE THE FILE EXISTS. Verify against a real
+# response:
+#
+#   curl -sI https://savesavesavesave.xyz/ | grep -iE 'strict-transport|x-content|referrer|x-frame|permissions'
+#
+# VERIFIED WORKING, 16 Sep 2026 20:03 and 20:23 UTC, by two independent
+# methods: securityheaders.com raw-header output, and a same-origin
+# XMLHttpRequest reading getResponseHeader() from the live site. Confirmed
+# on /, /whitepaper.html, /robots.txt, /sitemap.xml and /og-image.png,
+# including the per-path Cache-Control rules below. An earlier note in this
+# file claimed these headers might be inert on a Worker. That was wrong.
 
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
+  # interest-cohort=() removed: FLoC was withdrawn, the token is dead weight.
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  # One year, subdomains included, deliberately NOT preloaded. Kept at the
+  # value already deployed and proven: without preload, HSTS is reversible
+  # by lowering max-age, so the earlier argument for cutting this to six
+  # months overstated the risk.
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+  # CSP as a RESPONSE header. index.html already carries this policy in a
+  # meta tag, but a meta CSP protects only that HTML document: robots.txt,
+  # sitemap.xml and og-image.png were confirmed to have no CSP at all.
+  # Mirrored verbatim from the meta tag so nothing can break, plus
+  # frame-ancestors, which a meta tag is not permitted to set.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
 
-# HTML must revalidate, or a visitor keeps yesterday's verdict engine after
-# a deploy. These files are small; the round-trip costs nothing worth saving.
-/*.html
-  Cache-Control: public, max-age=0, must-revalidate
-
+# HTML must revalidate. Without this a returning visitor keeps yesterday's
+# verdict engine after a deploy, which for a security tool means running
+# detection rules that have already been corrected.
 /
   Cache-Control: public, max-age=0, must-revalidate
 
-# Static assets never change without changing name, so cache them hard.
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Images do not change without the page changing, so cache them hard.
 /og-image.png
   Cache-Control: public, max-age=604800, immutable
 
@@ -27,7 +56,7 @@
 /favicon.svg
   Cache-Control: public, max-age=604800, immutable
 
-# Crawler-facing files: fresh enough that a fix is picked up the same day.
+# Crawler-facing files: short enough that a correction is picked up same-day.
 /sitemap.xml
   Cache-Control: public, max-age=3600
 

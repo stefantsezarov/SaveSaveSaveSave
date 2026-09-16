@@ -89,6 +89,30 @@ probes.forEach((p, i) => {
     `embedded=${sandbox.scanPrompt(p).label} source=${src.scanPrompt(p).label}`);
 });
 
+// ---- the bridge, in the page ------------------------------------------
+section('Address extraction works in the EMBEDDED copy');
+
+// The source module passing is not evidence the page does. That exact gap
+// — fix in core.js, old code in index.html — is what shipped a broken
+// TRON path for a week. Test what the browser runs.
+check('embedded engine extracts an EVM address',
+  sandbox.scanPrompt('approve 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 now')
+    .addresses.some(a => a.chain === 'evm'));
+
+check('embedded engine applies the Bitcoin guard',
+  sandbox.scanPrompt('BTC 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa').addresses.length === 0,
+  'the red-team fix must exist in the page, not only in the module');
+
+check('embedded addresses match the source module exactly', (() => {
+  const t = 'send to 0xdAC17F958D2ee523a2206206994597C13D831ec7 or TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+  return JSON.stringify(sandbox.scanPrompt(t).addresses) === JSON.stringify(src.scanPrompt(t).addresses);
+})());
+
+check('an address alone never raises the verdict above INFO', (() => {
+  const r = sandbox.scanPrompt('The USDC mint is 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48.');
+  return r.label === 'PASS' && r.addresses.length === 1;
+})(), 'mentioning a token is not a risk; only the offer to check it is added');
+
 // ---- XSS --------------------------------------------------------------
 section('XSS — hostile prompts must never execute when displayed');
 
