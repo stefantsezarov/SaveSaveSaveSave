@@ -67,10 +67,12 @@
 // shared rate-limit budget, so an open CORS policy would let any site on the
 // internet burn it. Add a new entry here BEFORE moving the site, not after.
 const ALLOWED_ORIGINS = new Set([
-  'https://stefantsezarov.github.io',          // GitHub Pages (kept live)
-  'https://savesavesavesavecrypto.pages.dev',  // Cloudflare Pages (current)
-  'https://savesavesavesave.pages.dev',        // if the short name frees up
-  // 'https://savesavesavesave.com',           // uncomment when the domain is live
+  'https://stefantsezarov.github.io',   // GitHub Pages (kept live)
+  'https://savesavesavesave.xyz',       // the real domain
+  'https://savesavesavesave.stefan-tsezarov82.workers.dev',
+  'https://savesavesavesavecrypto.stefan-tsezarov82.workers.dev',
+  'https://savesavesavesave.pages.dev', // dead, harmless
+  // 'https://savesavesavesave.com',    // never registered; .com was taken
 ]);
 
 // Falls back to the GitHub Pages origin so that a request with no Origin
