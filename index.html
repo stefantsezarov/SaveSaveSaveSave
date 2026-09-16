@@ -245,6 +245,9 @@
   .scan-error{display:none; background:var(--danger-dim); border:1px solid var(--danger); color:var(--danger); border-radius:10px; padding:14px 18px; font-size:0.85rem; margin:20px 0;}
 
   /* ---- Prompt Safety Scan ---------------------------------------- */
+  /* Visually hidden but still read by screen readers. The label markup
+     already existed; without this rule it simply rendered on the page. */
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
   .mode-switch{display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:10px; margin-bottom:14px; width:fit-content;}
   .mode-switch .tab[aria-selected="true"]{background:var(--accent); color:var(--ink);}
   .prompt-panel{display:none;}
