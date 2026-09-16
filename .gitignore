@@ -1,2 +1,7 @@
 integrate_model.py
+restyle.py
+meta_update.py
 shot-*.png
+*-screen.png
+v_*.png
+report-*.png
