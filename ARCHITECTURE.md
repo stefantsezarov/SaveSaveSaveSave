@@ -568,6 +568,108 @@ value preserves the different *reason* in code, not just in a comment.
 
 
 
+## The prompt / message scan
+
+A second scanner, sharing the page but not the pipeline. It reads text the
+way a spell-checker does: it never executes anything, never sends the text
+anywhere, and never calls a model. `promptscan.js` is the source of truth;
+`index.html` carries a verbatim copy inside its `<script>` block, and
+`verify_embedded.js` fails the build if the two drift.
+
+Twenty-five deterministic rules across six families — hidden and invisible
+characters (including the Unicode Tags block, bidi controls and
+homoglyphs), hidden markup, encoded payloads, instruction-override
+patterns, credential and seed-phrase solicitation, and link structure.
+Each finding carries a rule id, a severity, a confidence, the exact
+character offsets it matched at, and a plain-English explanation.
+
+Two properties are load-bearing and each has its own tests:
+
+* **Education is not execution.** "Never share your seed phrase" and "send
+  me your seed phrase" contain the same words. A directive score separates
+  referential mentions from imperative framing, so a security article does
+  not come back FAIL. The red-team file exists because the first version
+  got this wrong on a real article.
+* **A crash is never a pass.** Any failure path — engine exception, failed
+  lookup, missing data — surfaces as INSUFFICIENT DATA. There is no code
+  path where absence of information renders as a clean result.
+
+### What it does not do
+
+No meaning-level analysis. Detection is pattern-based, so a technique
+phrased in an unusual way can pass unnoticed, and the coverage grid says
+so on every scan rather than only in the docs. Links are read for
+structure only: nothing is visited, and no reputation service is consulted.
+A prompt that is harmless in isolation can still be dangerous once an AI
+system has files, a browser, a wallet, or the ability to act.
+
+## The scan model, and why nothing is averaged
+
+`scanmodel.js` holds one envelope shape for every scan type
+(`crypto_address_scan`, `token_scan`, `wallet_scan`, `prompt_scan`,
+`message_scan`, `file_scan`) and one rule for combining them.
+
+The rule: **the worst single component controls the guidance, and nothing
+outvotes it.** Verdicts are ranked
+
+```
+PASS (0) < INSUFFICIENT DATA (1) < CAUTION (2) < FAIL (3)
+```
+
+and the combination takes the maximum. There is no score, no average, no
+weighting. Two clean addresses do not dilute one failing address; a
+polite, well-written message wrapped around a honeypot contract is a
+honeypot with a covering letter, and the report says so.
+
+Note where INSUFFICIENT DATA sits: worse than PASS, because not knowing is
+not the same as being clear — but not worse than CAUTION, because a
+specific observed problem outranks an absence of information. It can never
+mask a FAIL.
+
+Three consequences that are visible in the UI:
+
+* An address that was extracted but not checked contributes an explicit
+  `unknown` component. A message containing an unchecked address therefore
+  cannot show PASS, and the row says "counted as INSUFFICIENT DATA, not as
+  safe" rather than leaving a silent hole.
+* A lookup that fails — network error, unsupported chain, rate limit —
+  renders INSUFFICIENT DATA with the reason, never a clean row.
+* Recommended actions are lifted only from the components that actually
+  reached the top verdict, and each one names the finding it came from
+  ("because: Honeypot pattern"). No action is invented by the combiner.
+
+Composite results carry an empty `findings` array by design: findings
+belong to their section, and coverage is reported per component
+(`token_scan#2`) rather than collapsed into one line. "Links: complete"
+for the message text says nothing about whether a token's liquidity data
+came back.
+
+### The composite renderer
+
+`startMessageScan()` builds per-part state; `renderComposite()` re-renders
+the whole report, including the overall banner, every time any part
+changes. An address checked five minutes after the paste updates the
+top-level verdict immediately, because the verdict is recomputed from the
+parts rather than stored.
+
+An EVM address lifted out of prose carries no chain id. Rather than
+guessing silently, the row defaults to Ethereum, states "chain not stated
+in the text", and offers a chain picker; changing it discards any previous
+result, because a result for Ethereum is not a result for BNB Chain.
+
+Escaping is not optional here. This feature takes hostile text from a
+stranger and prints it back onto the page, so every interpolation goes
+through `escapeHtml`, including the *provider's* own response text — a
+spoofed or compromised upstream must not become markup. The only inline
+handlers the renderer emits are fixed literals plus an integer index, and
+a test asserts exactly that.
+
+Coverage: 50 scan-model tests, 96 engine tests, 65 UI/integration tests
+(including the XSS suite run against the copy embedded in `index.html`,
+not the source module), 61 address-engine regression tests, 16 routing
+tests, and a 20-case red-team file scored against a careful human reading.
+
+
 ## Deliberately deferred
 
 Aptos was evaluated alongside TRON and specifically **not** built. It

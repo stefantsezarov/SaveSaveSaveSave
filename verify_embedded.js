@@ -129,6 +129,78 @@ if (fs.existsSync(psPath)) {
   }
 }
 
+// ---- the same check for the scan result model --------------------------
+// scanmodel.js holds the one rule that matters most: the worst component
+// controls the verdict. If the page runs a stale copy of that rule, the
+// tests still pass and the site still quietly averages things.
+const smPath = path.join(here, 'scanmodel.js');
+if (fs.existsSync(smPath)) {
+  const smSrc = fs.readFileSync(smPath, 'utf8');
+  const smStart = pageSrc.indexOf('SCAN RESULT MODEL  (verbatim from scanmodel.js');
+  const smEnd = pageSrc.indexOf('PROMPT SAFETY SCAN ENGINE');
+
+  if (smStart === -1 || smEnd === -1 || smEnd < smStart) {
+    failed = true;
+    console.error('FAIL: scanmodel.js exists but is not embedded in index.html.');
+  } else {
+    const smEmbedded = normalise(pageSrc.slice(smStart, smEnd));
+    const smDecls = [...smSrc.matchAll(/^(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+    const smMissing = smDecls.filter(n => !new RegExp(`(?:function|const|class) ${n}\\b`).test(smEmbedded));
+    if (smMissing.length) {
+      failed = true;
+      console.error(`FAIL: ${smMissing.length} scanmodel.js declaration(s) absent from index.html:`);
+      smMissing.forEach(m => console.error(`      - ${m}`));
+    }
+
+    // Stricter than the other two engines: this file is small enough to
+    // compare in full, so nothing can drift in it at all.
+    const smBody = normalise(smSrc);
+    if (!smEmbedded.includes(smBody)) {
+      failed = true;
+      console.error('FAIL: the embedded scan model is not a verbatim copy of scanmodel.js.');
+      const a = smBody, b = smEmbedded;
+      let k = 0;
+      while (k < a.length && b.includes(a.slice(0, k + 1))) k++;
+      console.error(`      They agree for the first ${k} normalised chars, then differ:`);
+      console.error(`      source: …${a.slice(Math.max(0, k - 60), k + 60)}`);
+    }
+
+    const smVer = (smSrc.match(/MODEL_VERSION\s*=\s*'([^']+)'/) || [])[1];
+    const pageModelVer = (smEmbedded.match(/MODEL_VERSION = '([^']+)'/) || [])[1];
+    if (smVer !== pageModelVer) {
+      failed = true;
+      console.error(`FAIL: model version differs — source ${smVer}, page ${pageModelVer}.`);
+    }
+
+    // The ordering constant is the combination rule. Spell it out here so a
+    // reordering has to be a deliberate edit in two places.
+    if (!/pass: 0, unknown: 1, caution: 2, fail: 3/.test(smEmbedded)) {
+      failed = true;
+      console.error('FAIL: VERDICT_RANK ordering in the embedded model is not pass<unknown<caution<fail.');
+    }
+
+    if (!smMissing.length && smVer === pageModelVer && smEmbedded.includes(smBody)) {
+      console.log(`PASS: all ${smDecls.length} scanmodel.js declarations present, verbatim, model v${pageModelVer}`);
+    }
+  }
+} else {
+  failed = true;
+  console.error('FAIL: scanmodel.js is missing from the repository.');
+}
+
+// The composite renderer must be the only renderer wired to the prompt UI.
+// Two renderers in one file is how the old one comes back to life.
+if (pageSrc.includes('renderPromptResult(')) {
+  failed = true;
+  console.error('FAIL: renderPromptResult is still referenced — the old single-score renderer should be gone.');
+}
+for (const marker of ['function startMessageScan', 'function renderComposite', 'function checkAddress', 'combineScans(']) {
+  if (!pageSrc.includes(marker)) {
+    failed = true;
+    console.error(`FAIL: '${marker}' missing from index.html — the composite path is not wired up.`);
+  }
+}
+
 if (failed) {
   console.error('\nRe-paste the changed engine into the <script> block in index.html.');
   process.exit(1);

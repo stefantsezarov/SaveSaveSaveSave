@@ -244,6 +244,54 @@
   .loading{display:none; text-align:center; padding:30px; color:var(--text-muted); font-family:'IBM Plex Mono', monospace; font-size:0.85rem;}
   .scan-error{display:none; background:var(--danger-dim); border:1px solid var(--danger); color:var(--danger); border-radius:10px; padding:14px 18px; font-size:0.85rem; margin:20px 0;}
 
+  /* ---- Composite message scan ------------------------------------- */
+  .sect{margin:0 0 22px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);}
+  .sect-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    padding:11px 15px; background:var(--surface-2); border-bottom:1px solid var(--border);}
+  .sect-title{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.86rem;}
+  .sect-body{padding:15px;}
+  .sect-verdict{font-family:'IBM Plex Mono',monospace; font-size:0.7rem; font-weight:600; letter-spacing:0.07em;
+    padding:3px 9px; border-radius:4px; white-space:nowrap;}
+  .sv-pass{background:rgba(52,199,123,0.14); color:var(--safe);}
+  .sv-caution{background:rgba(240,180,41,0.14); color:var(--caution);}
+  .sv-fail{background:rgba(232,79,79,0.14); color:var(--danger);}
+  .sv-unknown{background:rgba(255,255,255,0.07); color:var(--text-muted);}
+
+  .counts-line{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text-muted);
+    margin:0 0 13px; padding-bottom:11px; border-bottom:1px solid var(--border);}
+
+  .addr-row{border:1px solid var(--border); border-radius:9px; padding:13px; margin-bottom:10px; background:var(--surface-2);}
+  .addr-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .addr-mono{font-family:'IBM Plex Mono',monospace; font-size:0.79rem; word-break:break-all; color:var(--text);}
+  .addr-meta{font-family:'IBM Plex Mono',monospace; font-size:0.69rem; color:var(--text-muted); margin-top:3px;}
+  .addr-ctl{display:flex; gap:7px; align-items:center; flex-wrap:wrap;}
+  .addr-ctl select{background:var(--ink); color:var(--text); border:1px solid var(--border); border-radius:7px;
+    padding:6px 8px; font-family:'IBM Plex Mono',monospace; font-size:0.72rem;}
+  .btn-check{background:var(--accent); color:var(--ink); border:none; border-radius:7px; padding:7px 13px;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.76rem; cursor:pointer; white-space:nowrap;}
+  .btn-check:disabled{opacity:0.5; cursor:default;}
+  .addr-result{margin-top:11px; padding-top:11px; border-top:1px dashed var(--border); font-size:0.84rem;}
+  .addr-result .rline{display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; margin-bottom:5px;}
+  .addr-result ul{margin:6px 0 0; padding-left:18px;}
+  .addr-result li{font-size:0.8rem;}
+  .addr-unchecked{margin-top:9px; font-size:0.78rem; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;}
+
+  .urlrow{font-family:'IBM Plex Mono',monospace; font-size:0.76rem; padding:9px 11px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:8px; margin-bottom:7px; word-break:break-all;}
+  .urlrow .host{color:var(--text); font-weight:600;}
+  .urlrow .flags{color:var(--caution); font-size:0.71rem; margin-top:3px;}
+  .urlrow .safe{color:var(--text-muted); font-size:0.71rem; margin-top:3px;}
+
+  .actions-list{list-style:none; margin:0; padding:0; display:grid; gap:9px;}
+  .actions-list li{background:var(--surface-2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+    padding:11px 13px; font-size:0.87rem;}
+  .actions-list .cause{display:block; margin-top:4px; font-size:0.71rem; color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace;}
+
+  .limit-list{margin:0; padding-left:18px;}
+  .limit-list li{font-size:0.78rem; margin-bottom:5px; color:var(--text-muted);}
+  .limit-list li.material{color:var(--caution);}
+
   /* ---- Prompt Safety Scan ---------------------------------------- */
   /* Visually hidden but still read by screen readers. The label markup
      already existed; without this rule it simply rendered on the page. */
@@ -1205,6 +1253,322 @@ if(typeof module !== 'undefined' && module.exports){
     COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
     SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
     SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem
+  };
+}
+
+/* =====================================================================
+   SCAN RESULT MODEL  (verbatim from scanmodel.js)
+   ===================================================================== */
+/* =====================================================================
+   SAVESAVESAVESAVE — UNIFIED SCAN RESULT MODEL
+
+   One envelope every scan type returns, and one deterministic rule for
+   combining several scans into a single piece of action guidance without
+   ever averaging them.
+
+   WHY THIS EXISTS SEPARATELY: a pasted scam message is not one thing. It
+   is a message, plus some URLs, plus some addresses, and each of those
+   gets a different kind of check with different coverage and different
+   limitations. Flattening them into one number destroys exactly the
+   information a person needs: WHICH part is dangerous. A message whose
+   text is unremarkable but whose contract is a honeypot is not "mostly
+   fine". It is a honeypot with a polite covering letter.
+
+   THE COMBINATION RULE, stated once: the worst component controls the
+   guidance, and nothing outvotes it. Two clean addresses do not dilute
+   one failing address. An incomplete check never rounds down to PASS.
+
+   Pure: no DOM, no network, no clock beyond a timestamp. Testable in
+   isolation, which is the point of it being its own file.
+   ===================================================================== */
+
+const SCAN_TYPES = {
+  CRYPTO_ADDRESS: 'crypto_address_scan',
+  TOKEN: 'token_scan',
+  WALLET: 'wallet_scan',
+  PROMPT: 'prompt_scan',
+  MESSAGE: 'message_scan',
+  FILE: 'file_scan',
+};
+
+// Ordering for combination. Note where INSUFFICIENT DATA sits: worse than
+// PASS, because not knowing is not the same as being clear; but not worse
+// than CAUTION, because a specific observed problem outranks an absence of
+// information. It can never mask a FAIL.
+const VERDICT_RANK = { pass: 0, unknown: 1, caution: 2, fail: 3 };
+const VERDICT_LABEL = { pass: 'PASS', unknown: 'INSUFFICIENT DATA', caution: 'CAUTION', fail: 'FAIL' };
+
+const MODEL_VERSION = '1.0.0';
+
+function nowIso() { return new Date().toISOString(); }
+
+/* ------------------------------------------------------------------ core
+   The envelope. Every scan type produces this shape, so the renderer and
+   the tests only ever learn one structure. */
+function makeScanResult(o) {
+  if (!o || !o.scan_type) throw new Error('scan_type is required');
+  if (!Object.values(SCAN_TYPES).includes(o.scan_type)) {
+    throw new Error(`unknown scan_type: ${o.scan_type}`);
+  }
+  const verdict = o.verdict || 'unknown';
+  if (!(verdict in VERDICT_RANK)) throw new Error(`unknown verdict: ${verdict}`);
+
+  return {
+    scan_type: o.scan_type,
+    subject: o.subject || null,            // what was scanned: an address, "pasted text", a filename
+    verdict,
+    label: VERDICT_LABEL[verdict],
+    summary: o.summary || '',
+    confidence: o.confidence || 'medium',
+    findings: o.findings || [],
+    coverage: o.coverage || {},
+    limitations: o.limitations || [],
+    recommended_actions: o.recommended_actions || [],
+    sections: o.sections || null,          // composite scans only
+    scanner_version: o.scanner_version || 'unknown',
+    model_version: MODEL_VERSION,
+    timestamp: o.timestamp || nowIso(),
+  };
+}
+
+/* ------------------------------------------------------------- actions
+   Recommended actions are lifted from the findings that actually drove the
+   verdict, most severe first, deduplicated. They are never invented here:
+   an action a person is told to take must trace to a specific finding. */
+const SEV_RANK = { INFO: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+
+function recommendedActions(findings, max) {
+  const cap = max || 5;
+  const seen = new Set();
+  const out = [];
+  const ranked = (findings || [])
+    .filter(f => f && f.action && SEV_RANK[f.severity] >= SEV_RANK.MEDIUM)
+    .sort((a, b) => SEV_RANK[b.severity] - SEV_RANK[a.severity]);
+  for (const f of ranked) {
+    const key = f.action.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ action: f.action, because: f.title, severity: f.severity, ruleId: f.ruleId });
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/* --------------------------------------------------------- combination
+   The only place verdicts are merged. Deliberately small so it can be
+   read in one sitting and tested exhaustively. */
+function combineVerdicts(components) {
+  const list = (components || []).filter(Boolean);
+  if (!list.length) {
+    return {
+      verdict: 'unknown',
+      driver: null,
+      incomplete: true,
+      reason: 'Nothing was scanned.',
+    };
+  }
+
+  let worst = list[0];
+  for (const c of list) {
+    if (VERDICT_RANK[c.verdict] > VERDICT_RANK[worst.verdict]) worst = c;
+  }
+
+  // Tracked separately from the verdict: a CAUTION overall must still say
+  // so when one of its components could not be checked at all.
+  const incomplete = list.some(c => c.verdict === 'unknown');
+
+  return {
+    verdict: worst.verdict,
+    driver: worst,
+    incomplete,
+    counts: list.reduce((acc, c) => { acc[c.verdict] = (acc[c.verdict] || 0) + 1; return acc; }, {}),
+  };
+}
+
+/* Phrases the overall guidance so it names the part that caused it, rather
+   than describing the whole message as if it were uniform. */
+function describeOutcome(combined, total) {
+  const { verdict, driver, incomplete, counts } = combined;
+  const what = driver && driver.subject ? driver.subject : 'one of the checks';
+  const kind = driver ? ({
+    [SCAN_TYPES.PROMPT]: 'the message text',
+    [SCAN_TYPES.MESSAGE]: 'the message text',
+    [SCAN_TYPES.CRYPTO_ADDRESS]: 'an address in this message',
+    [SCAN_TYPES.TOKEN]: 'a token in this message',
+    [SCAN_TYPES.WALLET]: 'a wallet in this message',
+    [SCAN_TYPES.FILE]: 'the file',
+  })[driver.scan_type] || 'one of the checks' : 'one of the checks';
+
+  let summary;
+  if (verdict === 'fail') {
+    summary = `${cap(kind)} has a confirmed serious finding. Treat the whole message as unsafe — the rest of it passing does not make this part safe.`;
+  } else if (verdict === 'caution') {
+    summary = `${cap(kind)} has warning signs worth reviewing before you act on any part of this.`;
+  } else if (verdict === 'unknown') {
+    summary = `Not enough of this could be checked to give you a reliable answer. This is not a clean result.`;
+  } else {
+    summary = `Nothing covered by these checks was found${total > 1 ? ` across all ${total} of them` : ''}. That is not a guarantee of safety.`;
+  }
+
+  if (incomplete && verdict !== 'unknown') {
+    summary += ' At least one check could not be completed, so coverage here is incomplete.';
+  }
+  if (counts && counts.fail > 1) {
+    summary = `${counts.fail} separate checks returned a serious finding. ` + summary;
+  }
+  return { summary, driverSubject: what, driverKind: kind };
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ----------------------------------------------------------- composite
+   Builds a message_scan (or file_scan) from its parts, keeping every part
+   intact and addressable. `sections` is what the UI renders; `components`
+   is what the policy reads. They are the same objects — no copy drifts. */
+function combineScans(opts) {
+  const scanType = opts.scan_type || SCAN_TYPES.MESSAGE;
+  const sections = opts.sections || [];
+  const components = [];
+  for (const s of sections) {
+    if (s.scan) components.push(s.scan);
+    if (s.scans) components.push(...s.scans);
+  }
+
+  const combined = combineVerdicts(components);
+  const outcome = describeOutcome(combined, components.length);
+
+  // Actions come from the components that actually reached the top
+  // verdict, so a person is told what to do about the dangerous part
+  // rather than a list averaged across everything.
+  const worstRank = VERDICT_RANK[combined.verdict];
+  const drivingFindings = components
+    .filter(c => VERDICT_RANK[c.verdict] === worstRank)
+    .flatMap(c => c.findings || []);
+
+  const limitations = [];
+  const seenLim = new Set();
+  for (const c of components) {
+    for (const l of (c.limitations || [])) {
+      const k = (l.text || l).toString();
+      if (seenLim.has(k)) continue;
+      seenLim.add(k);
+      limitations.push(l);
+    }
+  }
+
+  // Coverage is reported per component, never collapsed: "urls: complete"
+  // for the message says nothing about whether a token's liquidity data
+  // came back.
+  const coverage = {};
+  components.forEach((c, i) => {
+    if (c.coverage && Object.keys(c.coverage).length) {
+      coverage[`${c.scan_type}#${i + 1}`] = c.coverage;
+    }
+  });
+
+  return makeScanResult({
+    scan_type: scanType,
+    subject: opts.subject || null,
+    verdict: combined.verdict,
+    summary: outcome.summary,
+    confidence: combined.incomplete ? 'low' : (combined.verdict === 'fail' ? 'high' : 'medium'),
+    findings: [],   // deliberately empty: findings belong to their section
+    sections,
+    coverage,
+    limitations,
+    recommended_actions: recommendedActions(drivingFindings),
+    scanner_version: opts.scanner_version || 'unknown',
+  });
+}
+
+/* ------------------------------------------------------------ adapters
+   Wrap the two engines that already exist. Neither is modified: the
+   adapters read their output and produce the envelope, so the address
+   engine stays exactly as tested. */
+
+function fromPromptScan(r, subject) {
+  return makeScanResult({
+    scan_type: SCAN_TYPES.PROMPT,
+    subject: subject || 'pasted text',
+    verdict: r.verdict,
+    summary: r.sub,
+    confidence: r.confidence,
+    findings: r.findings,
+    coverage: r.coverage,
+    limitations: r.limitations,
+    recommended_actions: recommendedActions(r.findings),
+    scanner_version: r.scannerVersion,
+  });
+}
+
+// `result` is what core.js's VerdictEngine.evaluate() returns.
+function fromAddressScan(result, address, chain, assetType) {
+  const findings = (result.checks || [])
+    .filter(c => c.status === 'RISK' || c.status === 'UNKNOWN')
+    .map(c => ({
+      ruleId: c.id,
+      category: c.category || 'general',
+      severity: c.status === 'UNKNOWN' ? 'LOW'
+        : (c.critical ? 'CRITICAL' : (c.severityWeight >= 3 ? 'HIGH' : 'MEDIUM')),
+      confidence: c.status === 'UNKNOWN' ? 0.4 : 0.85,
+      title: c.label,
+      plain: c.detail,
+      technical: `${c.id} · ${c.status} · weight ${c.severityWeight} · ${c.source || 'unknown source'}`,
+      evidence: null,
+      action: c.status === 'UNKNOWN'
+        ? 'This indicator returned no usable data. Treat it as unverified rather than clear.'
+        : 'Do not send funds to, or approve spending for, this address until you have verified it independently.',
+      source: c.source || 'chain scan',
+      contributed: c.status === 'RISK',
+    }));
+
+  return makeScanResult({
+    scan_type: assetType === 'wallet' ? SCAN_TYPES.WALLET : SCAN_TYPES.TOKEN,
+    subject: address,
+    verdict: result.verdict,
+    summary: result.sub,
+    confidence: result.confidence,
+    findings,
+    coverage: {
+      indicators: result.checksExpected
+        ? `${result.checksValid}/${result.checksExpected} returned usable data`
+        : 'unknown',
+      unreadable: String(result.checksUnknown || 0),
+      chain: chain || 'unknown',
+    },
+    limitations: [
+      { text: 'Chain data comes from a third-party provider. A clean result reflects the indicators that were checked, not every possible risk.', material: false },
+      ...(result.criticalMissing
+        ? [{ text: `${result.criticalMissing} high-severity check(s) returned no data — this result is incomplete on that point.`, material: true }]
+        : []),
+    ],
+    scanner_version: result.source || 'chain engine',
+  });
+}
+
+// A placeholder component for an address the user has not scanned yet.
+// It exists so the composite can say "not checked" explicitly rather than
+// leaving a silent hole that reads as fine.
+function pendingAddressScan(address, chain) {
+  return makeScanResult({
+    scan_type: SCAN_TYPES.CRYPTO_ADDRESS,
+    subject: address,
+    verdict: 'unknown',
+    summary: 'This address was found in the text but has not been checked yet.',
+    confidence: 'low',
+    findings: [],
+    coverage: { chain: chain || 'unknown', status: 'not_checked' },
+    limitations: [{ text: `The address ${address} was extracted but not scanned. Nothing is known about it either way.`, material: true }],
+    recommended_actions: [],
+    scanner_version: 'n/a',
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    SCAN_TYPES, VERDICT_RANK, VERDICT_LABEL, SEV_RANK, MODEL_VERSION,
+    makeScanResult, combineVerdicts, combineScans, describeOutcome,
+    recommendedActions, fromPromptScan, fromAddressScan, pendingAddressScan,
   };
 }
 
@@ -2429,7 +2793,7 @@ function runPromptScan() {
   const err = document.getElementById('promptError');
   err.style.display = 'none';
   if (!text.trim()) {
-    err.textContent = 'Paste a prompt first.';
+    err.textContent = 'Paste a message or prompt first.';
     err.style.display = 'block';
     return;
   }
@@ -2443,7 +2807,7 @@ function runPromptScan() {
     err.style.display = 'block';
     return;
   }
-  renderPromptResult(result, text);
+  startMessageScan(result, text);
 }
 
 // Rebuilds the excerpt around a finding with the exact matched span
@@ -2493,66 +2857,274 @@ function coverageCell(key, label, value) {
     + '<span class="v">' + escapeHtml(shown) + '</span></div>';
 }
 
-function renderPromptResult(r, original) {
+// ---- Composite message scan ----------------------------------------
+// A pasted message is not one thing. It is text, plus links, plus
+// addresses, and each gets a different check with different coverage.
+// This state object keeps them separate so the report can too, and so the
+// overall verdict can be recomputed the moment an address is checked.
+//
+// The rule this exists to enforce: the worst single component controls the
+// guidance. Two clean addresses never dilute one failing address, and an
+// address nobody has checked is never counted as clean.
+let MSG = null;
+
+function buildComposite() {
+  if (!MSG) return null;
+  const sections = [
+    { key: 'message', title: 'Message content', scan: fromPromptScan(MSG.promptScan, 'pasted text') },
+  ];
+  if (MSG.addresses.length) {
+    sections.push({
+      key: 'addresses',
+      title: 'Crypto addresses found',
+      scans: MSG.addresses.map(a => a.scan || pendingAddressScan(a.address, a.chainId)),
+    });
+  }
+  return combineScans({
+    scan_type: SCAN_TYPES.MESSAGE,
+    subject: 'pasted message',
+    sections,
+    scanner_version: MSG.promptScan.scannerVersion,
+  });
+}
+
+// Entry point from the existing prompt UI. Sets up the per-part state and
+// renders; addresses start unchecked, and say so.
+function startMessageScan(promptResult, original) {
+  MSG = {
+    text: original,
+    promptScan: promptResult,
+    addresses: (promptResult.addresses || []).map(a => ({
+      address: a.address,
+      chain: a.chain,
+      // An address lifted out of prose carries no chain id. Rather than
+      // guess silently, EVM defaults to Ethereum and says so on the row,
+      // and the user can change it before checking.
+      chainId: a.chain === 'evm' ? '1' : a.chain,
+      scan: null,
+      state: 'idle',
+      error: null,
+    })),
+  };
+  renderComposite(true);
+}
+
+async function checkAddress(i) {
+  if (!MSG || !MSG.addresses[i]) return;
+  const entry = MSG.addresses[i];
+  if (entry.state === 'running') return;
+  entry.state = 'running';
+  entry.error = null;
+  renderComposite();
+
+  try {
+    const adapter = Adapters[entry.chain];
+    if (!adapter) throw new Error('there is no scanner for this chain yet.');
+    if (!adapter.validateAddress(entry.address)) throw new Error('it failed the chain\'s own address validator.');
+    let out;
+    try {
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+    } catch (firstErr) {
+      if (!isTransientFailure(firstErr)) throw firstErr;
+      await new Promise(r => setTimeout(r, 2000));
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+    }
+    const result = VerdictEngine.evaluate(out.checks, out.expected, adapter.name, out.criticalDefsTotal);
+    entry.scan = fromAddressScan(result, entry.address, entry.chainId, 'token');
+    entry.state = 'done';
+  } catch (e) {
+    // A failed check must never read as a clean one. It stays INSUFFICIENT
+    // DATA, which keeps the composite off PASS.
+    entry.error = (e && e.message) ? e.message : 'unknown error';
+    entry.scan = null;
+    entry.state = 'error';
+  }
+  renderComposite();
+}
+
+async function checkAllAddresses() {
+  if (!MSG) return;
+  // Sequential on purpose: the free security API rate-limits per IP, and a
+  // burst of parallel calls turns into a page of INSUFFICIENT DATA rows.
+  for (let i = 0; i < MSG.addresses.length; i++) {
+    if (MSG.addresses[i].state !== 'done') await checkAddress(i);
+  }
+}
+
+function setAddressChain(i, chainId) {
+  if (!MSG || !MSG.addresses[i]) return;
+  MSG.addresses[i].chainId = chainId;
+  MSG.addresses[i].scan = null;      // a previous result was for another chain
+  MSG.addresses[i].state = 'idle';
+  MSG.addresses[i].error = null;
+  renderComposite();
+}
+
+/* ------------------------------------------------------- rendering */
+const VCLASS = { pass: 'sv-pass', caution: 'sv-caution', fail: 'sv-fail', unknown: 'sv-unknown' };
+const CHAIN_NAME = { evm: 'EVM', solana: 'Solana', sui: 'Sui', tron: 'TRON' };
+
+function sectionShell(title, verdictLabel, verdictKey, bodyHtml) {
+  return '<div class="sect"><div class="sect-head">'
+    + '<span class="sect-title">' + escapeHtml(title) + '</span>'
+    + (verdictLabel ? '<span class="sect-verdict ' + (VCLASS[verdictKey] || '') + '">' + escapeHtml(verdictLabel) + '</span>' : '')
+    + '</div><div class="sect-body">' + bodyHtml + '</div></div>';
+}
+
+function urlSectionHtml(urls, findings) {
+  if (!urls.length) return '';
+  const rows = urls.map(u => {
+    // Matched by offset, not by text: the offset is the same number the
+    // engine recorded, so a link cannot pick up another link's flags.
+    const flags = findings
+      .filter(f => f.source === 'url' && f.evidence && f.evidence.start === u.offset)
+      .map(f => f.title);
+    return '<div class="urlrow"><span class="host">' + escapeHtml(u.host) + '</span>'
+      + escapeHtml(u.path && u.path !== '/' ? u.path : '')
+      + (flags.length
+          ? '<div class="flags">' + escapeHtml(flags.join(' · ')) + '</div>'
+          : '<div class="safe">Nothing structurally wrong with this address. It was not visited, and its reputation was not checked.</div>')
+      + '</div>';
+  }).join('');
+  return sectionShell('Links found (' + urls.length + ')', null, null, rows);
+}
+
+function addressRowHtml(entry, i) {
+  const chainName = CHAIN_NAME[entry.chain] || entry.chain;
+  let picker = '';
+  if (entry.chain === 'evm') {
+    const opts = Object.keys(EVM_CHAINS).map(id =>
+      '<option value="' + escapeHtml(id) + '"' + (id === entry.chainId ? ' selected' : '') + '>'
+      + escapeHtml(EVM_CHAINS[id]) + '</option>'
+    ).join('');
+    picker = '<select aria-label="Chain for this address" onchange="setAddressChain(' + i + ', this.value)">' + opts + '</select>';
+  }
+
+  const busy = entry.state === 'running';
+  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')"' + (busy ? ' disabled' : '') + '>'
+    + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : 'Check this address')) + '</button>';
+
+  let result = '';
+  if (entry.state === 'done' && entry.scan) {
+    const s = entry.scan;
+    const top = (s.findings || []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').slice(0, 3);
+    result = '<div class="addr-result">'
+      + '<div class="rline"><span class="sect-verdict ' + (VCLASS[s.verdict] || '') + '">' + escapeHtml(s.label) + '</span>'
+      + '<span>' + escapeHtml(s.summary) + '</span></div>'
+      + (top.length
+          ? '<ul>' + top.map(f => '<li>' + escapeHtml(f.title) + '</li>').join('') + '</ul>'
+          : '')
+      + '<div class="addr-meta">' + escapeHtml(s.coverage.indicators || '') + '</div>'
+      + '</div>';
+  } else if (entry.state === 'error') {
+    result = '<div class="addr-result"><div class="rline">'
+      + '<span class="sect-verdict sv-unknown">INSUFFICIENT DATA</span>'
+      + '<span>This address could not be checked: ' + escapeHtml(String(entry.error).replace(/\.\s*$/, ''))
+      + '. That is not a clean result — nothing is known about it either way.</span></div></div>';
+  } else if (entry.state === 'idle') {
+    result = '<div class="addr-unchecked">Not checked yet — counted as INSUFFICIENT DATA, not as safe.</div>';
+  }
+
+  return '<div class="addr-row"><div class="addr-top"><div>'
+    + '<div class="addr-mono">' + escapeHtml(entry.address) + '</div>'
+    + '<div class="addr-meta">' + escapeHtml(chainName)
+    + (entry.chain === 'evm' ? ' · chain not stated in the text' : '') + '</div>'
+    + '</div><div class="addr-ctl">' + picker + btn + '</div></div>'
+    + result + '</div>';
+}
+
+function renderComposite(scroll) {
+  const composite = buildComposite();
+  if (!composite) return;
+  const msgScan = composite.sections[0].scan;
+  const r = MSG.promptScan;
+
   const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
   const labels = { CRITICAL: 'Critical', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', INFO: 'Informational' };
   const cls = { CRITICAL: 'sev-critical', HIGH: 'sev-high', MEDIUM: 'sev-medium', LOW: 'sev-low', INFO: 'sev-info' };
-
   let groups = '';
   for (const sev of order) {
-    const list = r.findings.filter(f => f.severity === sev);
+    const list = msgScan.findings.filter(f => f.severity === sev);
     if (!list.length) continue;
     groups += '<div class="sev-group"><div class="sev-head ' + cls[sev] + '">'
-      + '<span class="sev-dot"></span>' + labels[sev] + ' · ' + list.length
-      + '</div>' + list.map(f => findingHtml(f, original)).join('') + '</div>';
+      + '<span class="sev-dot"></span>' + labels[sev] + ' · ' + list.length + '</div>'
+      + list.map(f => findingHtml(f, MSG.text)).join('') + '</div>';
   }
-  if (!r.findings.length) {
-    groups = '<div class="finding"><div class="finding-plain">No covered risk pattern matched anywhere in this prompt.</div></div>';
+  if (!msgScan.findings.length) {
+    groups = '<div class="finding"><div class="finding-plain">No covered risk pattern matched anywhere in this text. That is not the same as the message being safe — see what this scan did not do, below.</div></div>';
   }
-
-  const cov = '<div class="cov-grid">'
-    + coverageCell('unicode', 'Invisible characters', r.coverage.unicode)
-    + coverageCell('markup', 'Hidden markup', r.coverage.markup)
-    + coverageCell('encoding', 'Encoded content', r.coverage.encoding)
-    + coverageCell('urls', 'Links', r.coverage.urls)
-    + coverageCell('semantic', 'Meaning analysis', r.coverage.semantic)
-    + coverageCell('reputation', 'Link reputation', r.coverage.reputation)
+  const c = r.counts;
+  const countsLine = '<div class="counts-line">'
+    + c.critical + ' critical · ' + c.high + ' high · ' + c.medium + ' medium · '
+    + c.low + ' low · ' + c.informational + ' informational · confidence: ' + escapeHtml(r.confidence)
+    + (r.input.invisibleCharactersRemoved ? ' · ' + r.input.invisibleCharactersRemoved + ' invisible characters found' : '')
     + '</div>';
 
-  const limits = '<div class="limits"><h4>What this scan did not do</h4><ul>'
-    + r.limitations.map(l => '<li' + (l.material ? ' class="material"' : '') + '>' + escapeHtml(l.text) + '</li>').join('')
-    + '</ul></div>';
+  const checked = MSG.addresses.filter(a => a.state === 'done').length;
+  const addrSection = MSG.addresses.length
+    ? sectionShell(
+        'Crypto addresses found (' + MSG.addresses.length + ')',
+        null, null,
+        (MSG.addresses.length > 1
+          ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()">Check all ' + MSG.addresses.length + '</button>'
+          : '')
+        + MSG.addresses.map(addressRowHtml).join(''))
+    : '';
 
-  const c = r.counts || { critical: 0, high: 0, medium: 0, low: 0, informational: 0 };
+  const acts = composite.recommended_actions.length
+    ? sectionShell('What to do', null, null,
+        '<ul class="actions-list">' + composite.recommended_actions.map(a =>
+          '<li>' + escapeHtml(a.action) + '<span class="cause">because: ' + escapeHtml(a.because) + '</span></li>'
+        ).join('') + '</ul>')
+    : '';
+
+  const addrCoverage = !MSG.addresses.length ? 'not_found'
+    : checked === 0 ? 'not_checked'
+    : checked === MSG.addresses.length ? 'complete'
+    : 'partial';
+  const cov = '<div class="cov-grid">'
+    + coverageCell('unicode', 'Invisible characters', msgScan.coverage.unicode)
+    + coverageCell('markup', 'Hidden markup', msgScan.coverage.markup)
+    + coverageCell('encoding', 'Encoded content', msgScan.coverage.encoding)
+    + coverageCell('urls', 'Links', msgScan.coverage.urls)
+    + coverageCell('semantic', 'Meaning analysis', msgScan.coverage.semantic)
+    + coverageCell('addresses',
+        MSG.addresses.length ? 'Addresses (' + checked + '/' + MSG.addresses.length + ')' : 'Addresses',
+        addrCoverage)
+    + '</div>';
+
+  const limits = '<ul class="limit-list">'
+    + composite.limitations.map(l =>
+        '<li' + (l.material ? ' class="material"' : '') + '>' + escapeHtml(l.text || String(l)) + '</li>').join('')
+    + '</ul>';
+
   const html = '<div class="pass">'
-    + '<div class="pass-top">'
-      + '<div class="verdict">'
-        + '<div class="verdict-badge ' + r.verdict + '">' + escapeHtml(r.label) + '</div>'
-        + '<div class="verdict-meta"><strong>' + escapeHtml(r.sub) + '</strong></div>'
-      + '</div>'
-      + '<div class="pass-id">Prompt scan · ' + r.input.characters.toLocaleString() + ' characters'
-        + (r.input.truncated ? ' · truncated' : '') + '</div>'
-    + '</div>'
+    + '<div class="pass-top"><div class="verdict">'
+      + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(composite.label) + '</div>'
+      + '<div class="verdict-meta"><strong>' + escapeHtml(composite.summary) + '</strong></div>'
+    + '</div><div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
+      + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
+    + '</div></div>'
     + '<div class="pass-body">'
-      + '<div class="coverage-line">'
-        + c.critical + ' critical · ' + c.high + ' high · ' + c.medium + ' medium · '
-        + c.low + ' low · ' + c.informational + ' informational · confidence: ' + escapeHtml(r.confidence)
-        + (r.input.invisibleCharactersRemoved ? ' · ' + r.input.invisibleCharactersRemoved + ' invisible characters found' : '')
-      + '</div>'
-      + cov
-      + groups
-      + limits
+      + sectionShell('Message content', msgScan.label, msgScan.verdict, countsLine + groups)
+      + urlSectionHtml(r.urls || [], msgScan.findings)
+      + addrSection
+      + acts
+      + sectionShell('Coverage', null, null, cov)
+      + sectionShell('What this scan did not do', null, null, limits)
     + '</div>'
     + '<div class="pass-footer">'
-      + '<span>Scanned ' + escapeHtml(new Date().toLocaleString()) + ' · ' + r.elapsedMs + 'ms</span>'
-      + '<span>Analysed in your browser · scanner v' + escapeHtml(r.scannerVersion) + '</span>'
-    + '</div>'
-  + '</div>';
+      + '<span>Scanned ' + escapeHtml(new Date(composite.timestamp).toLocaleString()) + ' · ' + r.elapsedMs + 'ms</span>'
+      + '<span>Analysed in your browser · engine v' + escapeHtml(r.scannerVersion)
+      + ' · model v' + escapeHtml(composite.model_version) + '</span>'
+    + '</div></div>';
 
   const results = document.getElementById('results');
   results.innerHTML = html;
   results.style.display = 'block';
-  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Only on the first render. Re-scrolling on every address check would
+  // yank the page out from under whoever just pressed the button.
+  if (scroll) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 let ecosystem = 'evm';
