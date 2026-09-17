@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Privacy, cookies and advertising
+  © 2026 Stefan Tsezarov. All rights reserved.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="What SaveSaveSaveSave does and does not collect. Message and prompt text is analysed in your browser and is never transmitted. No cookies are set. Full third-party list included.">
+<title>Privacy, Cookies and Advertising — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/privacy.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="index.html">← Back to the scanner</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 17 September 2026</p>
+    <h1 class="title">What this site collects</h1>
+    <p class="subtitle">Short version: almost nothing, and you can verify that yourself.</p>
+
+    <div class="rule-box">
+      <p><strong>Message and prompt text is analysed inside your browser and is never sent anywhere.</strong> Not to us, not to a third party, not to an AI model.</p>
+      <p><strong>Checking a crypto address is a network request.</strong> Only the address and the chain you selected are sent to the security data provider — never the message it came from.</p>
+      <p><strong>No cookies are set.</strong> Nothing is stored in your browser by this site.</p>
+      <p><strong>No account, no sign-up, no wallet connection.</strong> There is nothing here to log in to.</p>
+    </div>
+
+    <h2>1. Who runs this site</h2>
+    <p>SaveSaveSaveSave (<code>savesavesavesave.xyz</code>) is operated by Stefan Tsezarov as an independent project. Contact is through the project's public issue tracker, linked at the end of this page.</p>
+
+    <h2>2. Scanning a message or prompt</h2>
+    <p>When you paste text into the message scanner, the analysis runs entirely in JavaScript inside your own browser. The text is not uploaded, not logged, not stored, and not shown to anyone. When you close the tab it is gone.</p>
+    <p>You do not have to take that on trust. Open your browser's developer tools, switch to the Network tab, paste a message and press Scan. <strong>You will see no requests at all.</strong> That is how this was verified before publishing: a scan of a message containing a marker string, a phishing link, a seed-phrase request and an injection payload produced a full FAIL verdict and zero network requests.</p>
+    <p>There is also a structural guarantee behind it. The page ships a Content-Security-Policy that restricts outbound connections to the small list of hosts in section 4 and nowhere else. The browser itself enforces it, so the page cannot send your text somewhere else even if its code were changed to try.</p>
+
+    <h2>3. Scanning a crypto address or token</h2>
+    <p>This part does use the network, because the security data lives elsewhere. When you check an address, the address itself and the chain identifier are sent to a third-party security data provider, and for sanctions checks to a public blockchain node through our own proxy.</p>
+    <p>What is sent is the address and the chain. What is not sent is the message the address came from, any other text on the page, or anything identifying you beyond the ordinary information any web request carries (your IP address and browser user-agent, which every website you visit receives).</p>
+    <p>If an address came from a message you pasted, only the address travels. The message stays in your browser.</p>
+
+    <h2>4. Third parties that receive anything</h2>
+    <table class="chains">
+      <tr><th>Service</th><th>When it is contacted</th><th>What it receives</th></tr>
+      <tr><td><strong>GoPlus Labs</strong><br><code>api.gopluslabs.io</code></td><td>When you check an address or token</td><td>The address and chain id, plus your IP and user-agent</td></tr>
+      <tr><td><strong>Our own Cloudflare Worker</strong><br><code>*.workers.dev</code></td><td>For chains where a direct call is blocked, and for sanctions checks</td><td>The address and chain id, plus your IP and user-agent</td></tr>
+      <tr><td><strong>Google Fonts</strong><br><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code></td><td>On every page load, to load the typefaces</td><td>Your IP and user-agent. No scan data ever reaches it.</td></tr>
+      <tr><td><strong>Cloudflare</strong></td><td>On every page load — Cloudflare serves this site</td><td>Standard web-server request data</td></tr>
+      <tr><td><strong>Cloudflare Web Analytics</strong><br><code>static.cloudflareinsights.com</code>, <code>cloudflareinsights.com</code></td><td>On every page load, to count the visit</td><td>Page URL, referrer, approximate country, browser and device type, page-load timing. No cookie. No scan content — see section 5.</td></tr>
+    </table>
+    <p>Each of these operates under its own privacy policy, which this site does not control.</p>
+
+    <h2>5. Analytics</h2>
+    <p>This site uses Cloudflare Web Analytics to count page views. It is privacy-preserving by design: <strong>it sets no cookies, uses no fingerprinting, and does not track you across other websites.</strong> It records page URL, referrer, approximate country, browser and device type, and page-load timing.</p>
+    <p>It never receives the content of a scan. Not the message, not the prompt, not the address, not the verdict, not any finding. Those never leave the part of the page that computes them.</p>
+
+    <h2>6. Cookies and browser storage</h2>
+    <p>This site sets <strong>no cookies</strong> and writes nothing to <code>localStorage</code>, <code>sessionStorage</code> or IndexedDB. There is no consent banner because there is nothing to consent to. If that changes — and section 7 explains when it might — this page will be updated before the change ships, and a consent mechanism will be added where one is required.</p>
+
+    <h2>7. Advertising</h2>
+    <p><strong>There is no advertising on this site today.</strong> No ad network is connected and no ad script runs.</p>
+    <p>Advertising is being considered to cover running costs. If and when it is introduced, these commitments apply and are part of this policy:</p>
+    <ul>
+      <li>The content of your scans will never be used for ad targeting. Not the message, not the prompt, not the address, not the verdict, not any finding, not any extracted link.</li>
+      <li>No advertiser can influence a verdict, and no payment can remove or downgrade a risk finding.</li>
+      <li>Ads will be clearly labelled as advertising and kept visually separate from scan results and safety warnings.</li>
+      <li>This page will be updated to name the ad provider, what it receives, and what cookies it sets, <em>before</em> any ad code is deployed.</li>
+      <li>Where personalised advertising or non-essential cookies require consent, that consent will be requested before the relevant code loads.</li>
+    </ul>
+
+    <h2>8. What is stored, and for how long</h2>
+    <p>This project stores nothing about you. There is no database of scans, no account system, no scan history, no email list. Server logs handled by Cloudflare as part of serving the site are subject to Cloudflare's own retention.</p>
+
+    <h2>9. Your rights</h2>
+    <p>Rights such as access, correction, erasure and objection apply to personal data that an operator holds. This project holds none, so in practice there is nothing to export or delete. If you believe that is wrong in your case, get in touch and it will be looked at properly.</p>
+    <p>Requests concerning data held by the third parties in section 4 have to be made to those companies, which this site cannot do on your behalf.</p>
+
+    <h2>10. Children</h2>
+    <p>This site is not directed at children and does not knowingly collect information from them. It collects no personal information from anyone.</p>
+
+    <h2>11. Security</h2>
+    <p>The site is served over HTTPS only, with a strict Content-Security-Policy, HTTP Strict Transport Security, and framing disabled. <strong>Never enter a seed phrase, private key, password or authentication code into this site — or into any AI system.</strong> Nothing legitimate ever needs them, and this site has no field that asks for them.</p>
+
+    <h2>12. Changes to this policy</h2>
+    <p>Material changes will be reflected here with a new date at the top. Changes that affect what leaves your browser will be described explicitly rather than folded into general wording.</p>
+
+    <h2>13. Contact</h2>
+    <p>Questions, corrections and privacy requests: <a href="https://github.com/stefantsezarov/SaveSaveSaveSave/issues">the project's public issue tracker</a>.</p>
+
+    <hr class="sep">
+    <p class="living-note">This page describes how the site behaves. It is not legal advice, and it is not a claim of compliance with any particular law. If you need that assurance for your own use of the site, seek your own advice.</p>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+</body>
+</html>

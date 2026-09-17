@@ -3,5 +3,10 @@ restyle.py
 meta_update.py
 shot-*.png
 *-screen.png
+*-desktop.png
+*-mobile.png
 v_*.png
 report-*.png
+toolbar-*.png
+new-look-*.png
+monetization/

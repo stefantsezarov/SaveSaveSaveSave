@@ -21,8 +21,10 @@ const SITE = 'https://savesavesavesave.xyz';
 // documents and the test files: a search result pointing at
 // promptscan.test.js helps nobody.
 const PAGES = [
-  { file: 'index.html',      loc: '/',               changefreq: 'weekly',  priority: '1.0' },
+  { file: 'index.html',      loc: '/',                changefreq: 'weekly',  priority: '1.0' },
   { file: 'whitepaper.html', loc: '/whitepaper.html', changefreq: 'monthly', priority: '0.6' },
+  { file: 'privacy.html',    loc: '/privacy.html',    changefreq: 'monthly', priority: '0.3' },
+  { file: 'terms.html',      loc: '/terms.html',      changefreq: 'monthly', priority: '0.3' },
 ];
 
 function lastCommitDate(file) {
