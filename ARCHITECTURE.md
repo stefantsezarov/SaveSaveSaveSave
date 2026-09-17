@@ -576,7 +576,7 @@ anywhere, and never calls a model. `promptscan.js` is the source of truth;
 `index.html` carries a verbatim copy inside its `<script>` block, and
 `verify_embedded.js` fails the build if the two drift.
 
-Twenty-five deterministic rules across six families — hidden and invisible
+Twenty-seven deterministic rules across six families — hidden and invisible
 characters (including the Unicode Tags block, bidi controls and
 homoglyphs), hidden markup, encoded payloads, instruction-override
 patterns, credential and seed-phrase solicitation, and link structure.
@@ -664,7 +664,7 @@ spoofed or compromised upstream must not become markup. The only inline
 handlers the renderer emits are fixed literals plus an integer index, and
 a test asserts exactly that.
 
-Coverage: 50 scan-model tests, 96 engine tests, 65 UI/integration tests
+Coverage: 50 scan-model tests, 121 engine tests, 65 UI/integration tests
 (including the XSS suite run against the copy embedded in `index.html`,
 not the source module), 61 address-engine regression tests, 16 routing
 tests, and a 20-case red-team file scored against a careful human reading.

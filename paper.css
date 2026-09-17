@@ -160,6 +160,55 @@
   .counts b{color:var(--paper-text); font-weight:600;}
   .homo{color:#B91C1C; text-decoration:underline; text-decoration-style:wavy; text-underline-offset:4px;}
 
+  /* ---- Reveal blocks · native <details>, no script needed ---------- */
+  .reveal{border:1px solid var(--paper-border); background:#FDFCFF; margin:0 0 14px;}
+  .reveal summary{cursor:pointer; padding:14px 18px; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:0.98rem; color:var(--paper-accent); list-style:none;}
+  .reveal summary::-webkit-details-marker{display:none;}
+  .reveal summary::before{content:"▸ "; font-size:0.9em;}
+  .reveal[open] summary::before{content:"▾ ";}
+  .reveal summary:hover{background:var(--paper-tint);}
+  .reveal .inner{padding:0 18px 16px; border-top:1px solid var(--paper-border);}
+  .reveal .inner p{font-size:1rem; line-height:1.65; margin:12px 0 0;}
+  .msg{font-family:'IBM Plex Mono',monospace; font-size:0.9rem; line-height:1.75;
+    background:#FFFFFF; border:1px solid var(--paper-border); padding:14px 16px; margin:0 0 10px;
+    white-space:pre-wrap; color:var(--paper-text);}
+  .msg .inj{background:#FEE2E2; border-bottom:2px solid #B91C1C; color:#7F1D1D;}
+
+  /* ---- Keyed tiles · a labelled block that keeps ordinary prose -----
+     The step-card grid is for short parallel items. These are for the
+     numbered sections of a guide, where each one runs to a paragraph or
+     two and a two-column grid would leave one column half empty. */
+  .tile{border-left:3px solid var(--paper-accent); background:var(--paper-tint);
+    padding:16px 20px; margin:0 0 18px;}
+  .tile .n{display:block; font-family:'IBM Plex Mono',monospace; font-size:0.74rem;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--paper-accent); margin:0 0 6px;}
+  .tile h3{margin:0 0 10px; color:var(--paper-text);}
+  .tile p{font-size:1.05rem; line-height:1.68;}
+  .tile ul{margin:0 0 14px;}
+  .tile > :last-child{margin-bottom:0;}
+
+  /* A one-line shape, stated as a shape. Monospace because the point is
+     the arrow, not the sentence. */
+  .pattern{background:#FFFFFF; border:1px solid var(--paper-border);
+    font-family:'IBM Plex Mono',monospace; font-size:0.98rem; line-height:2;
+    text-align:center; padding:14px 16px; margin:0 0 20px; color:var(--paper-accent);}
+  .pattern b{color:var(--paper-text); font-weight:600;}
+
+  /* Two sources side by side. The colours are load-bearing: green is the
+     instruction the reader wrote, red is the one they didn't. */
+  .two-up{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 0 22px;}
+  .two-up .src{border:1px solid var(--paper-border); padding:14px 16px; background:#FFFFFF;}
+  .two-up .src .lbl{display:block; font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:0.95rem; margin:0 0 8px;}
+  .two-up .src q{font-family:'IBM Plex Mono',monospace; font-size:0.9rem; line-height:1.6;
+    color:var(--paper-text); quotes:none;}
+  .two-up .yours{border-left:3px solid #15803D;}
+  .two-up .yours .lbl{color:#15803D;}
+  .two-up .theirs{border-left:3px solid #B91C1C;}
+  .two-up .theirs .lbl{color:#B91C1C;}
+  @media (max-width: 640px){ .two-up{grid-template-columns:1fr;} }
+
   /* ---- Guides index ----------------------------------------------- */
   .guide-list{display:grid; gap:14px; margin:26px 0 10px;}
   .guide-card{display:block; border:1px solid var(--paper-border); border-left:3px solid var(--paper-accent);

@@ -76,7 +76,7 @@
     <p><span class="tag-live">Layer 3 — Recent counterparty checking:</span> a bounded, disclosed window of recent token transfers cross-checked against the same oracle. Not transaction history — that capability doesn't exist at the protocol level for any chain — and doesn't see native-asset transfers. One sanctioned counterparty moves the result to caution, not an automatic fail; that override stays reserved for the wallet's own address being directly designated.</p>
 
     <h2>6. What's Covered — Messages and Prompts<span class="tag-new">NEW IN v3.0</span></h2>
-    <p>Twenty-five deterministic rules across six families:</p>
+    <p>Twenty-seven deterministic rules across six families:</p>
     <ol>
       <li><strong>Hidden and invisible characters</strong> — zero-width characters, bidirectional overrides that reorder what you see, and the Unicode Tags block: codepoints that render as nothing at all and can carry an entire hidden instruction inside an innocuous sentence. Homoglyph substitution — a Latin letter swapped for an identical-looking character from another script — is caught in the same pass.</li>
       <li><strong>Hidden markup</strong> — instructions concealed in comments, in elements styled to be invisible, or in attributes a reader never sees.</li>
@@ -113,12 +113,12 @@
     <table class="chains">
       <tr><th>Suite</th><th class="num">Assertions</th><th>What it holds down</th></tr>
       <tr><td>Address engine regression</td><td class="num">61</td><td>Verdict labels across malicious, benign, partial, contradictory and malformed provider data</td></tr>
-      <tr><td>Message engine</td><td class="num">96</td><td>Each detection family, plus the education-versus-execution boundary</td></tr>
+      <tr><td>Message engine</td><td class="num">121</td><td>Each detection family, plus the education-versus-execution boundary</td></tr>
       <tr><td>Scan model</td><td class="num">50</td><td>The combination rule, exhaustively — including that one failing component is never diluted</td></tr>
       <tr><td>UI / integration</td><td class="num">65</td><td>The code actually embedded in the page, including a full cross-site-scripting suite</td></tr>
       <tr><td>Provider routing</td><td class="num">16</td><td>Direct-then-proxy ordering per chain; a rate-limited call is never retried through a shared proxy</td></tr>
       <tr><td>Adversarial review</td><td class="num">20</td><td>Engine output scored against a careful human reading, benign cases included</td></tr>
-      <tr><td><strong>Total</strong></td><td class="num"><strong>308</strong></td><td></td></tr>
+      <tr><td><strong>Total</strong></td><td class="num"><strong>333</strong></td><td></td></tr>
     </table>
     <p><strong>Drift detection.</strong> The page is a single self-contained file, so each engine exists twice — once as its own module, once embedded in the page. A build check compares them and fails loudly if they disagree. It was added after exactly that happened once, shipping a broken chain-routing path for a week while the module's own tests kept passing.</p>
     <p><strong>Cross-site scripting.</strong> This feature takes hostile text from a stranger and prints it back onto the page. Every value is escaped, including the security provider's own response text, because a spoofed upstream response must not become markup either.</p>

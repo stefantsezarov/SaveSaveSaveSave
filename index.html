@@ -1957,10 +1957,35 @@ function directiveScore(fragment) {
 const RULES = [
   {
     id: 'PROMPT_OVERRIDE_001', category: 'PROMPT_INJECTION', severity: 'HIGH', confidence: 0.9,
-    re: /\b(ignore|disregard|forget|discard)\s+(?:all\s+|any\s+|the\s+|your\s+|previous\s+|prior\s+|earlier\s+|above\s+){0,3}(instructions?|prompts?|rules?|directives?|guidelines?|messages?|context)\b/i,
+    // Two shapes. The first is the classic one: a cancelling verb followed by
+    // a word for "what you were told". The second exists because guide 3's own
+    // example said "disregard the summary request above" and scored nothing —
+    // a single adjective between the article and the noun was enough to slip
+    // past. Arbitrary filler is therefore allowed, but only when a positional
+    // word ("above", "earlier") ties the sentence to something that came
+    // before it, which is what makes it an override rather than an ordinary
+    // "ignore the formatting notes".
+    re: /\b(?:ignore|disregard|forget|discard)\s+(?:all\s+|any\s+|the\s+|your\s+|my\s+|that\s+|previous\s+|prior\s+|earlier\s+|above\s+|preceding\s+|[a-z]+['’]s\s+){0,3}(?:instructions?|prompts?|rules?|directives?|guidelines?|messages?|requests?|tasks?|context)\b|\b(?:ignore|disregard|forget|discard)\s+(?:all\s+|any\s+|the\s+|your\s+|my\s+|that\s+){0,2}(?:[a-z]+\s+){1,2}(?:instructions?|prompts?|rules?|directives?|guidelines?|messages?|requests?|tasks?)\s+(?:above|below|earlier|before|preceding)\b/i,
     title: 'Tells the AI to ignore its existing instructions',
     plain: 'This prompt tries to cancel whatever rules the AI system was already operating under. Legitimate prompts ask for something; they do not need to disable what came before.',
     action: 'Do not paste this into an AI system that has access to your files, accounts, or tools.',
+    requiresDirective: true,
+  },
+  {
+    // The signature of an injection is not a magic phrase, it is a change
+    // of addressee. Pasted material is supposed to be the thing the
+    // assistant works ON. When part of it starts talking TO the assistant,
+    // somebody has written two audiences into one message on purpose.
+    id: 'PROMPT_ADDRESSED_001', category: 'PROMPT_INJECTION', severity: 'HIGH', confidence: 0.85,
+    // The addressee has to end the phrase. "Note for the AI:" addresses the
+    // AI; "a note for the AI newsletter" is about a newsletter and "a note to
+    // the assistant team" is about people. Requiring a colon, dash or line
+    // break after the addressee separates the two at no cost — a header
+    // written for a machine to obey is punctuated that way already.
+    re: /\b(?:note|notes|message|instruction|instructions|attention|reminder|memo)\s+(?:for|to)\s+(?:the\s+|any\s+)?(?:ai|a\.i\.|assistant|llm|model|chatbot|bot|language\s+model|system)\s*(?=[:\-–—]|\r?\n|$)|\bdear\s+(?:ai|assistant|chatgpt|claude|gemini|copilot|llm|language\s+model)\b|\b(?:ai|assistant|llm|chatbot)\s*[:,]\s*(?:ignore|disregard|instead|do\s+not|don'?t|please\s+(?:ignore|disregard))\b/i,
+    title: 'Part of this text is addressed to the AI, not to you',
+    plain: 'Somewhere in this message, the writing stops speaking to a reader and starts speaking to an AI system. Material you paste is meant to be what the assistant works on — there is no honest reason for it to contain instructions aimed at the assistant itself.',
+    action: 'Do not paste this as-is. If you need the legitimate part of it, retype only that part yourself.',
     requiresDirective: true,
   },
   {
@@ -2142,6 +2167,14 @@ const RULES = [
     plain: 'The prompt asserts authority it cannot prove — a system message, an admin, or a known company. Text in a prompt has no special standing no matter who it says it is from.',
     action: 'Ignore the claimed identity. Judge the prompt by what it asks for.',
     requiresDirective: false,
+  },
+  {
+    id: 'TOOL_ABUSE_002', category: 'DATA_EXFILTRATION', severity: 'MEDIUM', confidence: 0.7,
+    re: /\b(?:list|enumerate|output|print|reveal|show|dump|repeat|share|disclose)\b[^.!?\n]{0,40}\b(?:everything|all|information|contents?|details|data|files?|messages?)\b[^.!?\n]{0,60}\b(?:you\s+(?:have\s+)?(?:access\s+to|can\s+(?:see|read|access))|(?:in|from)\s+(?:this|the)\s+(?:conversation|context|chat|thread))\b/i,
+    title: 'Asks the AI to list everything it can reach',
+    plain: 'The text asks the system to enumerate what it has access to and put the result somewhere. On its own that can be an innocent question about capabilities; inside a message someone else wrote, it is the first half of taking a copy.',
+    action: 'Do not run this against an assistant that can see your files, messages or accounts.',
+    requiresDirective: true,
   },
   {
     id: 'TOOL_ABUSE_001', category: 'TOOL_ABUSE', severity: 'MEDIUM', confidence: 0.75,
@@ -2760,7 +2793,7 @@ function scanPrompt(input, opts) {
   };
 }
 
-const SCANNER_VERSION = '0.1.0';
+const SCANNER_VERSION = '0.2.0';
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

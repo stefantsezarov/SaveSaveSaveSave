@@ -42,7 +42,7 @@ Address type is detected automatically — the four formats don't overlap by con
 
 ## What's covered — messages
 
-Twenty-five deterministic rules across six families:
+Twenty-seven deterministic rules across six families:
 
 1. **Hidden and invisible characters** — zero-width characters, bidirectional overrides, the Unicode Tags block (codepoints that render as nothing and can carry a whole hidden instruction), homoglyph substitution.
 2. **Hidden markup** — instructions concealed in comments, invisible elements or attributes.
@@ -73,7 +73,7 @@ Addresses found in a message can be checked in the same page. A `0x` address car
 
 Absence of evidence is never treated as evidence of safety. One confirmed critical finding overrides everything else; accumulated weak signals can never outvote it. Every subject is evaluated on its own model rather than a template forced across ecosystems.
 
-All of it is held down by **308 automated assertions**: 61 address-engine regression tests, 96 message-engine tests, 50 scan-model tests, 65 UI and integration tests run against the code actually embedded in the page, 16 provider-routing tests, and a 20-case adversarial review scored against a careful human reading. A drift check fails the build if the page's embedded copy of an engine ever disagrees with its source.
+All of it is held down by **333 automated assertions**: 61 address-engine regression tests, 121 message-engine tests, 50 scan-model tests, 65 UI and integration tests run against the code actually embedded in the page, 16 provider-routing tests, and a 20-case adversarial review scored against a careful human reading. A drift check fails the build if the page's embedded copy of an engine ever disagrees with its source.
 
 ## What it isn't
 

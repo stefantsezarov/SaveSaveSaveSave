@@ -88,7 +88,7 @@ SaveSaveSaveSave is built around a single, non-negotiable evidence model, applie
 - **Every subject is evaluated on its own model, not a shared template.** An EVM token's mint-authority check has no equivalent meaning on Solana. A message's rule set has no equivalent meaning on a contract. Nothing is forced to look uniform for presentational convenience.
 - **A PASS is a statement about coverage, not a guarantee.** Every result states how much of what was expected actually returned usable data, and what confidence that coverage supports.
 
-This isn't a design aspiration. It is enforced by a permanent, versioned test suite that runs against the real engines before any change ships — **308 automated assertions** at the time of writing, described in §9.
+This isn't a design aspiration. It is enforced by a permanent, versioned test suite that runs against the real engines before any change ships — **333 automated assertions** at the time of writing, described in §9.
 
 ---
 
@@ -156,7 +156,7 @@ That last property is not a convenience. A tool that asks people to paste suspic
 
 ### What it detects
 
-Twenty-five deterministic rules across six families:
+Twenty-seven deterministic rules across six families:
 
 1. **Hidden and invisible characters.** Zero-width characters, bidirectional overrides that reorder what you see, and the Unicode Tags block — a range of codepoints that render as nothing at all and can carry an entire hidden instruction inside an innocuous sentence. Homoglyph substitution, where a Latin letter is replaced by an identical-looking character from another script, is detected in the same pass.
 2. **Hidden markup.** Instructions concealed in HTML comments, in elements styled to be invisible, or in attributes that a reader never sees but a system might.
@@ -226,12 +226,12 @@ A claim about rigour is worth exactly as much as the suite behind it.
 | Suite | Assertions | What it holds down |
 |---|---|---|
 | Address engine regression | 61 | Verdict labels across malicious, benign, partial, contradictory and malformed provider data |
-| Message engine | 96 | Each detection family, plus the education-versus-execution boundary |
+| Message engine | 121 | Each detection family, plus the education-versus-execution boundary |
 | Scan model | 50 | The combination rule, exhaustively — including that one failing component is never diluted |
 | UI / integration | 65 | The code actually embedded in the page, not the source modules, including a full XSS suite |
 | Provider routing | 16 | Direct-then-proxy ordering per chain, and that a rate-limited call is not retried through a shared proxy |
 | Adversarial review | 20 | Engine output scored against a careful human reading, benign cases included |
-| **Total** | **308** | |
+| **Total** | **333** | |
 
 Two further guards run alongside them:
 
