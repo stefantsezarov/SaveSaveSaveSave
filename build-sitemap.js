@@ -25,6 +25,7 @@ const PAGES = [
   { file: 'whitepaper.html', loc: '/whitepaper.html', changefreq: 'monthly', priority: '0.6' },
   { file: 'guides.html',     loc: '/guides.html',     changefreq: 'weekly',  priority: '0.8' },
   { file: 'honeypot-tokens.html', loc: '/honeypot-tokens.html', changefreq: 'monthly', priority: '0.7' },
+  { file: 'invisible-characters.html', loc: '/invisible-characters.html', changefreq: 'monthly', priority: '0.7' },
   { file: 'privacy.html',    loc: '/privacy.html',    changefreq: 'monthly', priority: '0.3' },
   { file: 'terms.html',      loc: '/terms.html',      changefreq: 'monthly', priority: '0.3' },
 ];

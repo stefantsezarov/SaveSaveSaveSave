@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Guide: text that renders as nothing
+  © 2026 Stefan Tsezarov. All rights reserved.
+
+  NOTE FOR ANYONE EDITING THIS FILE: the sentence inside <p class="line"
+  id="demo"> contains real zero-width and Unicode Tags characters. They are
+  the point of the article. Do not "clean up" this file with a tool that
+  strips invisible characters, and do not retype that line by hand.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="Some characters take up no space on screen and can carry a whole instruction inside a sentence that looks ordinary. How zero-width characters, direction overrides, the Unicode Tags block and homoglyphs work — with a live example you can copy and test.">
+<title>The Text You Can't See: Invisible Characters Explained — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/invisible-characters.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="guides.html">← All guides</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Guide · Message risk · September 2026</p>
+    <h1 class="title">The Text You Can't See</h1>
+    <p class="subtitle">Two messages can look exactly the same and contain completely different characters.</p>
+
+    <p>You copy a message.</p>
+    <p>It looks normal.</p>
+    <p>Three ordinary sentences. Nothing strange.</p>
+    <p>You paste it into a document, a website, a wallet, or an AI assistant.</p>
+    <p>And suddenly something happens that the message, as you saw it, never appeared to say.</p>
+    <p>How?</p>
+    <p>Because what you see on your screen isn't necessarily everything that's inside the text.</p>
+    <p>Some characters take up no visible space at all.</p>
+    <p>They are still there.</p>
+    <p>They can still be copied, pasted, stored and processed.</p>
+    <p><strong>You just can't see them.</strong></p>
+
+    <hr class="sep">
+
+    <h2>Your computer doesn't see letters the way you do</h2>
+    <p>When you look at a sentence, you see shapes.</p>
+    <p>Your computer sees data.</p>
+    <p>The letter A, for example, is represented by a Unicode character with a specific code point. A space is another character. Every letter, number, punctuation mark and many other symbols have their own representation.</p>
+    <p>But not every character produces a visible shape.</p>
+    <p>Some characters tell software how text should behave.</p>
+    <p>They can tell a program:</p>
+    <ul>
+      <li>connect these characters</li>
+      <li>don't break the line here</li>
+      <li>display this section from right to left</li>
+      <li>change how these characters are ordered</li>
+      <li>or, in some cases, simply occupy a position without drawing anything</li>
+    </ul>
+    <p>So you can have two pieces of text that look identical while being different sequences of characters.</p>
+    <p>That difference can matter.</p>
+    <p><strong>A lot.</strong></p>
+
+    <h2>Three kinds of invisible text worth knowing</h2>
+    <p>There are several different mechanisms involved, but three are particularly useful to understand.</p>
+
+    <h3>1. Characters that don't appear</h3>
+    <p>These are often called zero-width characters.</p>
+    <p>Examples include the zero-width space, zero-width joiner and word joiner.</p>
+    <p>They occupy a position in the text but don't produce visible pixels.</p>
+    <p>For example, these two words may look identical:</p>
+
+    <div class="demo">
+      <span class="lab">Two words · one of them is not what it appears to be</span>
+      <p class="line">payment</p>
+      <p class="line">pay​ment</p>
+      <div class="counts"><span>first: <b>7 characters</b></span><span>second: <b>8 characters</b></span></div>
+    </div>
+
+    <p>There is an invisible character inside the second one.</p>
+    <p>You probably can't see it.</p>
+    <p><strong>Your computer can.</strong></p>
+    <p>That means the two strings are not actually identical.</p>
+    <p>This can affect searches, filters, usernames, identifiers and other systems that compare the underlying characters rather than what a person sees.</p>
+    <p>And there is a legitimate reason some of these characters exist.</p>
+    <p>We'll come back to that.</p>
+
+    <h3>2. Characters that change the order you see</h3>
+    <p>Some invisible characters affect text direction.</p>
+    <p>This is necessary because languages such as Arabic and Hebrew are written from right to left, while English is written from left to right.</p>
+    <p>A sentence containing both can require instructions telling the software how different parts should be displayed.</p>
+    <p>Those instructions can be useful.</p>
+    <p>But they can also be abused.</p>
+    <p>A direction-control character can make the characters stored by a computer appear in a different order on screen.</p>
+    <p>That creates an obvious security problem.</p>
+    <p>A filename, for example, might look as though it ends with one extension while its underlying character sequence says something different.</p>
+    <p>The same principle can matter in source code.</p>
+    <p>A reviewer sees one thing.</p>
+    <p>The computer processes another.</p>
+
+    <h3>3. Characters that can carry an invisible message</h3>
+    <p>This is the unusual one.</p>
+    <p>Unicode contains a range known as the Tags block.</p>
+    <p>These characters were designed for tagging purposes and are normally invisible when rendered.</p>
+    <p>The interesting part is that individual tag characters can represent ordinary ASCII characters.</p>
+    <p>Put enough of them together and they can encode text.</p>
+    <p>A sentence can therefore contain an additional string of characters that doesn't appear on screen.</p>
+    <p>To your eyes, the message might look like a completely ordinary greeting.</p>
+    <p>To software reading the underlying characters, there can be much more there.</p>
+    <p>And that distinction becomes particularly interesting when the destination is an AI assistant.</p>
+    <p>An AI doesn't see your message as a photograph of the screen.</p>
+    <p>It processes the characters.</p>
+    <p><strong>So something you cannot see can still be part of the input.</strong></p>
+
+    <h2>Here's what that looks like</h2>
+    <p>Take this sentence:</p>
+    <p><strong>Send the payment to the address below.</strong></p>
+    <p>Looks normal, right?</p>
+    <p>Now imagine that invisible characters have been inserted into it.</p>
+    <p>On your screen, it can still look like this — and this one is the real thing, prepared for you to test:</p>
+
+    <div class="demo">
+      <span class="lab">A prepared example · select it, copy it, scan it</span>
+      <p class="line" id="demo">Send the​ payment⁠ to the​ address below.󠁨󠁩󠁤󠁤󠁥󠁮</p>
+      <div class="counts"><span>visible characters: <b>38</b></span><span>actual characters: <b>47</b></span><span>difference: <b>9</b></span></div>
+    </div>
+
+    <p>But underneath, the computer may actually be holding additional characters.</p>
+    <p>For example:</p>
+
+    <div class="demo">
+      <span class="lab">The same sentence, described</span>
+      <p class="line" style="font-family:'IBM Plex Mono',monospace; font-size:0.94rem;">What you see:<br><br>Send the payment to the address below.<br><br>What the computer receives:<br><br>Send the <span class="zw">invisible</span> payment <span class="zw">invisible</span> &hellip; <span class="zw tagch">TAGS</span></p>
+    </div>
+
+    <p>The visible sentence hasn't changed.</p>
+    <p>The underlying string has.</p>
+    <p>That's the important idea.</p>
+    <p><strong>Same appearance. Different data.</strong></p>
+    <p>If you run the specially prepared example through <a href="index.html">a scanner</a>, the scanner can identify those characters even though your eyes cannot.</p>
+    <p>Retype the visible sentence manually and those hidden characters don't come with it.</p>
+    <p><strong>That is the entire trick.</strong></p>
+
+    <h2>The letter that isn't the letter</h2>
+    <p>Invisible characters aren't the only problem.</p>
+    <p>Sometimes the character is perfectly visible.</p>
+    <p>It just isn't the character you think it is.</p>
+    <p>Consider these two:</p>
+
+    <div class="demo">
+      <span class="lab">Same shape · different characters</span>
+      <p class="line">savesavesave</p>
+      <p class="line">sаvesavesave</p>
+      <div class="counts"><span>second string, 2nd character: <b>Cyrillic U+0430</b></span><span>not Latin <b>U+0061</b></span></div>
+    </div>
+
+    <p>They look almost impossible to distinguish.</p>
+    <p>But look at the second one carefully.</p>
+    <p>The second character is not the Latin letter a.</p>
+    <p>It is a Cyrillic <span class="homo">а</span>.</p>
+    <p>They look alike.</p>
+    <p>They are different characters.</p>
+    <p>That technique is known as a homoglyph attack.</p>
+    <p>The same idea can be used with usernames, domain names, token names and other identifiers.</p>
+    <p>A fake account can use a look-alike character.</p>
+    <p>A fake website can use a look-alike domain.</p>
+    <p>To a person, the name can appear familiar.</p>
+    <p>To a computer, it is a completely different string.</p>
+
+    <h2>Where can this actually cause problems?</h2>
+    <p>This isn't just a strange Unicode trick.</p>
+    <p>It matters anywhere text is copied, compared or acted upon.</p>
+
+    <h3>AI assistants</h3>
+    <p>You paste a message into an AI assistant.</p>
+    <p>You see a question.</p>
+    <p>The underlying text may contain characters that aren't visible to you.</p>
+    <p>Because the assistant processes the actual text, not just the visual appearance, those characters become part of the input.</p>
+    <p>That's why invisible-character checks can be useful before pasting untrusted text into a system that can take actions or process sensitive information.</p>
+
+    <h3>Usernames and account names</h3>
+    <p>Two accounts can look as though they have the same name while containing different characters.</p>
+    <p>That can make impersonation much harder to notice.</p>
+
+    <h3>Links and domains</h3>
+    <p>A link can contain characters that resemble familiar letters.</p>
+    <p>The name you recognise isn't necessarily the exact domain you think it is.</p>
+
+    <h3>Code</h3>
+    <p>Direction-control characters and other unusual Unicode characters can make source code harder to review correctly.</p>
+    <p>A developer sees the rendered text.</p>
+    <p>The compiler sees the actual characters.</p>
+
+    <h3>Search and filtering</h3>
+    <p>A filter is usually comparing strings.</p>
+    <p>Insert an invisible character and the string changes.</p>
+    <p>That can affect searches, blocklists, moderation systems and other text-processing tools.</p>
+
+    <h2>How can you check?</h2>
+    <p>You don't need to become a Unicode expert.</p>
+    <p>There are a few simple checks.</p>
+
+    <h3>CHECK 1 — Scan the text</h3>
+    <p>Paste suspicious text into a character-security scanner.</p>
+    <p>A useful scanner should tell you:</p>
+    <ul>
+      <li>whether invisible characters are present</li>
+      <li>how many were found</li>
+      <li>which characters they are</li>
+      <li>what Unicode family they belong to</li>
+      <li>whether look-alike characters were detected</li>
+    </ul>
+    <p>That's what <a href="index.html">the scanner on this site</a> is designed to show.</p>
+    <p>The important part is that it should tell you what it actually found, rather than simply giving you a mysterious green or red light.</p>
+
+    <h3>CHECK 2 — Compare the character count</h3>
+    <p>This is a quick sanity check.</p>
+    <p>If a sentence appears to contain 38 characters but a character counter reports 47, you have a difference worth investigating.</p>
+    <p>A character count won't tell you what the extra characters are.</p>
+    <p>But it can tell you that something is there that you aren't seeing.</p>
+
+    <h3>CHECK 3 — Retype text when appropriate</h3>
+    <p>If someone sends you a short instruction and you don't need to preserve the original formatting, manually typing the important part can remove invisible characters from the copied text.</p>
+    <p>But remember:</p>
+    <p><strong>Retyping does not make the destination trustworthy.</strong></p>
+    <p>If someone sends you a suspicious website address, for example, manually typing it doesn't prove that the website itself is legitimate.</p>
+    <p>It's simply a way of avoiding hidden characters in the text you copy.</p>
+
+    <h3>CHECK 4 — Read the actual domain</h3>
+    <p>Don't rely only on recognising how a domain looks.</p>
+    <p>If a link matters, check the actual domain.</p>
+    <p>For important accounts, use a bookmark you've already saved or type the known address yourself instead of following an unexpected link.</p>
+    <p>The same principle applies to usernames and wallet addresses:</p>
+    <p>recognising the shape isn't the same as verifying the characters.</p>
+
+    <h2>Don't panic when you find an invisible character</h2>
+    <p>This is important.</p>
+    <p><strong>Invisible does not automatically mean malicious.</strong></p>
+    <p>Some invisible Unicode characters exist because people genuinely need them.</p>
+    <p>Zero-width joiners, for example, can affect how characters connect in various writing systems.</p>
+    <p>They are also used in emoji sequences.</p>
+    <p>Direction-control characters are necessary for correctly displaying text that mixes left-to-right and right-to-left scripts.</p>
+    <p>So finding an invisible character does not automatically mean:</p>
+    <p><em>"This is an attack."</em></p>
+    <p>It means:</p>
+    <blockquote class="tagline">There is something here that I can't see.</blockquote>
+    <p>What that means depends on the context.</p>
+    <p>Who sent the text?</p>
+    <p>What does the text ask you to do?</p>
+    <p>Where are you about to paste it?</p>
+    <p>Is it going into an AI assistant, a wallet, a website, a terminal or some other system that will act on it?</p>
+    <p>Those questions matter.</p>
+
+    <h2>The Tags block deserves extra attention</h2>
+    <p>Tags characters are unusual because their purpose is to represent information while remaining invisible in normal text rendering.</p>
+    <p>If a stranger sends you a message containing an unexpected sequence of them, that's worth investigating.</p>
+    <p>A scanner can reveal that the characters exist and, where appropriate, decode the text they represent.</p>
+    <p>But even then, detection doesn't tell you the sender's intention.</p>
+    <p>It tells you what is in the text.</p>
+    <p>That's a much more useful and defensible answer.</p>
+
+    <h2>What a clean scan does — and doesn't — tell you</h2>
+    <p>This is another place where security tools need to be honest.</p>
+    <p>A scanner detects characters.</p>
+    <p>It does not read people's minds.</p>
+    <p>If the scanner finds invisible characters, it can tell you what they are.</p>
+    <p>It cannot tell you who inserted them.</p>
+    <p>It cannot prove why they were inserted.</p>
+    <p>And if it finds nothing, that doesn't mean the message itself is trustworthy.</p>
+    <p>A completely normal-looking sentence can still contain a lie, a malicious link or a dangerous instruction.</p>
+    <p>Likewise, a message containing an invisible character can be completely harmless.</p>
+    <p>There are also limits to automated homoglyph detection. A scanner can check known look-alike characters and known character sets, but no single check should be treated as a guarantee that every possible visual deception has been found.</p>
+    <p>The result tells you what was detected.</p>
+    <p>You still have to decide what the text means and whether you trust its source.</p>
+
+    <h2>The simple habit worth building</h2>
+    <p>You don't need to be scared of copying and pasting.</p>
+    <p>Just slow down when the text you're copying is about to make something happen.</p>
+    <p>An AI assistant.</p>
+    <p>A wallet.</p>
+    <p>A website.</p>
+    <p>A command line.</p>
+    <p>An account.</p>
+    <p>A financial transaction.</p>
+    <p>A piece of code.</p>
+    <p class="closing-quote">If you didn't type the text yourself, you don't necessarily know everything that's inside it.</p>
+    <p>And you don't have to guess.</p>
+    <p>Check the characters before you let them act.</p>
+    <p>It takes seconds.</p>
+    <p>And in many cases, the check is free.</p>
+
+    <hr class="sep">
+    <p class="living-note">This article is for educational purposes only. It explains how invisible Unicode characters, text-direction controls and look-alike characters can affect digital text. The example on this page contains deliberately inserted invisible characters so you can inspect the mechanism yourself. The hidden text is harmless and exists only for demonstration purposes.</p>
+
+    <div class="bottom-cta">
+      <a class="dl-btn" href="index.html">Scan a message →</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+</body>
+</html>

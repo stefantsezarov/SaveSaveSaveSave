@@ -146,6 +146,20 @@
   .step-card .no{color:#B45309; font-weight:600;}
   @media (max-width: 640px){ .steps{grid-template-columns:1fr;} }
 
+  /* ---- Live demo blocks (guide 2 onwards) -------------------------- */
+  .demo{border:1px solid var(--paper-border); background:#FDFCFF; padding:16px 18px; margin:0 0 12px;}
+  .demo .lab{font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.07em;
+    text-transform:uppercase; color:var(--paper-muted); display:block; margin-bottom:9px;}
+  .demo .line{font-size:1.08rem; line-height:1.9; margin:0; color:var(--paper-text);}
+  .zw{display:inline-block; background:#FEF3C7; border:1px solid #B45309; color:#7C2D12;
+    font-family:'IBM Plex Mono',monospace; font-size:0.62rem; line-height:1.5; padding:0 4px;
+    border-radius:2px; vertical-align:2px; margin:0 1px;}
+  .tagch{background:#EDE9FE; border-color:#6D28D9; color:#4C1D95;}
+  .counts{display:flex; gap:18px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace;
+    font-size:0.82rem; color:var(--paper-muted); margin-top:4px;}
+  .counts b{color:var(--paper-text); font-weight:600;}
+  .homo{color:#B91C1C; text-decoration:underline; text-decoration-style:wavy; text-underline-offset:4px;}
+
   /* ---- Guides index ----------------------------------------------- */
   .guide-list{display:grid; gap:14px; margin:26px 0 10px;}
   .guide-card{display:block; border:1px solid var(--paper-border); border-left:3px solid var(--paper-accent);
