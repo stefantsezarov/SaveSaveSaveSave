@@ -124,6 +124,43 @@
   .glossary dt{font-weight:700; font-size:1.1rem; margin-top:18px; color:var(--paper-text);}
   .glossary dd{margin:4px 0 0; color:var(--paper-muted); font-size:1.05rem; line-height:1.6;}
 
+  /* ---- Explanatory figures (guide pages) --------------------------
+     Diagrams are inline SVG so they need no extra request, inherit the
+     page font, and print with the document. Figure text is kept large in
+     viewBox units so it stays legible when the SVG scales down on a
+     phone. */
+  .fig{margin:26px 0 30px; padding:0;}
+  .fig svg{width:100%; height:auto; display:block;}
+  .fig figcaption{font-size:0.92rem; color:var(--paper-muted); margin-top:10px; line-height:1.55;
+    border-left:3px solid var(--paper-border); padding-left:12px;}
+  .fig-frame{border:1px solid var(--paper-border); padding:18px 16px; background:#FDFCFF;}
+
+  /* Step cards — reflow on a phone in a way an SVG cannot. */
+  .steps{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin:24px 0 28px;}
+  .step-card{border:1px solid var(--paper-border); padding:14px 16px; background:#FDFCFF;}
+  .step-card .n{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.08em;
+    color:var(--paper-accent); display:block; margin-bottom:6px;}
+  .step-card h4{font-family:'Space Grotesk',sans-serif; font-size:1rem; margin:0 0 8px; color:var(--paper-text);}
+  .step-card p{font-size:0.95rem; line-height:1.55; margin:0 0 6px;}
+  .step-card .yes{color:#15803D; font-weight:600;}
+  .step-card .no{color:#B45309; font-weight:600;}
+  @media (max-width: 640px){ .steps{grid-template-columns:1fr;} }
+
+  /* ---- Guides index ----------------------------------------------- */
+  .guide-list{display:grid; gap:14px; margin:26px 0 10px;}
+  .guide-card{display:block; border:1px solid var(--paper-border); border-left:3px solid var(--paper-accent);
+    padding:18px 20px; text-decoration:none; background:#FFFFFF;}
+  .guide-card:hover{background:var(--paper-tint);}
+  .guide-card h3{margin:0 0 6px; color:var(--paper-text); font-size:1.15rem;}
+  .guide-card p{margin:0 0 8px; font-size:1rem; line-height:1.6; color:var(--paper-muted);}
+  .guide-meta{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.06em;
+    color:var(--paper-accent); text-transform:uppercase;}
+  .guide-soon{border:1px dashed var(--paper-border); border-left:3px solid var(--paper-border);
+    padding:16px 20px; background:#FCFCFD;}
+  .guide-soon h3{margin:0 0 6px; color:var(--paper-muted); font-size:1.05rem;}
+  .guide-soon p{margin:0; font-size:0.96rem; line-height:1.6; color:var(--paper-muted);}
+  .guide-soon .guide-meta{color:var(--paper-muted);}
+
   .closing-quote{font-size:1.2rem; line-height:1.7; color:var(--paper-text); margin:24px 0;}
   hr.sep{border:none; border-top:1px solid var(--paper-border); margin:36px 0;}
   .living-note{font-style:italic; color:var(--paper-muted); font-size:1rem;}

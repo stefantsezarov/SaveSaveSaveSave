@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Guides index
+  © 2026 Stefan Tsezarov. All rights reserved.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="Plain-language guides to the tricks the SaveSaveSaveSave scanner looks for: honeypot tokens, hidden instructions, prompt injection, seed-phrase phishing and disguised links. How each one works, and how to spot it before it costs you.">
+<title>Guides — How the Tricks Actually Work — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/guides.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="index.html">← Back to the scanner</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Guides · Updated 17 September 2026</p>
+    <h1 class="title">How the tricks actually work</h1>
+    <p class="subtitle">Not a list of warnings. An explanation of the mechanism, so you can recognise it yourself.</p>
+
+    <p>Every guide here covers one technique the scanner looks for. Each explains how the trick is built, why it is convincing, how to check for it using more than one method — and, in every case, what a clean result still cannot tell you.</p>
+    <p>No affiliate links. No token recommendations. Nothing here is financial advice.</p>
+
+    <h2>Published</h2>
+    <div class="guide-list">
+      <a class="guide-card" href="honeypot-tokens.html">
+        <span class="guide-meta">Token risk · 7 min read</span>
+        <h3>Honeypot tokens: why you can buy but can't sell</h3>
+        <p>The purchase goes through. The sale fails, every time. The restriction isn't in the price — it's written into the token's contract, and it can be checked in seconds before you spend anything.</p>
+      </a>
+    </div>
+
+    <h2>In preparation</h2>
+    <p>Listed so you know what's coming, not to pad the page. Each one ships when it is actually written.</p>
+    <div class="guide-list">
+      <div class="guide-soon">
+        <span class="guide-meta">Message risk · next</span>
+        <h3>Text that renders as nothing</h3>
+        <p>Characters that take up no space on screen and can carry an entire instruction inside a sentence that looks ordinary — plus letters swapped for identical-looking ones from another alphabet.</p>
+      </div>
+      <div class="guide-soon">
+        <span class="guide-meta">AI risk</span>
+        <h3>Prompt injection: messages written for the AI, not for you</h3>
+        <p>What happens when the text you paste into an assistant contains instructions aimed at the assistant — and why "it looked harmless" is not a defence once that assistant has your files or a wallet.</p>
+      </div>
+      <div class="guide-soon">
+        <span class="guide-meta">Wallet risk</span>
+        <h3>"Verify your wallet": how seed-phrase phishing works</h3>
+        <p>The single most expensive message in crypto, taken apart line by line — including why the real giveaway is the request itself, not the spelling.</p>
+      </div>
+      <div class="guide-soon">
+        <span class="guide-meta">Link risk</span>
+        <h3>Links that hide where they go</h3>
+        <p>The @ trick, punycode domains that display as a different name entirely, shorteners, and brand names placed where they hold no authority. How to read a URL from the right end.</p>
+      </div>
+      <div class="guide-soon">
+        <span class="guide-meta">Wallet risk</span>
+        <h3>What you actually sign when you approve a token</h3>
+        <p>An approval is not a payment. It is a standing permission, often unlimited and often permanent until you revoke it — and it is the loss most people never see coming.</p>
+      </div>
+      <div class="guide-soon">
+        <span class="guide-meta">Address risk</span>
+        <h3>Sanctioned addresses: what a match does and does not mean</h3>
+        <p>Why a sanctions hit is a match against a specific list at a specific moment, why the lists lag reality, and why exposure to a flagged address is not the same claim as guilt.</p>
+      </div>
+    </div>
+
+    <hr class="sep">
+    <p class="living-note">Suggestions for what to cover next are welcome through <a href="https://github.com/stefantsezarov/SaveSaveSaveSave/issues">the project's issue tracker</a>.</p>
+
+    <div class="bottom-cta">
+      <a class="dl-btn" href="index.html">Scan something →</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+</body>
+</html>

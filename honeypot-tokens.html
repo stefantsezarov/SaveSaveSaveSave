@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Guide: honeypot tokens
+  © 2026 Stefan Tsezarov. All rights reserved.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="You bought the token and the sale fails. That is a honeypot, and the trap is in the smart contract, not the price. How the lock is built, why it looks convincing, and how to check a token before you buy.">
+<title>Honeypot Tokens: Why You Can Buy but Can't Sell — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/honeypot-tokens.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="guides.html">← All guides</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Guide · Token risk · September 2026</p>
+    <h1 class="title">Honeypot tokens: why you can buy but can't sell</h1>
+    <p class="subtitle">The price can look great. Your wallet can show the tokens. But getting your money back may be impossible.</p>
+
+    <p>You bought the token. The transaction succeeded. The tokens are in your wallet.</p>
+    <p>Now you try to sell — and the transaction fails.</p>
+    <p>You try again. Same result.</p>
+    <p>This is one of the most frustrating things that can happen to a crypto user, and it's often the result of a honeypot token.</p>
+    <p>The trick isn't necessarily in the price or the chart.</p>
+    <p><strong>It's in the smart contract.</strong></p>
+    <p>The good news is that many of the mechanisms used to create a honeypot can be checked before you buy. That check can take seconds.</p>
+
+    <hr class="sep">
+
+    <h2>First, what is a honeypot?</h2>
+    <p>Think of a honeypot as a door that opens in one direction.</p>
+    <p>You can walk in.</p>
+    <p>You can't walk back out.</p>
+    <p>In crypto, the "door" is the token's smart contract. A token on a blockchain such as Ethereum or BNB Smart Chain is controlled by a contract, and that contract contains the rules for transferring the token between addresses.</p>
+    <p>When you buy a token, you're interacting with those rules. When you sell it, you're interacting with them again.</p>
+    <p>And the contract can treat those two actions differently.</p>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 250" role="img" aria-labelledby="fig1t fig1d" xmlns="http://www.w3.org/2000/svg">
+        <title id="fig1t">A one-way door</title>
+        <desc id="fig1d">A buy transaction passes from your wallet through the token contract to the liquidity pool and is allowed. A sell transaction travelling the other way is stopped at the contract and refused, so nothing comes back to the wallet.</desc>
+        <style>
+          .lbl{font-family:'IBM Plex Sans',sans-serif; font-size:19px; fill:#1B2430;}
+          .sm{font-family:'IBM Plex Mono',monospace; font-size:15px; fill:#5B677D;}
+          .ok{fill:#15803D;} .bad{fill:#B91C1C;}
+          .box{fill:#FFFFFF; stroke:#1B2430; stroke-width:2;}
+          .door{fill:#F6F2FF; stroke:#6D28D9; stroke-width:2;}
+          .tag{font-family:'IBM Plex Mono',monospace; font-size:14px; letter-spacing:0.06em;}
+        </style>
+
+        <rect class="door" x="241" y="20" width="118" height="210"/>
+        <text class="lbl" x="300" y="112" text-anchor="middle">Token</text>
+        <text class="lbl" x="300" y="134" text-anchor="middle">contract</text>
+        <text class="sm" x="300" y="158" text-anchor="middle" style="font-size:13px;">transfer rules</text>
+
+        <rect class="box" x="8" y="58" width="118" height="56"/>
+        <text class="lbl" x="67" y="92" text-anchor="middle">Your wallet</text>
+        <rect class="box" x="474" y="58" width="118" height="56"/>
+        <text class="lbl" x="533" y="80" text-anchor="middle">Liquidity</text>
+        <text class="lbl" x="533" y="101" text-anchor="middle">pool</text>
+
+        <line x1="126" y1="86" x2="231" y2="86" stroke="#15803D" stroke-width="3"/>
+        <path d="M233 86 l-11 -6 v12 z" fill="#15803D"/>
+        <line x1="359" y1="86" x2="464" y2="86" stroke="#15803D" stroke-width="3"/>
+        <path d="M466 86 l-11 -6 v12 z" fill="#15803D"/>
+        <text class="tag ok" x="146" y="72">BUY</text>
+        <text class="sm ok" x="376" y="72">allowed</text>
+
+        <line x1="464" y1="196" x2="373" y2="196" stroke="#B91C1C" stroke-width="3"/>
+        <path d="M371 196 l11 -6 v12 z" fill="#B91C1C"/>
+        <line x1="361" y1="174" x2="361" y2="218" stroke="#B91C1C" stroke-width="6"/>
+        <text class="tag bad" x="474" y="182">SELL</text>
+        <line x1="231" y1="196" x2="150" y2="196" stroke="#B91C1C" stroke-width="2" stroke-dasharray="6 6" opacity="0.45"/>
+        <text class="sm bad" x="12" y="182">nothing comes back</text>
+      </svg>
+      </div>
+      <figcaption>The same contract decides both directions — and nothing forces it to answer the same way twice.</figcaption>
+    </figure>
+
+    <p>A malicious token can therefore be written so that:</p>
+    <p><strong>BUY → allowed</strong><br><strong>SELL → blocked</strong></p>
+    <p>That's the basic idea behind a honeypot.</p>
+
+    <h2>How can a token stop you from selling?</h2>
+    <p>There isn't just one way to create a honeypot. Some contracts use very obvious restrictions. Others are more subtle.</p>
+
+    <h3>1. Selling is blocked</h3>
+    <p>The contract can check who is trying to sell and refuse the transaction unless the address is specifically allowed.</p>
+    <p>You may be able to buy normally, while only certain wallets are allowed to sell.</p>
+
+    <h3>2. The selling tax is extremely high</h3>
+    <p>The contract may technically allow you to sell, but take an enormous percentage of the transaction.</p>
+    <p>For example, a token might have a normal-looking 2% fee when you buy. The sell fee could be 99%.</p>
+    <p>At that point, selling is technically possible, but economically useless.</p>
+
+    <h3>3. The tax can be changed</h3>
+    <p>This is one of the reasons you shouldn't look only at the tax rate you see right now.</p>
+    <p>A contract might start with a 2% sell tax. Later, an address with the necessary permissions could change it to 50%, 90% or even 100%.</p>
+    <p>So the important question isn't only:</p>
+    <p><strong>"What is the tax?"</strong></p>
+    <p>It is also:</p>
+    <p><strong>"Who can change the tax?"</strong></p>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 190" role="img" aria-labelledby="fig2t fig2d" xmlns="http://www.w3.org/2000/svg">
+        <title id="fig2t">A tax you can see, and a permission you can't</title>
+        <desc id="fig2d">A timeline showing a sell tax of two percent when you buy, an owner transaction changing the setting, and a sell tax of ninety-nine percent afterwards. The permission existed the whole time.</desc>
+        <style>
+          .h{font-family:'Space Grotesk',sans-serif; font-size:21px; font-weight:700; fill:#1B2430;}
+          .t{font-family:'IBM Plex Sans',sans-serif; font-size:17px; fill:#1B2430;}
+          .m{font-family:'IBM Plex Mono',monospace; font-size:14px; fill:#5B677D;}
+          .good{fill:#15803D;} .warn{fill:#B91C1C;} .acc{fill:#6D28D9;}
+        </style>
+        <line x1="20" y1="70" x2="580" y2="70" stroke="#E4E8ED" stroke-width="3"/>
+        <circle cx="90" cy="70" r="9" fill="#15803D"/>
+        <circle cx="300" cy="70" r="9" fill="#6D28D9"/>
+        <circle cx="510" cy="70" r="9" fill="#B91C1C"/>
+
+        <text class="h good" x="90" y="44" text-anchor="middle">2%</text>
+        <text class="m" x="90" y="98" text-anchor="middle">when you buy</text>
+
+        <text class="t acc" x="300" y="44" text-anchor="middle">owner changes the setting</text>
+        <text class="m acc" x="300" y="98" text-anchor="middle">one transaction</text>
+
+        <text class="h warn" x="510" y="44" text-anchor="middle">99%</text>
+        <text class="m" x="510" y="98" text-anchor="middle">when you sell</text>
+
+        <rect x="20" y="130" width="560" height="44" fill="#F6F2FF" stroke="#6D28D9" stroke-width="2"/>
+        <text class="t" x="300" y="158" text-anchor="middle">The permission existed before you bought. Only the number changed.</text>
+      </svg>
+      </div>
+      <figcaption>A scanner can tell you the tax is changeable. It cannot tell you when someone will change it.</figcaption>
+    </figure>
+
+    <h3>4. Transfers can be paused</h3>
+    <p>Some contracts contain an emergency switch that can stop transfers.</p>
+    <p>While the switch is off, everything may appear normal. If it is activated later, token transfers can stop.</p>
+
+    <h3>5. Wallets can be blacklisted</h3>
+    <p>A contract may contain a blacklist. An address can be added to that list, after which the token can no longer be transferred from that wallet.</p>
+    <p>This can leave you holding tokens that still appear in your wallet but cannot actually be moved.</p>
+
+    <h2>Why do honeypots look convincing?</h2>
+    <p>This is what makes them dangerous.</p>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 236" role="img" aria-labelledby="fig5t fig5d" xmlns="http://www.w3.org/2000/svg">
+        <title id="fig5t">Where the signals come from</title>
+        <desc id="fig5d">Five steps on the operator's side: deploy the contract with the restriction already in it, add liquidity, trade with itself so the chart moves, let buyers arrive, then refuse their sells and withdraw the pooled value.</desc>
+        <style>
+          .n{font-family:'IBM Plex Mono',monospace; font-size:15px; fill:#FFFFFF;}
+          .s{font-family:'IBM Plex Sans',sans-serif; font-size:14px; fill:#1B2430;}
+          .note{font-family:'IBM Plex Sans',sans-serif; font-size:15px; fill:#1B2430;}
+        </style>
+        <line x1="46" y1="40" x2="554" y2="40" stroke="#E4E8ED" stroke-width="3"/>
+
+        <circle cx="46" cy="40" r="19" fill="#6D28D9"/><text class="n" x="46" y="46" text-anchor="middle">1</text>
+        <text class="s" x="46" y="86" text-anchor="middle">deploy the</text>
+        <text class="s" x="46" y="104" text-anchor="middle">contract</text>
+
+        <circle cx="173" cy="40" r="19" fill="#6D28D9"/><text class="n" x="173" y="46" text-anchor="middle">2</text>
+        <text class="s" x="173" y="86" text-anchor="middle">add</text>
+        <text class="s" x="173" y="104" text-anchor="middle">liquidity</text>
+
+        <circle cx="300" cy="40" r="19" fill="#6D28D9"/><text class="n" x="300" y="46" text-anchor="middle">3</text>
+        <text class="s" x="300" y="86" text-anchor="middle">trade with</text>
+        <text class="s" x="300" y="104" text-anchor="middle">itself</text>
+
+        <circle cx="427" cy="40" r="19" fill="#6D28D9"/><text class="n" x="427" y="46" text-anchor="middle">4</text>
+        <text class="s" x="427" y="86" text-anchor="middle">buyers</text>
+        <text class="s" x="427" y="104" text-anchor="middle">arrive</text>
+
+        <circle cx="554" cy="40" r="19" fill="#B91C1C"/><text class="n" x="554" y="46" text-anchor="middle">5</text>
+        <text class="s" x="554" y="86" text-anchor="middle" style="fill:#B91C1C;">sells</text>
+        <text class="s" x="554" y="104" text-anchor="middle" style="fill:#B91C1C;">refused</text>
+
+        <rect x="16" y="136" width="568" height="84" fill="#F6F2FF" stroke="#6D28D9" stroke-width="2"/>
+        <text class="note" x="300" y="166" text-anchor="middle">The chart, the holder count and the recent trades in steps 3 and 4</text>
+        <text class="note" x="300" y="188" text-anchor="middle">are produced by the same person who wrote step 1.</text>
+        <text class="note" x="300" y="210" text-anchor="middle" style="font-size:14px; fill:#5B677D;">The restriction was there before any of them existed.</text>
+      </svg>
+      </div>
+      <figcaption>Nothing in steps 2 to 4 is evidence about the contract. It is evidence that somebody has money and a script.</figcaption>
+    </figure>
+
+    <p>A token can look completely normal from the outside. You might see:</p>
+    <ul>
+      <li>a rising price chart</li>
+      <li>lots of holders</li>
+      <li>recent transactions</li>
+      <li>a token logo</li>
+      <li>a balance in your wallet</li>
+      <li>a dollar value attached to that balance</li>
+    </ul>
+    <p>None of those things proves that you can sell.</p>
+    <p>A price chart tells you what trades have happened. A wallet tells you that you own the tokens.</p>
+    <p>Neither one answers the most important question:</p>
+    <blockquote class="tagline">Can this token actually be sold by my wallet?</blockquote>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 210" role="img" aria-labelledby="fig3t fig3d" xmlns="http://www.w3.org/2000/svg">
+        <title id="fig3t">What you can see, and what decides</title>
+        <desc id="fig3d">Four visible signals — price chart, holder count, wallet balance and dollar value — none of which answer whether a sell will be allowed. The transfer rule inside the contract does.</desc>
+        <style>
+          .hd{font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; fill:#1B2430;}
+          .it{font-family:'IBM Plex Sans',sans-serif; font-size:16px; fill:#5B677D;}
+          .q{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700; fill:#6D28D9;}
+          .chip{fill:#FFFFFF; stroke:#E4E8ED; stroke-width:2;}
+        </style>
+        <text class="hd" x="16" y="22">What you can see</text>
+        <rect class="chip" x="16" y="36" width="150" height="34"/><text class="it" x="30" y="58">price chart</text>
+        <rect class="chip" x="16" y="76" width="150" height="34"/><text class="it" x="30" y="98">holder count</text>
+        <rect class="chip" x="16" y="116" width="150" height="34"/><text class="it" x="30" y="138">wallet balance</text>
+        <rect class="chip" x="16" y="156" width="150" height="34"/><text class="it" x="30" y="178">dollar value</text>
+
+        <line x1="170" y1="53" x2="240" y2="96" stroke="#E4E8ED" stroke-width="2" stroke-dasharray="5 5"/>
+        <line x1="170" y1="93" x2="240" y2="99" stroke="#E4E8ED" stroke-width="2" stroke-dasharray="5 5"/>
+        <line x1="170" y1="133" x2="240" y2="103" stroke="#E4E8ED" stroke-width="2" stroke-dasharray="5 5"/>
+        <line x1="170" y1="173" x2="240" y2="107" stroke="#E4E8ED" stroke-width="2" stroke-dasharray="5 5"/>
+
+        <text class="q" x="295" y="96" text-anchor="middle">Can I sell?</text>
+        <text class="it" x="295" y="122" text-anchor="middle" style="font-size:14px;">none of them answer this</text>
+
+        <text class="hd" x="584" y="22" text-anchor="end">What decides</text>
+        <rect x="424" y="52" width="160" height="104" fill="#F6F2FF" stroke="#6D28D9" stroke-width="2"/>
+        <text class="it" x="504" y="86" text-anchor="middle" style="fill:#1B2430;">the transfer rule</text>
+        <text class="it" x="504" y="108" text-anchor="middle" style="fill:#1B2430;">in the contract</text>
+        <text class="it" x="504" y="134" text-anchor="middle" style="font-size:13px;">public · readable</text>
+        <line x1="362" y1="92" x2="416" y2="96" stroke="#6D28D9" stroke-width="3"/>
+        <path d="M418 96 l-11 -5 v11 z" fill="#6D28D9"/>
+      </svg>
+      </div>
+      <figcaption>Every signal on the left can be manufactured by the same person who wrote the restriction on the right.</figcaption>
+    </figure>
+
+    <p>That's why a honeypot can look attractive right up until the moment you try to leave.</p>
+
+    <h2>The moment people usually discover the problem</h2>
+    <p>Imagine you find a new token.</p>
+    <p>The chart is going up. You buy $100 worth. The purchase goes through. Your wallet now shows the tokens. Everything looks fine.</p>
+    <p>A few minutes later, you decide to sell.</p>
+    <p>The transaction fails.</p>
+    <p>You try again. Still nothing.</p>
+    <p>You increase the gas. It fails again.</p>
+    <p>The tokens haven't disappeared. They're still sitting in your wallet. But if the contract prevents your address from selling, that balance may not be useful to you.</p>
+
+    <figure class="fig">
+      <img src="wallet-honeypot-warning.png" width="735" height="250" loading="lazy"
+           style="width:100%; height:auto; display:block; border:1px solid var(--paper-border);"
+           alt="A wallet swap screen showing a pink warning that reads: the pay token you selected is a honeypot token, it can be bought but cannot be sold, the trade may fail. Directly beneath it is a large, fully enabled Swap button.">
+      <figcaption>Some wallets and swap interfaces do run this check for you, and say so plainly. Note what sits directly underneath the warning: the Swap button still works. A warning is not a lock — the last step is always yours.</figcaption>
+    </figure>
+
+    <p>This is why checking <strong>before buying</strong> is so important.</p>
+
+    <h2>How to check a token before you buy</h2>
+    <p>There isn't one magic test that proves a token is safe. Instead, look at several different signals.</p>
+
+    <div class="steps">
+      <div class="step-card">
+        <span class="n">CHECK 1</span>
+        <h4>The contract's own indicators</h4>
+        <p><span class="yes">Answers:</span> can a sell be simulated, is there a tax, can it be changed, can transfers be paused, is there a blacklist, can the owner mint or edit balances.</p>
+        <p><span class="no">Doesn't answer:</span> what the owner intends to do next.</p>
+      </div>
+      <div class="step-card">
+        <span class="n">CHECK 2</span>
+        <h4>Real sells by ordinary wallets</h4>
+        <p><span class="yes">Answers:</span> whether anyone other than the deployer has successfully got out.</p>
+        <p><span class="no">Doesn't answer:</span> whether <em>your</em> address is treated the same way.</p>
+      </div>
+      <div class="step-card">
+        <span class="n">CHECK 3</span>
+        <h4>Who owns the supply</h4>
+        <p><span class="yes">Answers:</span> how concentrated the holdings are, and how much the price depends on a few wallets.</p>
+        <p><span class="no">Doesn't answer:</span> whether selling is blocked at all.</p>
+      </div>
+      <div class="step-card">
+        <span class="n">CHECK 4</span>
+        <h4>A small test sell</h4>
+        <p><span class="yes">Answers:</span> whether your wallet can actually get out, right now.</p>
+        <p><span class="no">Doesn't answer:</span> anything before you have already bought — and it costs gas either way.</p>
+      </div>
+    </div>
+
+    <h3>1. Check the token's contract</h3>
+    <p>Security scanners can inspect a token's contract and report things such as:</p>
+    <ul>
+      <li>whether selling can be simulated successfully</li>
+      <li>whether buy or sell taxes exist</li>
+      <li>whether those taxes can be changed</li>
+      <li>whether transfers can be paused</li>
+      <li>whether blacklist functionality exists</li>
+      <li>whether the owner has special permissions</li>
+      <li>whether additional tokens can be minted</li>
+      <li>whether other unusual controls are present</li>
+    </ul>
+    <p>This is the type of information that <a href="index.html">the SaveSaveSaveSave scanner</a> is designed to surface.</p>
+    <p>Paste the contract address, select the correct blockchain, and look at the individual findings rather than relying only on one overall label.</p>
+    <p>Most importantly, pay attention to what the scanner <strong>could not determine</strong>.</p>
+    <p>"Unknown" is not the same thing as "safe."</p>
+
+    <h3>2. Look for real sells</h3>
+    <p>You can also inspect the token's activity on a block explorer.</p>
+    <p>You're looking for evidence that ordinary wallets have actually been able to sell the token. This is different from simply seeing lots of buys.</p>
+    <p>A token can have plenty of buying activity while still preventing ordinary holders from selling.</p>
+    <p>If you see many purchases but very little evidence of successful sells by regular wallets, that's a reason to investigate further. It isn't, by itself, absolute proof of a honeypot.</p>
+
+    <h3>3. Check who owns the supply</h3>
+    <p>Look at the largest holders. If a small number of wallets control a large percentage of the supply, that creates additional risk — those wallets may be able to have a major effect on the market if they sell.</p>
+    <p>And remember: a token can be completely sellable and still be a terrible investment.</p>
+    <p><strong>Honeypot detection and overall token-risk detection are not the same thing.</strong></p>
+
+    <h3>4. If you've already bought it, test a small sell</h3>
+    <p>If you've already purchased a token and you're unsure whether you can sell, testing a small amount can provide useful information. Do this while your position is still small.</p>
+    <p>There will be a network fee, and a failed transaction may still cost gas.</p>
+    <p>But it can answer a very practical question:</p>
+    <p><strong>Can my wallet actually get out?</strong></p>
+    <p>This is a fallback check — not something you should have to rely on when a contract can be inspected beforehand.</p>
+
+    <h2>What does a "clean" result actually mean?</h2>
+    <p>This part is important.</p>
+    <p>A scanner finding no known honeypot restriction <strong>does not mean that the token is safe.</strong></p>
+    <p>It means something much narrower:</p>
+    <blockquote class="tagline">The available checks did not identify the specific restrictions they were designed to detect.</blockquote>
+    <p>There is a big difference. A token could pass a honeypot check and still have serious problems.</p>
+
+    <h3>The owner could change something later</h3>
+    <p>If the contract gives an owner permission to change the sell tax, the current tax might be perfectly normal. That doesn't mean the permission isn't a risk.</p>
+    <p>A scanner can tell you that the setting is changeable. It cannot know what the owner will do tomorrow.</p>
+
+    <h3>Liquidity could disappear</h3>
+    <p>A token can be completely sellable one minute and become difficult or impossible to sell after liquidity is removed. That's a different problem from a honeypot.</p>
+
+    <h3>The project itself could be questionable</h3>
+    <p>A contract can have perfectly normal transfer mechanics while the people behind the project make false promises, abandon the project or otherwise behave irresponsibly.</p>
+    <p>Contract analysis cannot tell you everything about the people behind a token.</p>
+
+    <h3>Some information may simply be unavailable</h3>
+    <p>Sometimes a security check cannot obtain enough information to reach a reliable conclusion.</p>
+    <p>That's why <a href="terms.html"><strong>INSUFFICIENT DATA</strong></a> should not quietly become a green light.</p>
+    <p>If the system doesn't know, the honest answer is:</p>
+    <p><strong>We don't know.</strong></p>
+
+    <h2>One question to remember</h2>
+    <p>When you see a token going up, it's natural to ask:</p>
+    <p><strong>"How high could this go?"</strong></p>
+    <p>Before that, ask something more basic:</p>
+    <p class="closing-quote"><strong>"Can I get out?"</strong></p>
+    <p>Look at the contract. Look at the selling activity. Look at the permissions. Look at what can be changed.</p>
+    <p>And if a security check cannot determine something, treat it as unknown rather than assuming everything is fine.</p>
+    <p>A honeypot isn't always obvious from the chart.</p>
+    <p>Sometimes the most important information about a token isn't visible on the chart at all.</p>
+    <p><strong>It's in the code.</strong></p>
+
+    <hr class="sep">
+    <p class="living-note">This article is for educational purposes only. It explains token-contract mechanics and ways to inspect them before interacting with a token. It is not financial advice and does not guarantee that any token is safe.</p>
+
+    <div class="bottom-cta">
+      <a class="dl-btn" href="index.html">Check a token address →</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+</body>
+</html>
