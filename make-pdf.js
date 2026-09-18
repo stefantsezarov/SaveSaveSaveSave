@@ -20,7 +20,7 @@ const path = require('path');
     footerTemplate:
       '<div style="width:100%; font-size:8pt; color:#5B677D; padding:0 16mm; ' +
       'font-family:sans-serif; display:flex; justify-content:space-between;">' +
-      '<span>SaveSaveSaveSave — Whitepaper v3.0 · September 2026</span>' +
+      '<span>SaveSaveSaveSave — Whitepaper · September 2026 · savesavesavesave.xyz</span>' +
       '<span class="pageNumber"></span></div>',
     margin: { top: '18mm', right: '16mm', bottom: '20mm', left: '16mm' },
   });

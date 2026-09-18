@@ -60,6 +60,43 @@ check('a missing scan_type is rejected', (() => {
   try { M.makeScanResult({ verdict: 'pass' }); return false; } catch (_) { return true; }
 })());
 
+// ---- reserved future types --------------------------------------------
+// file_scan validated for a week with no engine behind it. Nothing broke
+// because nothing called it, which is exactly why it was worth removing:
+// the first caller to trust the enum would have shipped an empty result
+// that passed validation.
+
+check('every production scan_type is a name an engine can actually produce',
+  Object.values(M.SCAN_TYPES).every(t =>
+    ['crypto_address_scan', 'token_scan', 'wallet_scan', 'prompt_scan', 'message_scan'].includes(t))
+  && Object.keys(M.SCAN_TYPES).length === 5,
+  'adding a name here without an engine is the bug this test exists to catch');
+
+check('file_scan is NOT in the production enum',
+  !Object.values(M.SCAN_TYPES).includes('file_scan'));
+
+check('file_scan cannot be constructed as a production result', (() => {
+  try { M.makeScanResult({ scan_type: 'file_scan', verdict: 'pass' }); return false; }
+  catch (_) { return true; }
+})(), 'a reserved capability must not be buildable');
+
+check('...and the error says it is reserved, not that it is a typo', (() => {
+  try { M.makeScanResult({ scan_type: 'file_scan', verdict: 'pass' }); return false; }
+  catch (e) { return /reserved future scan type/i.test(e.message) && /no engine/i.test(e.message); }
+})(), 'otherwise the next person spends an hour hunting a spelling mistake');
+
+check('the two registries never overlap',
+  Object.values(M.FUTURE_SCAN_TYPES)
+    .every(t => !Object.values(M.SCAN_TYPES).includes(t)));
+
+check('the production enum is frozen', (() => {
+  try { M.SCAN_TYPES.FILE = 'file_scan'; } catch (_) { /* strict mode throws */ }
+  return !('FILE' in M.SCAN_TYPES);
+})(), 'a reserved type must not be re-addable at runtime');
+
+check('a combined result never claims a reserved type',
+  M.combineScans({ sections: [], scanner_version: 'x' }).scan_type === M.SCAN_TYPES.MESSAGE);
+
 check('INSUFFICIENT DATA gets the right human label',
   mk('unknown', 'x').label === 'INSUFFICIENT DATA');
 

@@ -22,7 +22,8 @@ const SITE = 'https://savesavesavesave.xyz';
 // promptscan.test.js helps nobody.
 const PAGES = [
   { file: 'index.html',      loc: '/',                changefreq: 'weekly',  priority: '1.0' },
-  { file: 'whitepaper.html', loc: '/whitepaper.html', changefreq: 'monthly', priority: '0.6' },
+  { file: 'whitepaper.html', loc: '/whitepaper.html', changefreq: 'monthly', priority: '0.7' },
+  { file: 'technical-appendix.html', loc: '/technical-appendix.html', changefreq: 'monthly', priority: '0.5' },
   { file: 'guides.html',     loc: '/guides.html',     changefreq: 'weekly',  priority: '0.8' },
   { file: 'honeypot-tokens.html', loc: '/honeypot-tokens.html', changefreq: 'monthly', priority: '0.7' },
   { file: 'invisible-characters.html', loc: '/invisible-characters.html', changefreq: 'monthly', priority: '0.7' },

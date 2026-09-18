@@ -35,7 +35,7 @@
   # sitemap.xml and og-image.png were confirmed to have no CSP at all.
   # Mirrored verbatim from the meta tag so nothing can break, plus
   # frame-ancestors, which a meta tag is not permitted to set.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev https://cloudflareinsights.com; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com;
 
 # HTML must revalidate. Without this a returning visitor keeps yesterday's
 # verdict engine after a deploy, which for a security tool means running
@@ -58,6 +58,12 @@
 
 # Crawler-facing files: short enough that a correction is picked up same-day.
 /sitemap.xml
+  Cache-Control: public, max-age=3600
+
+# ads.txt is read by ad-network crawlers, never by a visitor's browser.
+# An hour means a correction to the authorised-seller list takes effect
+# the same day rather than after a long CDN TTL.
+/ads.txt
   Cache-Control: public, max-age=3600
 
 /robots.txt

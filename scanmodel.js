@@ -21,14 +21,27 @@
    isolation, which is the point of it being its own file.
    ===================================================================== */
 
-const SCAN_TYPES = {
+// Production scan types. Every one of these has an engine behind it that
+// can actually produce a result.
+const SCAN_TYPES = Object.freeze({
   CRYPTO_ADDRESS: 'crypto_address_scan',
   TOKEN: 'token_scan',
   WALLET: 'wallet_scan',
   PROMPT: 'prompt_scan',
   MESSAGE: 'message_scan',
-  FILE: 'file_scan',
-};
+});
+
+// Reserved names, kept deliberately OUT of SCAN_TYPES.
+//
+// `file_scan` sat in the production enum for a week with nothing behind
+// it. Nothing broke, because nothing called it — but a validator that
+// accepts a scan type no engine produces is a promise the product cannot
+// keep, and the first caller to trust it would have shipped an empty
+// result that validated cleanly. A name is a claim. This registry exists
+// so the claim can be recorded without being constructible.
+const FUTURE_SCAN_TYPES = Object.freeze({
+  FILE: 'file_scan',              // needs steps 9-10: static Markdown/HTML, then JS triage
+});
 
 // Ordering for combination. Note where INSUFFICIENT DATA sits: worse than
 // PASS, because not knowing is not the same as being clear; but not worse
@@ -47,6 +60,14 @@ function nowIso() { return new Date().toISOString(); }
 function makeScanResult(o) {
   if (!o || !o.scan_type) throw new Error('scan_type is required');
   if (!Object.values(SCAN_TYPES).includes(o.scan_type)) {
+    // A reserved type gets its own message, because "unknown" would read
+    // as a typo and send someone looking for a spelling mistake instead
+    // of telling them the capability does not exist yet.
+    if (Object.values(FUTURE_SCAN_TYPES).includes(o.scan_type)) {
+      throw new Error(
+        `${o.scan_type} is a reserved future scan type with no engine behind it. `
+        + 'It cannot be constructed as a production result.');
+    }
     throw new Error(`unknown scan_type: ${o.scan_type}`);
   }
   const verdict = o.verdict || 'unknown';
@@ -135,7 +156,6 @@ function describeOutcome(combined, total) {
     [SCAN_TYPES.CRYPTO_ADDRESS]: 'an address in this message',
     [SCAN_TYPES.TOKEN]: 'a token in this message',
     [SCAN_TYPES.WALLET]: 'a wallet in this message',
-    [SCAN_TYPES.FILE]: 'the file',
   })[driver.scan_type] || 'one of the checks' : 'one of the checks';
 
   let summary;
@@ -161,7 +181,7 @@ function describeOutcome(combined, total) {
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 /* ----------------------------------------------------------- composite
-   Builds a message_scan (or file_scan) from its parts, keeping every part
+   Builds a message_scan from its parts, keeping every part
    intact and addressable. `sections` is what the UI renders; `components`
    is what the policy reads. They are the same objects — no copy drifts. */
 function combineScans(opts) {
@@ -305,7 +325,7 @@ function pendingAddressScan(address, chain) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    SCAN_TYPES, VERDICT_RANK, VERDICT_LABEL, SEV_RANK, MODEL_VERSION,
+    SCAN_TYPES, FUTURE_SCAN_TYPES, VERDICT_RANK, VERDICT_LABEL, SEV_RANK, MODEL_VERSION,
     makeScanResult, combineVerdicts, combineScans, describeOutcome,
     recommendedActions, fromPromptScan, fromAddressScan, pendingAddressScan,
   };

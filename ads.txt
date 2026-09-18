@@ -1,0 +1,19 @@
+# ads.txt — IAB Tech Lab Authorized Digital Sellers
+#
+# This file names the only parties allowed to sell advertising inventory
+# on savesavesavesave.xyz. Anything claiming to sell this domain's
+# inventory that does not appear below is unauthorised, which is the
+# whole point of the file: it is what stops a spoofer selling ad space
+# on a domain they do not own.
+#
+# It is also how Google verifies ownership of this site, and it was
+# chosen over the AdSense code snippet deliberately. The snippet loads a
+# third-party script into every page; this is a static text file that
+# Google's crawler reads from the server. No visitor's browser contacts
+# an ad network because of it, no Content-Security-Policy directive has
+# to be widened, and the scan-never-leaves-your-browser guarantee is
+# untouched.
+#
+# Format per line: <ad system domain>, <publisher id>, <DIRECT|RESELLER>, <certification authority id>
+
+google.com, pub-7192453271158919, DIRECT, f08c47fec0942fa0

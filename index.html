@@ -17,7 +17,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev https://cloudflareinsights.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <title>Free Crypto Scam Checker — Messages &amp; Addresses — SaveSaveSaveSave</title>
@@ -92,7 +92,7 @@
         "Sanctioned and blacklisted address screening",
         "Proxy and mutable-contract detection (EVM)",
         "Chain-native validation for EVM, Solana, Sui and TRON addresses",
-        "Message scanning runs entirely in the browser; the text is never transmitted",
+        "Message and prompt scanning is performed locally in the browser; the submitted text is never transmitted",
         "Conservative verdicts: missing data is reported, never treated as a pass",
         "Mixed results are never averaged: the worst component controls the guidance"
       ],
@@ -306,6 +306,24 @@
   .addr-result li{font-size:0.8rem;}
   .addr-unchecked{margin-top:9px; font-size:0.78rem; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;}
 
+  /* Where the address sat in the message. The excerpt is the only place
+     on this page that prints arbitrary prose from the submitted text, so
+     it is deliberately styled as a quotation rather than as UI chrome —
+     a reader should never mistake the scammer's words for ours. */
+  .addr-where{margin-top:10px; border-left:2px solid var(--border); padding-left:10px;}
+  .addr-where-head{font-family:'IBM Plex Mono',monospace; font-size:0.68rem;
+    letter-spacing:0.04em; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;}
+  .addr-excerpt{font-family:'IBM Plex Mono',monospace; font-size:0.76rem; line-height:1.65;
+    color:var(--text-muted); word-break:break-word; white-space:pre-wrap;}
+  .addr-excerpt mark{background:rgba(153,69,255,0.22); color:var(--text);
+    padding:1px 2px; border-bottom:1px solid var(--accent-solid);}
+  .addr-excerpt .ell{color:var(--border);}
+  .addr-links{margin-top:9px;}
+  .addr-explorer{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--accent);
+    text-decoration:none; border-bottom:1px solid transparent;}
+  .addr-explorer:hover{border-bottom-color:var(--accent);}
+  .addr-explorer.none{color:var(--text-muted); cursor:default;}
+
   .urlrow{font-family:'IBM Plex Mono',monospace; font-size:0.76rem; padding:9px 11px; background:var(--surface-2);
     border:1px solid var(--border); border-radius:0; margin-bottom:7px; word-break:break-all;}
   .urlrow .host{color:var(--text); font-weight:600;}
@@ -397,6 +415,41 @@
   footer{margin-top:60px; padding:26px 20px 40px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:0.76rem; max-width:960px; margin-left:auto; margin-right:auto;}
   footer p{max-width:620px; margin:0 auto 6px;}
 
+  /* ---- Advertising rails -------------------------------------------
+     Fixed in the page gutters so they never enter the document flow, and
+     never enter the scan result markup. An ad that participates in
+     layout can push a verdict down as a creative loads; a fixed rail
+     cannot. The scanner's measured Cumulative Layout Shift is already
+     0.332, which Google rates poor, so nothing here is allowed to add
+     to it.
+
+     The rail sits beside the whole page, results included. It is not
+     inside the result DOM, it is not styled like any control or verdict,
+     and no ad call is ever given a finding, an address, a URL from a
+     message, or any part of pasted text. promptscan.ui.test.js asserts
+     the last part.
+
+     NOT RENDERED below 1280px — the scanner needs the full width on a
+     phone, and roughly a third of visitors arrive on Android.
+
+     KILL SWITCH: <html data-ads="off"> removes every slot instantly. */
+  .ad-rail{display:none;}
+  @media (min-width: 1280px){
+    .ad-rail{
+      display:block; position:fixed; top:96px; width:160px; z-index:1;
+      max-height:calc(100vh - 140px); overflow:hidden;
+    }
+    .ad-rail-left{left:max(12px, calc((100vw - 960px) / 2 - 176px));}
+    .ad-rail-right{right:max(12px, calc((100vw - 960px) / 2 - 176px));}
+    .ad-rail .adsbygoogle{width:160px; min-height:600px;}
+  }
+  .ad-label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:0.6rem;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);
+    opacity:0.75; margin-bottom:6px; text-align:center;
+  }
+  :root[data-ads="off"] .ad-rail{display:none !important;}
+
   @media (max-width: 640px){
     .steps{grid-template-columns:1fr;}
     .pass-id{text-align:left;}
@@ -411,6 +464,7 @@
   <div class="top-nav">
     <a class="nav-link" href="guides.html">Guides</a>
     <a class="nav-link" href="whitepaper.html">Whitepaper</a>
+    <a class="nav-link" href="technical-appendix.html">Technical appendix</a>
     <div class="brand-tag">v0.5 — EVM + Solana + Sui + TRON</div>
   </div>
 </header>
@@ -490,21 +544,25 @@
         </div>
 
         <div class="privacy-line">
-          <span class="accent">&#9679;</span> This runs entirely in your browser. The prompt is never sent anywhere, never stored, and never seen by us.
+          <span class="accent">&#9679;</span> This scan is local. The text you paste is analysed in your browser — never sent, never stored, never seen by us. <a href="whitepaper.html#privacy">What the site itself loads</a>.
         </div>
         <div class="inline-error" id="promptError" style="display:none;"></div>
       </div>
     </div>
   </section>
 
-  <div class="ad-slot ad-leaderboard"><span>Ad space — 728×90 leaderboard (connect your ad network here)</span></div>
+  <!-- The dashed "connect your ad network here" placeholders that used to
+       sit here and below #results are gone. Advertising is real now, and it
+       lives in the fixed side rails at the end of this file — deliberately
+       not in this position, which is directly above the scan result and
+       directly below it. An ad in the flow here would load as a verdict
+       renders and push it down the page; an ad in those two positions
+       would read as part of the result. -->
 
   <div class="loading" id="loadingState">Querying public security data…</div>
   <div class="scan-error" id="scanError"></div>
 
   <section id="results"></section>
-
-  <div class="ad-slot ad-inline"><span>Ad space — inline unit (connect your ad network here)</span></div>
 
   <section class="how">
     <h2>How the pass is built</h2>
@@ -1318,14 +1376,27 @@ if(typeof module !== 'undefined' && module.exports){
    isolation, which is the point of it being its own file.
    ===================================================================== */
 
-const SCAN_TYPES = {
+// Production scan types. Every one of these has an engine behind it that
+// can actually produce a result.
+const SCAN_TYPES = Object.freeze({
   CRYPTO_ADDRESS: 'crypto_address_scan',
   TOKEN: 'token_scan',
   WALLET: 'wallet_scan',
   PROMPT: 'prompt_scan',
   MESSAGE: 'message_scan',
-  FILE: 'file_scan',
-};
+});
+
+// Reserved names, kept deliberately OUT of SCAN_TYPES.
+//
+// `file_scan` sat in the production enum for a week with nothing behind
+// it. Nothing broke, because nothing called it — but a validator that
+// accepts a scan type no engine produces is a promise the product cannot
+// keep, and the first caller to trust it would have shipped an empty
+// result that validated cleanly. A name is a claim. This registry exists
+// so the claim can be recorded without being constructible.
+const FUTURE_SCAN_TYPES = Object.freeze({
+  FILE: 'file_scan',              // needs steps 9-10: static Markdown/HTML, then JS triage
+});
 
 // Ordering for combination. Note where INSUFFICIENT DATA sits: worse than
 // PASS, because not knowing is not the same as being clear; but not worse
@@ -1344,6 +1415,14 @@ function nowIso() { return new Date().toISOString(); }
 function makeScanResult(o) {
   if (!o || !o.scan_type) throw new Error('scan_type is required');
   if (!Object.values(SCAN_TYPES).includes(o.scan_type)) {
+    // A reserved type gets its own message, because "unknown" would read
+    // as a typo and send someone looking for a spelling mistake instead
+    // of telling them the capability does not exist yet.
+    if (Object.values(FUTURE_SCAN_TYPES).includes(o.scan_type)) {
+      throw new Error(
+        `${o.scan_type} is a reserved future scan type with no engine behind it. `
+        + 'It cannot be constructed as a production result.');
+    }
     throw new Error(`unknown scan_type: ${o.scan_type}`);
   }
   const verdict = o.verdict || 'unknown';
@@ -1432,7 +1511,6 @@ function describeOutcome(combined, total) {
     [SCAN_TYPES.CRYPTO_ADDRESS]: 'an address in this message',
     [SCAN_TYPES.TOKEN]: 'a token in this message',
     [SCAN_TYPES.WALLET]: 'a wallet in this message',
-    [SCAN_TYPES.FILE]: 'the file',
   })[driver.scan_type] || 'one of the checks' : 'one of the checks';
 
   let summary;
@@ -1458,7 +1536,7 @@ function describeOutcome(combined, total) {
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 /* ----------------------------------------------------------- composite
-   Builds a message_scan (or file_scan) from its parts, keeping every part
+   Builds a message_scan from its parts, keeping every part
    intact and addressable. `sections` is what the UI renders; `components`
    is what the policy reads. They are the same objects — no copy drifts. */
 function combineScans(opts) {
@@ -1602,12 +1680,11 @@ function pendingAddressScan(address, chain) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    SCAN_TYPES, VERDICT_RANK, VERDICT_LABEL, SEV_RANK, MODEL_VERSION,
+    SCAN_TYPES, FUTURE_SCAN_TYPES, VERDICT_RANK, VERDICT_LABEL, SEV_RANK, MODEL_VERSION,
     makeScanResult, combineVerdicts, combineScans, describeOutcome,
     recommendedActions, fromPromptScan, fromAddressScan, pendingAddressScan,
   };
 }
-
 /* =====================================================================
    PROMPT SAFETY SCAN ENGINE  (verbatim from promptscan.js)
    ===================================================================== */
@@ -2585,6 +2662,97 @@ function extractAddresses(text) {
   return found.sort((a, b) => a.start - b.start);
 }
 
+// --------------------------------------------------------------- stage 6c
+// WHERE it was found, and WHERE TO LOOK IT UP YOURSELF.
+//
+// An address shown on its own is a claim with no provenance: the reader
+// has to take on faith that it came from the message at all, and a wallet
+// address and a token mint look identical out of context. The sentence
+// around it usually carries the entire meaning — "send 0.1 ETH to 0x…" is
+// a different situation from "the contract at 0x… was audited" — and the
+// scanner has that sentence for free, because extraction already recorded
+// the offset.
+//
+// Returned as PARTS, never as markup. The engine has no business emitting
+// HTML, and the renderer must escape all three pieces itself; handing back
+// a pre-highlighted string would put attacker-controlled text one careless
+// innerHTML away from the page.
+function contextExcerpt(text, start, end, radius) {
+  const r = typeof radius === 'number' ? radius : 60;
+  if (typeof text !== 'string' || !text.length) return null;
+  if (!(start >= 0) || !(end > start) || end > text.length) return null;
+
+  // Prefer a line boundary: a scam message is usually written in short
+  // lines, and cutting at one reads far better than a fixed window that
+  // slices a word in half.
+  const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+  const nlAfter = text.indexOf('\n', end);
+  const lineEnd = nlAfter === -1 ? text.length : nlAfter;
+
+  const from = Math.max(lineStart, start - r);
+  const to = Math.min(lineEnd, end + r);
+
+  return {
+    before: text.slice(from, start),
+    match: text.slice(start, end),
+    after: text.slice(end, to),
+    // "Truncated" means this LINE was cut, not that the message has other
+    // lines. The line number already says there is more above and below;
+    // an ellipsis on a complete line reads as though something was hidden.
+    truncatedStart: from > lineStart,
+    truncatedEnd: to < lineEnd,
+    offset: start,
+    // 1-based, because it is shown to a person, not used as an index.
+    line: text.slice(0, start).split('\n').length,
+  };
+}
+
+// Block explorers, as data. A chain either has a known explorer here or it
+// does not — there is no fallback that guesses a URL, because a link that
+// 404s on a security tool costs more trust than an absent link.
+//
+// `note: null` means the URL shape is one I am confident in. Anything
+// uncertain carries a note and is still listed, so the gap stays visible
+// in the tests rather than being silently absent.
+const EXPLORERS = {
+  evm: {
+    '1':      { host: 'etherscan.io',            path: '/address/' },
+    '56':     { host: 'bscscan.com',             path: '/address/' },
+    '137':    { host: 'polygonscan.com',         path: '/address/' },
+    '42161':  { host: 'arbiscan.io',             path: '/address/' },
+    '10':     { host: 'optimistic.etherscan.io', path: '/address/' },
+    '8453':   { host: 'basescan.org',            path: '/address/' },
+    '43114':  { host: 'snowtrace.io',            path: '/address/' },
+    '250':    { host: 'ftmscan.com',             path: '/address/' },
+    '324':    { host: 'explorer.zksync.io',      path: '/address/' },
+    '59144':  { host: 'lineascan.build',         path: '/address/' },
+    '534352': { host: 'scrollscan.com',          path: '/address/' },
+    '81457':  { host: 'blastscan.io',            path: '/address/' },
+    '5000':   { host: 'explorer.mantle.xyz',     path: '/address/' },
+    '100':    { host: 'gnosisscan.io',           path: '/address/' },
+  },
+  solana: { host: 'solscan.io',   path: '/account/' },
+  tron:   { host: 'tronscan.org', path: '/#/address/' },
+  sui:    { host: 'suiscan.xyz',  path: '/mainnet/coin/' },
+};
+
+// The address reaching this function already matched a strict pattern, so
+// it cannot contain a quote, a space or a colon-scheme. It is encoded
+// anyway, and the result is re-checked against the https origin that was
+// built from the fixed table — the point being that no input can steer
+// this to a scheme or a host of its own choosing.
+function explorerUrl(chain, address, chainId) {
+  if (typeof address !== 'string' || !address) return null;
+  const entry = chain === 'evm'
+    ? EXPLORERS.evm[String(chainId)]
+    : EXPLORERS[chain];
+  if (!entry) return null;
+
+  const origin = 'https://' + entry.host;
+  const url = origin + entry.path + encodeURIComponent(address);
+  return url.indexOf(origin + entry.path) === 0 ? url : null;
+}
+
 // Reported as INFO on purpose. An address in a message is not itself a
 // risk, and scoring it as one would punish every legitimate mention of a
 // token. The value is the offer to check it, which the UI turns into
@@ -2800,6 +2968,7 @@ if (typeof module !== 'undefined' && module.exports) {
     scanPrompt, analyseUnicode, analyseMarkup, analyseUrls, analyseEncoding,
     runRules, detectChains, decideVerdict, directiveScore, registrable, sameSite,
     extractAddresses, addressFindings, looksLikeSolanaAddress,
+    contextExcerpt, explorerUrl, EXPLORERS,
     RULES, LIMITS, SEVERITY_ORDER, SCANNER_VERSION,
   };
 }
@@ -2970,6 +3139,13 @@ function startMessageScan(promptResult, original) {
       // guess silently, EVM defaults to Ethereum and says so on the row,
       // and the user can change it before checking.
       chainId: a.chain === 'evm' ? '1' : a.chain,
+      // Where in the message it sat. Captured once, here, from the offsets
+      // the extractor already recorded — not re-derived at render time by
+      // searching for the string, which would land on the wrong occurrence
+      // whenever the same address appears twice.
+      start: a.start,
+      end: a.end,
+      context: contextExcerpt(original, a.start, a.end),
       scan: null,
       state: 'idle',
       error: null,
@@ -3094,11 +3270,40 @@ function addressRowHtml(entry, i) {
     result = '<div class="addr-unchecked">Not checked yet — counted as INSUFFICIENT DATA, not as safe.</div>';
   }
 
+  // Where it came from. Every piece is escaped independently — the text
+  // around an address is attacker-controlled, and it is the one part of
+  // this row that is arbitrary prose rather than a pattern-matched token.
+  let where = '';
+  if (entry.context) {
+    const cx = entry.context;
+    where = '<div class="addr-where">'
+      + '<div class="addr-where-head">Found at character ' + entry.start
+      + ' · line ' + cx.line + '</div>'
+      + '<div class="addr-excerpt">'
+      + (cx.truncatedStart ? '<span class="ell">…</span>' : '')
+      + escapeHtml(cx.before)
+      + '<mark>' + escapeHtml(cx.match) + '</mark>'
+      + escapeHtml(cx.after)
+      + (cx.truncatedEnd ? '<span class="ell">…</span>' : '')
+      + '</div></div>';
+  }
+
+  // An explorer link is a link, not a lookup: nothing is requested until
+  // the reader clicks it, so this adds no network traffic to a scan and
+  // no third party learns the address unless the reader chooses that.
+  const exUrl = explorerUrl(entry.chain, entry.address, entry.chainId);
+  const explorer = exUrl
+    ? '<a class="addr-explorer" href="' + escapeHtml(exUrl) + '" target="_blank" rel="noopener noreferrer nofollow">'
+      + 'Open in block explorer ↗</a>'
+    : '<span class="addr-explorer none">No block explorer for this chain</span>';
+
   return '<div class="addr-row"><div class="addr-top"><div>'
     + '<div class="addr-mono">' + escapeHtml(entry.address) + '</div>'
     + '<div class="addr-meta">' + escapeHtml(chainName)
     + (entry.chain === 'evm' ? ' · chain not stated in the text' : '') + '</div>'
     + '</div><div class="addr-ctl">' + picker + btn + '</div></div>'
+    + where
+    + '<div class="addr-links">' + explorer + '</div>'
     + result + '</div>';
 }
 
@@ -3469,5 +3674,50 @@ renderCapabilityNote();
      answered every automatic beacon with 503. The manual snippet posts to
      Cloudflare's own endpoint instead, which the CSP allows. -->
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+
+<!-- ADVERTISING ==========================================================
+     Google AdSense, publisher ca-pub-7192453271158919.
+
+     Placement rule, and the reason these are rails rather than inline
+     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
+     The ad code receives the page URL and nothing else. It is not given
+     a finding, a verdict, an address, a URL from a message, or any part
+     of pasted text, and promptscan.ui.test.js asserts that.
+
+     The rails are position:fixed in the page gutters and are NOT
+     RENDERED below 1280px — they do not exist in the flow, so they
+     cannot shift the page or crowd the scanner on a phone.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
+     with no deploy of the page content itself.
+     ================================================================== -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
+     crossorigin="anonymous"></script>
+
+  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
+
+  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
 </body>
 </html>

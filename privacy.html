@@ -6,7 +6,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com; connect-src 'self' https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <meta name="description" content="What SaveSaveSaveSave does and does not collect. Message and prompt text is analysed in your browser and is never transmitted. No cookies are set. Full third-party list included.">
@@ -106,7 +106,7 @@
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="technical-appendix.html">Appendix</a> · <a class="nav-link" href="terms.html">Terms</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
@@ -115,5 +115,50 @@
      answered every automatic beacon with 503. The manual snippet posts to
      Cloudflare's own endpoint instead, which the CSP allows. -->
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+
+<!-- ADVERTISING ==========================================================
+     Google AdSense, publisher ca-pub-7192453271158919.
+
+     Placement rule, and the reason these are rails rather than inline
+     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
+     The ad code receives the page URL and nothing else. It is not given
+     a finding, a verdict, an address, a URL from a message, or any part
+     of pasted text, and promptscan.ui.test.js asserts that.
+
+     The rails are position:fixed in the page gutters and are NOT
+     RENDERED below 1280px — they do not exist in the flow, so they
+     cannot shift the page or crowd the scanner on a phone.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
+     with no deploy of the page content itself.
+     ================================================================== -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
+     crossorigin="anonymous"></script>
+
+  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
+
+  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
 </body>
 </html>

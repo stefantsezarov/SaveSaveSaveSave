@@ -155,10 +155,23 @@ const LIVE_HANDLER = /<[a-z][^>]{0,200}\son\w+\s*=/i;
 // about attacker-controlled markup instead of loosening the pattern.
 const OWN_SAFE_MARKUP = /<button class="tech-toggle" onclick="this\.parentNode\.classList\.toggle\('show-tech'\)">/g;
 
+// The composite emits exactly one anchor of its own: the block-explorer
+// link on an address row. `<a` is in DANGEROUS_TAG for good reason, so
+// rather than loosen that pattern, this strips the one permitted anchor —
+// and the pattern is deliberately narrow enough to BE the assertion. The
+// href must be https, on a host shaped like an explorer domain, with a
+// path from the engine's fixed table and an address body containing no
+// quote, space or angle bracket. If submitted text could ever steer that
+// href somewhere else, this stops matching and the XSS checks below fail.
+const OWN_EXPLORER_LINK =
+  /<a class="addr-explorer" href="https:\/\/[a-z0-9.-]+\/(?:address|account|#\/address|mainnet\/coin)\/[A-Za-z0-9%._:-]*" target="_blank" rel="noopener noreferrer nofollow">Open in block explorer ↗<\/a>/g;
+
+const stripOwn = html => html.replace(OWN_SAFE_MARKUP, '').replace(OWN_EXPLORER_LINK, '');
+
 for (const payload of XSS_PAYLOADS) {
   const r = sandbox.scanPrompt(payload);
   sandbox.startMessageScan(r, payload);
-  const out = nodes.results.innerHTML.replace(OWN_SAFE_MARKUP, '');
+  const out = stripOwn(nodes.results.innerHTML);
   const bad = DANGEROUS_TAG.test(out) || LIVE_HANDLER.test(out);
   check('payload neutralised: ' + payload.slice(0, 40), !bad,
     bad ? 'a live element survived into innerHTML: ' + (out.match(DANGEROUS_TAG) || out.match(LIVE_HANDLER))[0] : '');
@@ -352,12 +365,100 @@ function stubScans(map) {
     return c;
   })() });
   await sandbox.checkAddress(0);
-  out = nodes.results.innerHTML.replace(OWN_SAFE_MARKUP, '')
+  out = stripOwn(nodes.results.innerHTML)
     .replace(/<select aria-label="Chain for this address" onchange="setAddressChain\(\d+, this\.value\)">/g, '')
     .replace(/<button class="btn-check"[^>]*onclick="check(Address\(\d+\)|AllAddresses\(\))"[^>]*>/g, '');
   check('hostile text from the SECURITY PROVIDER is escaped too',
     !DANGEROUS_TAG.test(out) && !LIVE_HANDLER.test(out),
     'a compromised or spoofed upstream response must not become markup');
+  // ---- context excerpt and explorer link, rendered ----------------------
+  section('Where the address was found');
+
+  const ctxMsg = `Hi!\nUrgent: send 0.5 ETH to ${USDT} before midnight.\nThanks.`;
+  sandbox.startMessageScan(sandbox.scanPrompt(ctxMsg), ctxMsg);
+  let cOut = nodes.results.innerHTML;
+
+  check('the address row says where in the message it was found',
+    /Found at character \d+ · line 2/.test(cOut), 'got: ' + (cOut.match(/Found at character[^<]*/) || ['nothing'])[0]);
+  check('...and shows the sentence around it',
+    /send 0\.5 ETH to/.test(cOut) && /before midnight/.test(cOut));
+  check('...with the address itself marked inside that sentence',
+    new RegExp('<mark>' + USDT + '</mark>').test(cOut));
+  check('...and does not bleed into the neighbouring lines',
+    !/Hi!/.test(cOut.split('addr-excerpt')[1] || '') );
+
+  check('the row offers a block explorer for the selected chain',
+    cOut.includes('href="https://etherscan.io/address/' + USDT + '"'));
+  check('...opened safely, with no referrer and no window handle',
+    /rel="noopener noreferrer nofollow"/.test(cOut) && /target="_blank"/.test(cOut));
+
+  sandbox.setAddressChain(0, '8453');
+  cOut = nodes.results.innerHTML;
+  check('changing the chain moves the explorer link with it',
+    cOut.includes('href="https://basescan.org/address/' + USDT + '"')
+    && !cOut.includes('etherscan.io'));
+
+  // A TRON address has one; a chain we have no explorer for must say so
+  // rather than render a dead or guessed link.
+  const tronMsg = 'pay TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t now';
+  sandbox.startMessageScan(sandbox.scanPrompt(tronMsg), tronMsg);
+  check('TRON gets its own explorer',
+    nodes.results.innerHTML.includes('href="https://tronscan.org/#/address/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"'));
+
+  // The excerpt is the only place the page prints arbitrary prose from the
+  // submitted text, so it gets its own escaping assertion rather than
+  // relying on the sweep above.
+  const evilCtx = `<script>alert(1)</script> send to ${USDT} <img src=x onerror=alert(1)>`;
+  sandbox.startMessageScan(sandbox.scanPrompt(evilCtx), evilCtx);
+  const ex = (nodes.results.innerHTML.match(/<div class="addr-excerpt">[\s\S]*?<\/div>/) || [''])[0];
+  check('hostile prose around the address is escaped inside the excerpt',
+    ex.includes('&lt;script&gt;') && ex.includes('&lt;img') && !DANGEROUS_TAG.test(ex),
+    'got: ' + ex.slice(0, 120));
+
+  // ---- advertising isolation -------------------------------------------
+  // The page now carries AdSense rails. The load-bearing property is that
+  // an ad call learns the page URL and nothing else: no finding, no
+  // verdict, no address, no URL lifted from a message, no pasted text.
+  //
+  // This is asserted structurally rather than by watching the network,
+  // because the ad script is third-party and its request shape is not
+  // ours to predict. What IS ours is the DOM: if no ad element and no
+  // ad-related global ever receives scanned content, there is nothing
+  // for the ad script to read.
+  section('Advertising cannot see scan content');
+
+  const secret = 'ZQXCANARY7731MESSAGEBODY';
+  const canaryMsg = `${secret} — urgent, send your seed phrase and 2 ETH to ${USDT} at https://wallet-verify.example.com/x`;
+  sandbox.startMessageScan(sandbox.scanPrompt(canaryMsg), canaryMsg);
+
+  const pageHtml = nodes.results.innerHTML;
+  check('the canary really is in the rendered result (control)',
+    pageHtml.includes(secret),
+    'if this fails the isolation checks below prove nothing');
+
+  check('no ad element exists inside the results container',
+    !/adsbygoogle|ad-rail|data-ad-slot|data-ad-client/i.test(pageHtml),
+    'an ad inside the result DOM could be mistaken for part of the verdict');
+
+  // The rails live outside #results by construction. Anything the ad
+  // script can read from its own subtree must therefore be ad markup
+  // only — assert that the rail template carries no interpolation at all.
+  const railSource = (html.match(/<aside class="ad-rail[\s\S]*?<\/aside>/g) || []);
+  check('the page defines exactly two ad slots', railSource.length === 2,
+    'got ' + railSource.length);
+  check('neither slot contains any template interpolation',
+    railSource.every(r => !/\$\{|\+\s*escapeHtml|innerHTML/.test(r)),
+    'a slot built by string concatenation is a slot that can be fed scan text');
+  check('the ad slots carry only the publisher and slot ids',
+    railSource.every(r => {
+      const attrs = r.match(/data-[a-z-]+="[^"]*"/g) || [];
+      return attrs.every(a => /^data-(ad-client|ad-slot|ad-format|full-width-responsive)=/.test(a));
+    }), 'no scan-derived data attribute may ride along on an ad slot');
+
+  check('no ad global is assigned scanned text anywhere in the page',
+    !/adsbygoogle[^;]{0,200}(MSG|promptScan|findings|composite|entry\.address)/.test(html),
+    'the push() call must be the fixed literal Google issued, with no arguments of ours');
+
   check('the composite emits no handler carrying scanned text', (() => {
     const handlers = nodes.results.innerHTML.match(/\son\w+\s*=\s*"[^"]*"/gi) || [];
     return handlers.every(h =>

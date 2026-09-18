@@ -450,6 +450,107 @@ check('an IPFS CID is not matched',
 check('a real Solana mint still survives the Bitcoin guard',
   S.extractAddresses('mint So11111111111111111111111111111111111111112').some(a => a.chain === 'solana'));
 
+// ------------------------------------------------- where it was found
+section('Address context and explorer links');
+
+const ctxText = 'Hi there.\nPlease send 0.1 ETH to 0xdAC17F958D2ee523a2206206994597C13D831ec7 today.\nThanks.';
+const ctxAddr = S.extractAddresses(ctxText)[0];
+const ctx = S.contextExcerpt(ctxText, ctxAddr.start, ctxAddr.end);
+
+check('the excerpt returns the address itself as the match',
+  ctx.match === '0xdAC17F958D2ee523a2206206994597C13D831ec7');
+check('...with the words that came before it',
+  ctx.before.includes('send 0.1 ETH to'));
+check('...and the words that came after it',
+  ctx.after.includes('today'));
+check('...cut at the line, not across it',
+  !ctx.before.includes('Hi there') && !ctx.after.includes('Thanks'),
+  'a window that spans lines reads as one sentence when it is two');
+check('the excerpt reports the character offset',
+  ctx.offset === ctxAddr.start);
+check('...and a 1-based line number for a human',
+  ctx.line === 2, 'got ' + ctx.line);
+
+check('an excerpt is returned as three separate strings, not one blob',
+  typeof ctx.before === 'string' && typeof ctx.match === 'string'
+  && typeof ctx.after === 'string',
+  'the renderer needs the pieces apart to highlight the middle one');
+
+// Hostile text passes through untouched, so
+// the renderer is the only thing that can get it wrong, and the UI suite
+// asserts the renderer escapes.
+const hostileCtx = S.contextExcerpt(
+  'click <img src=x onerror=alert(1)> then send to 0xdAC17F958D2ee523a2206206994597C13D831ec7', 47, 89);
+check('hostile surrounding text is returned verbatim, not sanitised here',
+  hostileCtx && hostileCtx.before.includes('<img src=x onerror=alert(1)>'),
+  'sanitising in two places is how one of them ends up double-escaping');
+
+check('a long line is truncated and says so',
+  (() => {
+    const long = 'x'.repeat(400) + ' 0xdAC17F958D2ee523a2206206994597C13D831ec7 ' + 'y'.repeat(400);
+    const c = S.contextExcerpt(long, 401, 443, 30);
+    return c.truncatedStart === true && c.truncatedEnd === true && c.before.length <= 30;
+  })());
+
+check('a complete short line is NOT marked truncated',
+  ctx.truncatedStart === false && ctx.truncatedEnd === false,
+  'an ellipsis on a whole line reads as if something were being hidden');
+
+check('a nonsense range returns null rather than a broken excerpt',
+  S.contextExcerpt('short', 2, 900) === null
+  && S.contextExcerpt('', 0, 1) === null
+  && S.contextExcerpt(null, 0, 1) === null);
+
+// ---- explorer links ----
+check('an EVM address resolves to the explorer for the selected chain',
+  S.explorerUrl('evm', '0xdAC17F958D2ee523a2206206994597C13D831ec7', '1')
+    === 'https://etherscan.io/address/0xdAC17F958D2ee523a2206206994597C13D831ec7');
+check('...and a different chain id gives a different explorer',
+  S.explorerUrl('evm', '0xdAC17F958D2ee523a2206206994597C13D831ec7', '8453')
+    === 'https://basescan.org/address/0xdAC17F958D2ee523a2206206994597C13D831ec7');
+check('Solana resolves to an account page',
+  S.explorerUrl('solana', 'So11111111111111111111111111111111111111112')
+    === 'https://solscan.io/account/So11111111111111111111111111111111111111112');
+check('TRON resolves to an address page',
+  S.explorerUrl('tron', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t').startsWith('https://tronscan.org/#/address/'));
+
+check('every chain the picker offers has an explorer entry',
+  (() => {
+    // The dropdown in index.html is the contract this has to satisfy. If a
+    // chain is added there and not here, this fails instead of quietly
+    // rendering an address with no link.
+    const picker = ['1','56','137','42161','10','8453','43114','250','324','59144','534352','81457','5000','100'];
+    const missing = picker.filter(id => !S.EXPLORERS.evm[id]);
+    return missing.length === 0 || 'missing: ' + missing.join(',');
+  })() === true);
+
+check('an unknown chain gets no link rather than a guessed one',
+  S.explorerUrl('bitcoin', '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa') === null
+  && S.explorerUrl('evm', '0xdAC17F958D2ee523a2206206994597C13D831ec7', '999999') === null,
+  'a 404 on a security tool costs more trust than an absent link');
+
+check('every explorer URL is https and on a host from the fixed table',
+  (() => {
+    const urls = [
+      S.explorerUrl('evm', '0xdAC17F958D2ee523a2206206994597C13D831ec7', '1'),
+      S.explorerUrl('solana', 'So11111111111111111111111111111111111111112'),
+      S.explorerUrl('tron', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'),
+      S.explorerUrl('sui', '0x2::sui::SUI'),
+    ];
+    return urls.every(u => typeof u === 'string' && u.startsWith('https://'));
+  })());
+
+check('a hostile "address" cannot steer the link to another scheme or host',
+  (() => {
+    const evil = ['javascript:alert(1)', '//evil.example.com/x', 'https://evil.example.com',
+                  '../../../etc/passwd', '?next=https://evil.example.com', 'a b"onmouseover=1'];
+    return evil.every(a => {
+      const u = S.explorerUrl('solana', a);
+      return u === null || (u.startsWith('https://solscan.io/account/') && !/[<>"'\s]/.test(u));
+    });
+  })(),
+  'the address is attacker-controlled text, even after the pattern guard');
+
 check('a clean prompt with no address reports an empty list',
   S.scanPrompt('Write a haiku about rain.').addresses.length === 0);
 check('early-return results still carry an addresses array',

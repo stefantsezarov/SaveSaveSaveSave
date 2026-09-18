@@ -972,6 +972,97 @@ function extractAddresses(text) {
   return found.sort((a, b) => a.start - b.start);
 }
 
+// --------------------------------------------------------------- stage 6c
+// WHERE it was found, and WHERE TO LOOK IT UP YOURSELF.
+//
+// An address shown on its own is a claim with no provenance: the reader
+// has to take on faith that it came from the message at all, and a wallet
+// address and a token mint look identical out of context. The sentence
+// around it usually carries the entire meaning — "send 0.1 ETH to 0x…" is
+// a different situation from "the contract at 0x… was audited" — and the
+// scanner has that sentence for free, because extraction already recorded
+// the offset.
+//
+// Returned as PARTS, never as markup. The engine has no business emitting
+// HTML, and the renderer must escape all three pieces itself; handing back
+// a pre-highlighted string would put attacker-controlled text one careless
+// innerHTML away from the page.
+function contextExcerpt(text, start, end, radius) {
+  const r = typeof radius === 'number' ? radius : 60;
+  if (typeof text !== 'string' || !text.length) return null;
+  if (!(start >= 0) || !(end > start) || end > text.length) return null;
+
+  // Prefer a line boundary: a scam message is usually written in short
+  // lines, and cutting at one reads far better than a fixed window that
+  // slices a word in half.
+  const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+  const nlAfter = text.indexOf('\n', end);
+  const lineEnd = nlAfter === -1 ? text.length : nlAfter;
+
+  const from = Math.max(lineStart, start - r);
+  const to = Math.min(lineEnd, end + r);
+
+  return {
+    before: text.slice(from, start),
+    match: text.slice(start, end),
+    after: text.slice(end, to),
+    // "Truncated" means this LINE was cut, not that the message has other
+    // lines. The line number already says there is more above and below;
+    // an ellipsis on a complete line reads as though something was hidden.
+    truncatedStart: from > lineStart,
+    truncatedEnd: to < lineEnd,
+    offset: start,
+    // 1-based, because it is shown to a person, not used as an index.
+    line: text.slice(0, start).split('\n').length,
+  };
+}
+
+// Block explorers, as data. A chain either has a known explorer here or it
+// does not — there is no fallback that guesses a URL, because a link that
+// 404s on a security tool costs more trust than an absent link.
+//
+// `note: null` means the URL shape is one I am confident in. Anything
+// uncertain carries a note and is still listed, so the gap stays visible
+// in the tests rather than being silently absent.
+const EXPLORERS = {
+  evm: {
+    '1':      { host: 'etherscan.io',            path: '/address/' },
+    '56':     { host: 'bscscan.com',             path: '/address/' },
+    '137':    { host: 'polygonscan.com',         path: '/address/' },
+    '42161':  { host: 'arbiscan.io',             path: '/address/' },
+    '10':     { host: 'optimistic.etherscan.io', path: '/address/' },
+    '8453':   { host: 'basescan.org',            path: '/address/' },
+    '43114':  { host: 'snowtrace.io',            path: '/address/' },
+    '250':    { host: 'ftmscan.com',             path: '/address/' },
+    '324':    { host: 'explorer.zksync.io',      path: '/address/' },
+    '59144':  { host: 'lineascan.build',         path: '/address/' },
+    '534352': { host: 'scrollscan.com',          path: '/address/' },
+    '81457':  { host: 'blastscan.io',            path: '/address/' },
+    '5000':   { host: 'explorer.mantle.xyz',     path: '/address/' },
+    '100':    { host: 'gnosisscan.io',           path: '/address/' },
+  },
+  solana: { host: 'solscan.io',   path: '/account/' },
+  tron:   { host: 'tronscan.org', path: '/#/address/' },
+  sui:    { host: 'suiscan.xyz',  path: '/mainnet/coin/' },
+};
+
+// The address reaching this function already matched a strict pattern, so
+// it cannot contain a quote, a space or a colon-scheme. It is encoded
+// anyway, and the result is re-checked against the https origin that was
+// built from the fixed table — the point being that no input can steer
+// this to a scheme or a host of its own choosing.
+function explorerUrl(chain, address, chainId) {
+  if (typeof address !== 'string' || !address) return null;
+  const entry = chain === 'evm'
+    ? EXPLORERS.evm[String(chainId)]
+    : EXPLORERS[chain];
+  if (!entry) return null;
+
+  const origin = 'https://' + entry.host;
+  const url = origin + entry.path + encodeURIComponent(address);
+  return url.indexOf(origin + entry.path) === 0 ? url : null;
+}
+
 // Reported as INFO on purpose. An address in a message is not itself a
 // risk, and scoring it as one would punish every legitimate mention of a
 // token. The value is the offer to check it, which the UI turns into
@@ -1187,6 +1278,7 @@ if (typeof module !== 'undefined' && module.exports) {
     scanPrompt, analyseUnicode, analyseMarkup, analyseUrls, analyseEncoding,
     runRules, detectChains, decideVerdict, directiveScore, registrable, sameSite,
     extractAddresses, addressFindings, looksLikeSolanaAddress,
+    contextExcerpt, explorerUrl, EXPLORERS,
     RULES, LIMITS, SEVERITY_ORDER, SCANNER_VERSION,
   };
 }
