@@ -26,7 +26,7 @@ const SLOT = '1457626247';
 const PAGES = [
   'index.html', 'whitepaper.html', 'technical-appendix.html', 'guides.html',
   'privacy.html', 'terms.html', 'honeypot-tokens.html',
-  'invisible-characters.html', 'prompt-injection.html',
+  'invisible-characters.html', 'prompt-injection.html', 'seed-phrase-phishing.html',
 ];
 
 // Google's ad stack, by role. Listed explicitly rather than with a

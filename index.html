@@ -2016,6 +2016,35 @@ const IMPERATIVE_RE = new RegExp(
   'i'
 );
 
+// Verbs that ask the reader to hand something over. Gerunds included:
+// "by entering your…" is a request wearing a participle.
+const SOLICIT_VERBS =
+  'enter|entering|paste|pasting|type|typing|provide|providing|share|sharing|'
+  + 'send|sending|submit|submitting|confirm|confirming|verify|verifying|'
+  + 'validate|validating|input|inputting|supply|supplying|restore|restoring|'
+  + 're-?enter|re-?entering|reveal|revealing|disclose|disclosing';
+
+const SOLICIT_RE = new RegExp('\\b(?:' + SOLICIT_VERBS + ')\\s+(?:your|the)\\b|\\bbelow\\s*[:.]?\\s*$', 'i');
+
+const WALLET_SECRET =
+  'seed\\s?(?:phrase|words?)|recovery\\s?(?:phrase|words?|seed)|secret\\s+words?|'
+  + 'backup\\s+phrase|mnemonic(?:\\s+phrase)?|private\\s?key|secret\\s?key|'
+  + 'signing\\s?key|wallet\\s+password|keystore\\s+file|12[-\\s]word|24[-\\s]word';
+
+// verb … your … secret. The gap allows the padding real phishing uses
+// ("confirm ownership by entering your 12-word recovery phrase") and is
+// bounded so it cannot cross a sentence boundary.
+//
+// NEWLINES ARE ALLOWED IN THE GAP, and that is not a detail. The first
+// version excluded them, and guide 4's own example still scored LOW —
+// because the message wraps between "your" and "12-word recovery phrase",
+// exactly as a real email would. Every mail client on earth hard-wraps at
+// around 72 characters. A detector that only works on unwrapped text does
+// not work on messages.
+const SECRET_SOLICIT_RE = new RegExp(
+  '\\b(?:' + SOLICIT_VERBS + ')\\b[^.!?]{0,44}\\byour\\b[^.!?]{0,34}\\b(?:' + WALLET_SECRET + ')\\b',
+  'i');
+
 function directiveScore(fragment) {
   const f = String(fragment);
   const referential = REFERENTIAL.test(f);
@@ -2023,9 +2052,24 @@ function directiveScore(fragment) {
   const bareImperative = IMPERATIVE_RE.test(f);
   // Asking the reader for something is also directive, even without a
   // leading verb: "your seed phrase below" is a request, not a lecture.
-  const solicits = /\b(?:enter|paste|type|provide|share|send|submit)\s+(?:your|the)\b|\bbelow\s*[:.]?\s*$/i.test(f);
-  const score = (addressesAssistant ? 0.5 : 0) + (bareImperative ? 0.5 : 0) + (solicits ? 0.3 : 0) - (referential ? 0.6 : 0);
-  return { isDirective: score > 0.3, score, referential, addressesAssistant, bareImperative, solicits };
+  const solicits = SOLICIT_RE.test(f);
+  // A second-person request for a WALLET SECRET, specifically. This is its
+  // own signal because the phishing that matters almost never leads with a
+  // bare imperative — it leads with a reason. Guide 4's own example said
+  // "please confirm ownership by entering your 12-word recovery phrase"
+  // and the CRITICAL seed-phrase rule was demoted to LOW, because a
+  // subordinate clause and a gerund defeated the imperative test.
+  //
+  // Weighted at 0.6 so it clears the threshold alone: there is no innocent
+  // second-person phrasing of "give me your recovery phrase". Advisory
+  // negation still cancels it — "never enter your seed phrase anywhere" is
+  // caught by ADVISORY_NEGATION before severity is decided — and third-
+  // person description ("attackers ask for their seed phrase") does not
+  // match this at all.
+  const solicitsSecret = SECRET_SOLICIT_RE.test(f);
+  const score = (addressesAssistant ? 0.5 : 0) + (bareImperative ? 0.5 : 0)
+    + (solicitsSecret ? 0.6 : 0) + (solicits ? 0.3 : 0) - (referential ? 0.6 : 0);
+  return { isDirective: score > 0.3, score, referential, addressesAssistant, bareImperative, solicits, solicitsSecret };
 }
 
 // A rule is {id, category, severity, confidence, re, title, plain, action,

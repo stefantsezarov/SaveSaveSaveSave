@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Guide: seed-phrase phishing
+  © 2026 Stefan Tsezarov. All rights reserved.
+
+  EDITOR'S NOTE: this is the highest-harm guide in the series. Two rules
+  when editing it.
+
+  1. The example message is scanned by our own engine as part of the
+     release check and must come back FAIL on a CRITICAL finding. If you
+     reword it, re-run that check.
+  2. Section 8 is recovery advice that someone may follow while being
+     robbed in real time. Do not soften the ordering and do not add
+     steps that cost minutes. The sweeper-bot warning stays.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; connect-src 'self' https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="Nobody legitimate ever needs your recovery phrase. Not support, not a migration, not an airdrop, not a security check. How seed-phrase phishing works, the five stories it arrives in, and what to do in the first ten minutes if you already entered it.">
+<title>The Twelve Words: How Seed-Phrase Phishing Works — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/seed-phrase-phishing.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="guides.html">← All guides</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Guide · Wallet risk · September 2026</p>
+    <h1 class="title">The Twelve Words</h1>
+    <p class="subtitle">The single most expensive message in crypto, taken apart line by line.</p>
+
+    <p>The message arrives polite.</p>
+    <p>The logo matches.</p>
+    <p>The link opens a page that looks exactly like the wallet you already use—the same colours, the same typeface, the same quiet illustration in the corner.</p>
+    <p>It asks you, calmly, to confirm your recovery phrase so that access can be restored.</p>
+
+    <div class="rule-box">
+      <p><strong>There is no situation in which that request is legitimate.</strong></p>
+      <p>Not support. Not a migration. Not an airdrop. Not a security check. Not a refund. Not a validation.</p>
+      <p>Not once. Not ever. By anyone.</p>
+    </div>
+
+    <p>That is the entire article, really. Everything that follows simply explains why the request still works so often.</p>
+
+    <h2>1. What the twelve words actually are</h2>
+    <p>Most people treat their recovery phrase as a password. That single category error is the root of almost every subsequent disaster.</p>
+    <p>A password guards an account that someone else already holds. Lose the password and you reset it. The account survives.</p>
+    <p>A recovery phrase is different.</p>
+    <p>It is the master number from which every one of your private keys is generated. Your wallet takes those twelve (or twenty-four) words, converts them into an extremely large integer, and derives every address you will ever control on every chain the wallet supports—including chains you have not yet used.</p>
+    <p>The phrase is not a key to a door.</p>
+    <p><strong>It is the material from which the doors themselves are made.</strong></p>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 300" role="img" aria-labelledby="f1t f1d" xmlns="http://www.w3.org/2000/svg">
+        <title id="f1t">What the recovery phrase controls</title>
+        <desc id="f1d">Twelve words at the top derive every address the wallet holds, on every supported chain, including addresses not yet created. Anyone holding the words holds all of it.</desc>
+        <style>
+          .w{font-family:'IBM Plex Mono',monospace; font-size:11px; fill:#5B677D;}
+          .hh{font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; fill:#1B2430;}
+          .bb{font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; fill:#5B677D;}
+        </style>
+
+        <text class="hh" x="300" y="20" text-anchor="middle" fill="#B91C1C">your recovery phrase</text>
+        <rect x="40" y="30" width="520" height="56" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
+        <text class="w" x="56" y="52">1 ·····   2 ·····   3 ·····   4 ·····   5 ·····   6 ·····</text>
+        <text class="w" x="56" y="74">7 ·····   8 ·····   9 ·····  10 ·····  11 ·····  12 ·····</text>
+
+        <path d="M300 88 L300 112" stroke="#B91C1C" stroke-width="2.5"/>
+        <path d="M300 120 l-6 -13 h12 z" fill="#B91C1C"/>
+        <text class="bb" x="312" y="108">derives</text>
+
+        <rect x="40" y="126" width="520" height="130" fill="#FFFFFF" stroke="#1B2430" stroke-width="2"/>
+        <text class="hh" x="56" y="150">every address you have</text>
+        <text class="bb" x="56" y="172">· on every chain the wallet supports</text>
+        <text class="bb" x="56" y="192">· including accounts you have not created yet</text>
+        <text class="bb" x="56" y="212">· every token, every NFT, every balance</text>
+        <text class="bb" x="56" y="232">· now, and everything you add to it later</text>
+
+        <text class="bb" x="300" y="284" text-anchor="middle" font-size="13">A password guards an account. This is what accounts are made from.</text>
+      </svg>
+      </div>
+      <figcaption>There is no “small” leak of a recovery phrase. There is no partial version of holding it.</figcaption>
+    </figure>
+
+    <h2>2. Why nobody legitimate ever asks</h2>
+    <p>Support cannot use it. A wallet provider never holds your funds and therefore cannot move them on your behalf; that is the design. Handing a support agent your phrase would hand them complete control of your money. No competent company permits that request.</p>
+    <p>A migration cannot require it. Moving to a new contract or a new app version happens on-chain, or by you re-importing the wallet yourself, on a device you control.</p>
+    <p>An airdrop cannot require it. Sending tokens needs only your public address—the one you paste into forms. Receiving never demands proof that you can spend.</p>
+    <p>A security check cannot require it. Proving ownership is done by signing a message; the signature confirms control without ever revealing the keys.</p>
+    <p>A refund cannot require it—least of all a refund for a previous scam.</p>
+    <p class="closing-quote">Every one of those products exists. None of them has ever needed your recovery phrase, because the phrase does not authenticate you. It replaces you.</p>
+    <p>This is not only our claim. MetaMask's own support documentation states the rule plainly: <a href="https://support.metamask.io/stay-safe/safety-in-web3/what-are-metamasks-official-support-channels/" target="_blank" rel="noopener noreferrer">“if anyone asks for your Secret Recovery Phrase, they are trying to scam you”</a> — a wallet vendor saying, about its own support team, that the request itself is the proof.</p>
+
+    <h2>3. Five costumes, one request</h2>
+    <p>The stories change. The final sentence does not.</p>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 292" role="img" aria-labelledby="f2t f2d" xmlns="http://www.w3.org/2000/svg">
+        <title id="f2t">Five stories, one request</title>
+        <desc id="f2d">Support, migration, airdrop, security alert and scam compensation are five different framings that all end in the same request for a recovery phrase.</desc>
+        <style>
+          .cn{font-family:'Space Grotesk',sans-serif; font-size:12.5px; font-weight:700; fill:#1B2430;}
+          .cs{font-family:'IBM Plex Sans',sans-serif; font-size:11px; fill:#5B677D;}
+          .rq{font-family:'IBM Plex Mono',monospace; font-size:13px; fill:#FFFFFF;}
+        </style>
+
+        <rect x="12" y="14" width="110" height="62" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="cn" x="67" y="36" text-anchor="middle">Support</text>
+        <text class="cs" x="67" y="54" text-anchor="middle">"let us help you</text>
+        <text class="cs" x="67" y="68" text-anchor="middle">restore access"</text>
+
+        <rect x="130" y="14" width="110" height="62" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="cn" x="185" y="36" text-anchor="middle">Migration</text>
+        <text class="cs" x="185" y="54" text-anchor="middle">"re-validate for</text>
+        <text class="cs" x="185" y="68" text-anchor="middle">the new contract"</text>
+
+        <rect x="248" y="14" width="110" height="62" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="cn" x="303" y="36" text-anchor="middle">Airdrop</text>
+        <text class="cs" x="303" y="54" text-anchor="middle">"verify to claim</text>
+        <text class="cs" x="303" y="68" text-anchor="middle">your allocation"</text>
+
+        <rect x="366" y="14" width="110" height="62" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="cn" x="421" y="36" text-anchor="middle">Security alert</text>
+        <text class="cs" x="421" y="54" text-anchor="middle">"suspicious login,</text>
+        <text class="cs" x="421" y="68" text-anchor="middle">confirm it's you"</text>
+
+        <rect x="484" y="14" width="104" height="62" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="cn" x="536" y="36" text-anchor="middle">Compensation</text>
+        <text class="cs" x="536" y="54" text-anchor="middle">"we refund</text>
+        <text class="cs" x="536" y="68" text-anchor="middle">scam victims"</text>
+
+        <path d="M67 78 L67 96 L300 96" stroke="#B91C1C" stroke-width="2" fill="none"/>
+        <path d="M185 78 L185 96" stroke="#B91C1C" stroke-width="2"/>
+        <path d="M303 78 L303 96" stroke="#B91C1C" stroke-width="2"/>
+        <path d="M421 78 L421 96" stroke="#B91C1C" stroke-width="2"/>
+        <path d="M536 78 L536 96 L300 96" stroke="#B91C1C" stroke-width="2" fill="none"/>
+        <path d="M300 96 L300 128" stroke="#B91C1C" stroke-width="2.5"/>
+        <path d="M300 136 l-6 -13 h12 z" fill="#B91C1C"/>
+
+        <rect x="96" y="144" width="408" height="52" fill="#B91C1C"/>
+        <text class="rq" x="300" y="176" text-anchor="middle">"enter your 12-word recovery phrase"</text>
+
+        <text class="cs" x="300" y="228" text-anchor="middle" font-size="12.5">Five different reasons to be reading. One sentence at the end of all of them.</text>
+        <text class="cs" x="300" y="256" text-anchor="middle" font-size="12.5" fill="#B91C1C">The story is decoration. The request is the attack.</text>
+      </svg>
+      </div>
+      <figcaption>Learning the five common stories is useful. Learning that the last line is always identical is what actually protects you—including against a sixth story that has not been written yet.</figcaption>
+    </figure>
+
+    <h2>4. Here is one</h2>
+    <p>Read it the way you would at half past eleven at night, on a phone, after being told something is wrong with your money.</p>
+
+    <div class="msg">Wallet Security Notice
+
+We detected an unrecognised sign-in attempt on your wallet from a new
+device earlier today. As a precaution your account has been placed in
+limited mode.
+
+To restore full access, please confirm ownership by entering your
+12-word recovery phrase at the secure link below:
+
+  https://wallet-support.verify-restore.example.com/unlock
+
+Accounts not confirmed within 24 hours may be permanently locked and
+any remaining balance moved to protective custody.
+
+Thank you for helping us keep your assets safe.
+Wallet Security Team</div>
+
+    <p>This is representative of real campaigns documented by security researchers and wallet vendors. The wording, urgency, invented restrictions, and recovery-phrase request appear repeatedly in phishing messages targeting MetaMask, Trust Wallet, hardware-wallet users, and generic “crypto wallet” recipients. Live versions use different brand names and domains; the underlying request does not change.</p>
+
+    <details class="reveal">
+      <summary>Show me what is wrong with it</summary>
+      <div class="inner">
+        <p>The request itself is the entire answer. Everything else is secondary. Still, it is worth noticing how carefully the packaging is constructed:</p>
+        <ul>
+          <li><strong>“Limited mode” and “protective custody”</strong> are invented states. Real wallets do not have them. They sound like banking language because banking is where people have learned to expect such language.</li>
+          <li><strong>“Within 24 hours”</strong> is the clock—placed there specifically to stop you asking anyone else.</li>
+          <li><strong>The address reads left-to-right as trustworthy.</strong> <code>wallet-support</code> is only a subdomain and carries no authority. The part that actually decides where you land is <code>verify-restore.example.com</code>. Always read a URL from the right.</li>
+          <li><strong>The spelling is perfect.</strong> The grammar is correct. There is nothing left to catch by surface inspection.</li>
+        </ul>
+        <p>And one line stranger than it first appears: <em>“confirm ownership.”</em> Your recovery phrase does not confirm ownership to anyone. It transfers it.</p>
+      </div>
+    </details>
+
+    <h2>5. Why the spelling test stopped working</h2>
+    <p>For two decades people were taught to spot fraud by its seams—broken English, a mismatched logo, a greeting that begins “Dear Customer.”</p>
+    <p>That advice made sense when producing a convincing page was expensive.</p>
+    <p>It is now free. Fluent text in any language can be generated in seconds. Copying a website’s exact appearance has never been difficult; the design is public by definition.</p>
+    <p>A message that looks professional therefore tells you nothing about its legitimacy. It only tells you that someone spent a few minutes.</p>
+    <p>What has not changed—and cannot change—is what the attacker needs. They need the words. Whatever else they invent, they must eventually ask for them.</p>
+    <p class="closing-quote">Stop grading the presentation. Read the request.</p>
+
+    <h2>6. Why there is always a clock</h2>
+    <p>Every version of this message contains a deadline: twenty-four hours, end of day, before the account is suspended.</p>
+    <p>The clock is not there to hurry you. It is there to prevent the single action that reliably collapses the attack: telling another person. Spoken aloud to almost anyone—a friend, a forum, a search engine—the request evaporates. A deadline forces the decision to be made alone.</p>
+    <p>The deadline is therefore not a detail of the story. It is load-bearing. When you notice one attached to a request for secrets, that observation is itself the finding.</p>
+
+    <h2>7. Where the phrase should live</h2>
+    <p>Briefly, because the rule is simple.</p>
+    <p>You type your recovery phrase in exactly one situation: <strong>restoring a wallet into software you installed yourself, on a device you control.</strong></p>
+    <p>Never into a web page.</p>
+    <p>Never into a form that arrived in a message.</p>
+    <p>Never into a chat, a support ticket, a spreadsheet, a photograph, a password-manager note, or an AI assistant.</p>
+    <p>If you use a hardware wallet, the phrase should never be typed into a computer at all after the day you first wrote it down.</p>
+
+    <h2>8. If you already entered it</h2>
+    <p>Then this section is the only part that matters, and speed matters more than neatness.</p>
+
+    <div class="rule-box">
+      <p><strong>Assume that wallet is gone and act on the assumption immediately.</strong> Do not wait for confirmation. Do not test with a small transaction. Do not try to change a password—there is no password to change.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="fig-frame">
+      <svg viewBox="0 0 600 336" role="img" aria-labelledby="f3t f3d" xmlns="http://www.w3.org/2000/svg">
+        <title id="f3t">What to do in the first ten minutes</title>
+        <desc id="f3d">Create a new wallet with a new phrase on a clean device, move the most valuable liquid assets first, then the rest, and treat the old wallet as permanently compromised. Automated sweeper bots may take incoming funds instantly.</desc>
+        <style>
+          .sn{font-family:'IBM Plex Mono',monospace; font-size:12px; fill:#6D28D9; font-weight:600;}
+          .st{font-family:'Space Grotesk',sans-serif; font-size:13.5px; font-weight:700; fill:#1B2430;}
+          .sd{font-family:'IBM Plex Sans',sans-serif; font-size:12px; fill:#5B677D;}
+        </style>
+
+        <rect x="12" y="12" width="576" height="48" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="sn" x="28" y="32">01</text>
+        <text class="st" x="60" y="32">New wallet, new phrase, clean device</text>
+        <text class="sd" x="60" y="50">Not a new account inside the same wallet — that shares the same phrase.</text>
+
+        <rect x="12" y="66" width="576" height="48" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="sn" x="28" y="86">02</text>
+        <text class="st" x="60" y="86">Move the most valuable liquid assets first</text>
+        <text class="sd" x="60" y="104">Stablecoins and major tokens. Biggest number first, not easiest first.</text>
+
+        <rect x="12" y="120" width="576" height="48" fill="#FFFFFF" stroke="#E4E8ED" stroke-width="2"/>
+        <text class="sn" x="28" y="140">03</text>
+        <text class="st" x="60" y="140">Then NFTs, then anything staked or locked</text>
+        <text class="sd" x="60" y="158">These take longer. Do them after the liquid value is out.</text>
+
+        <rect x="12" y="174" width="576" height="48" fill="#FEF2F2" stroke="#B91C1C" stroke-width="2"/>
+        <text class="sn" x="28" y="194" fill="#B91C1C">04</text>
+        <text class="st" x="60" y="194" fill="#7F1D1D">Expect a race, and expect the gas problem</text>
+        <text class="sd" x="60" y="212" fill="#7F1D1D">Automated bots watch stolen wallets and take gas the moment it arrives.</text>
+
+        <rect x="12" y="228" width="576" height="48" fill="#FEE2E2" stroke="#B91C1C" stroke-width="2"/>
+        <text class="sn" x="28" y="248" fill="#B91C1C">05</text>
+        <text class="st" x="60" y="248" fill="#7F1D1D">Retire the old wallet permanently</text>
+        <text class="sd" x="60" y="266" fill="#7F1D1D">Never reuse it. Never receive to it again. Update anywhere you published it.</text>
+
+        <text class="sd" x="300" y="308" text-anchor="middle" font-size="12.5">Revoking approvals does not help here — whoever has the phrase is the wallet.</text>
+      </svg>
+      </div>
+      <figcaption>The ordering is deliberate. Value first, convenience never.</figcaption>
+    </figure>
+
+    <p>On the gas problem, because it catches people at the worst possible moment: moving a token requires the chain’s native coin to pay the fee. If the compromised wallet holds none, you must send some in—and automated sweepers watching the address will often take it within a single block. People try three times, lose the gas three times, and conclude nothing can be done.</p>
+    <p>Workarounds exist, including bundling the funding and the rescue into one atomic transaction that cannot be interrupted. They are fiddly and chain-specific. If a meaningful amount is at stake, ask someone experienced before burning further attempts.</p>
+    <p>And the cruellest sequel: people who have just been robbed are often approached within hours by “recovery specialists” who promise to trace and return the funds. They ask for the phrase again, or for an upfront fee. It is the same attack, aimed at the same person, on their worst day. Nobody can reverse a blockchain transaction. Anyone claiming otherwise is selling the second robbery.</p>
+
+    <h2>9. What a scan can and cannot tell you</h2>
+    <p>Paste a message like the one above into our scanner and it will return <strong>FAIL</strong>, flagging the seed-phrase request as critical and noting the suspicious link structure.</p>
+    <p>Here is what it does not do.</p>
+    <ul>
+      <li>It never visits the link. It examines the address’s shape—brand names in positions that carry no authority, look-alike characters, redirect patterns—but it does not fetch the page. It cannot tell you whether the site at the other end is a clone.</li>
+      <li>It cannot see a message you never paste. Most of these arrive when you are tired and in a hurry, which is precisely when nobody checks anything.</li>
+      <li>A clean result is not a verdict on the sender. It only means no covered pattern matched.</li>
+      <li>It cannot undo anything. Section 8 exists because scanning afterwards is not a remedy.</li>
+    </ul>
+    <p>For this particular attack a scanner is a useful backstop, not the primary defence. The defence is one sentence long, and you already have it.</p>
+
+    <h2>The rule</h2>
+    <p class="closing-quote">Nobody needs your recovery phrase. Not ever. Not for any reason. No matter who they claim to be.</p>
+    <p>Any message that asks for it is a theft attempt. That is not a heuristic with exceptions; it is the complete rule, and one of the rare security rules that truly has no edge cases.</p>
+    <p>If you are ever unsure, distrust the deadline first. Then ask someone. That single step ends the attack.</p>
+
+    <hr class="sep">
+    <p class="living-note">Related: <a href="prompt-injection.html">instructions written for an AI rather than for you</a>, and <a href="invisible-characters.html">text that renders as nothing</a>. This article is for educational purposes only and is not financial advice. The example message is representative of real campaigns, uses a reserved example domain, and targets no real company.</p>
+
+    <div class="bottom-cta">
+      <a class="dl-btn" href="index.html">Check a message →</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="technical-appendix.html">Appendix</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+
+<!-- ADVERTISING ==========================================================
+     Google AdSense, publisher ca-pub-7192453271158919.
+
+     Placement rule, and the reason these are rails rather than inline
+     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
+     The ad code receives the page URL and nothing else. It is not given
+     a finding, a verdict, an address, a URL from a message, or any part
+     of pasted text, and promptscan.ui.test.js asserts that.
+
+     The rails are position:fixed in the page gutters and are NOT
+     RENDERED below 1280px — they do not exist in the flow, so they
+     cannot shift the page or crowd the scanner on a phone.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
+     with no deploy of the page content itself.
+     ================================================================== -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
+     crossorigin="anonymous"></script>
+
+  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
+
+  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-7192453271158919"
+         data-ad-slot="1457626247"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
+</body>
+</html>
