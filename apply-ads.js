@@ -38,22 +38,32 @@ const AD_SCRIPT = [
   'https://tpc.googlesyndication.com',
   'https://www.googletagservices.com',
   'https://adservice.google.com',
+  // Google's Consent Management Platform. Enabled in the AdSense account
+  // on 18 Sep to produce the European regulations message. Without these
+  // hosts the consent dialogue is blocked by our own CSP, and a blocked
+  // consent dialogue in the EU means no personalised ads and a policy
+  // problem, not just a missing banner.
+  'https://fundingchoicesmessages.google.com',
+  'https://fundingchoices.google.com',
 ].join(' ');
 const AD_CONNECT = [
   'https://pagead2.googlesyndication.com',
   'https://googleads.g.doubleclick.net',
   'https://*.g.doubleclick.net',
+  'https://fundingchoicesmessages.google.com',
 ].join(' ');
 const AD_IMG = [
   'https://pagead2.googlesyndication.com',
   'https://*.googlesyndication.com',
   'https://*.g.doubleclick.net',
   'https://www.google.com',
+  'https://fundingchoicesmessages.google.com',
 ].join(' ');
 const AD_FRAME = [
   'https://googleads.g.doubleclick.net',
   'https://tpc.googlesyndication.com',
   'https://www.google.com',
+  'https://fundingchoicesmessages.google.com',
 ].join(' ');
 
 function widenCsp(csp) {
@@ -65,15 +75,21 @@ function widenCsp(csp) {
     let v = rest.join(' ');
     if (name === 'script-src') {
       if (!v.includes("'unsafe-inline'")) v = "'unsafe-inline' " + v;
-      if (!v.includes('googlesyndication')) v += ' ' + AD_SCRIPT;
+      if (!v.includes('fundingchoices')) v += ' ' + AD_SCRIPT;
     } else if (name === 'connect-src') {
-      if (!v.includes('googlesyndication')) v += ' ' + AD_CONNECT;
+      if (!v.includes('fundingchoices')) v += ' ' + AD_CONNECT;
     } else if (name === 'img-src') {
-      if (!v.includes('googlesyndication')) v += ' ' + AD_IMG;
+      if (!v.includes('fundingchoices')) v += ' ' + AD_IMG;
     } else if (name === 'frame-src') {
       sawFrame = true;
-      if (!v.includes('googlesyndication')) v += ' ' + AD_FRAME;
+      if (!v.includes('fundingchoices')) v += ' ' + AD_FRAME;
     }
+    // Deduplicate. Re-running this script must not append a host that is
+    // already there — an earlier pass did exactly that and every page
+    // carried the ad hosts twice. Harmless to the browser, but a policy
+    // nobody can read is a policy nobody audits.
+    const seen = new Set();
+    v = v.split(/\s+/).filter(t => t && !seen.has(t) && seen.add(t) !== false).join(' ');
     out.push(name + ' ' + v);
   }
   // Ads render inside iframes. Without frame-src they fall back to
