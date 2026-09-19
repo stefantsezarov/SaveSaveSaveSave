@@ -141,6 +141,7 @@ ${unit('right')}
 }
 
 let changed = 0;
+const noPolicy = [];
 for (const file of PAGES) {
   const p = path.join(__dirname, file);
   let html = fs.readFileSync(p, 'utf8');
@@ -148,6 +149,19 @@ for (const file of PAGES) {
   const before = html;
 
   // 1. CSP in the meta tag.
+  //
+  // This REPLACES a policy; it does not add one. seed-phrase-phishing.html
+  // shipped with no meta CSP at all and this loop reported "unchanged" and
+  // moved on, because the replace simply found nothing to match. The
+  // response header still covered the page, so nothing was exposed — but a
+  // new page could silently opt out of the meta layer and leave the header
+  // config as the only thing standing, with no complaint from anywhere.
+  //
+  // A missing policy is now a hard failure. Adding one automatically would
+  // be worse: it would guess a policy for a page nobody checked.
+  if (!/<meta http-equiv="Content-Security-Policy" content="/.test(html)) {
+    noPolicy.push(file);
+  }
   html = html.replace(/(<meta http-equiv="Content-Security-Policy" content=")([^"]+)(")/,
     (_, a, csp, c) => a + widenCsp(csp) + c);
 
@@ -158,6 +172,15 @@ for (const file of PAGES) {
 
   if (html !== before) { fs.writeFileSync(p, html, 'utf8'); changed++; console.log('  updated ' + file); }
   else console.log('  unchanged ' + file);
+}
+
+if (noPolicy.length) {
+  console.error('\nFAIL: these pages have no Content-Security-Policy meta tag, '
+    + 'so the widening above did nothing for them:');
+  noPolicy.forEach(f => console.error('      - ' + f));
+  console.error('\nCopy the policy from a page that has one. Do not let this '
+    + 'script invent it.');
+  process.exit(1);
 }
 
 // 3. The same widening in the response headers, which cover every path
