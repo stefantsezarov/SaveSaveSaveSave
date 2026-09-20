@@ -1,0 +1,70 @@
+# Files in this repository that must NOT be published as part of the site.
+#
+# WHY THIS EXISTS. Everything in this folder is the deploy's asset
+# directory, so by default every file here is fetchable at
+# savesavesavesave.xyz/<filename>. That was confirmed, not assumed:
+# https://savesavesavesave.xyz/README.md returned the whitepaper text in
+# full. Nobody had chosen to publish it; it was simply in the folder.
+#
+# Format is the same as .gitignore. Wrangler skips matching files when it
+# uploads assets, so they stay in version control and stop being URLs.
+#
+# WHAT STAYS PUBLIC, deliberately: the eleven HTML pages, paper.css, the
+# images, favicon, robots.txt, sitemap.xml, ads.txt, LICENSE.md, and
+# SaveSaveSaveSave-Whitepaper.pdf (linked from the site as a download).
+#
+# BEFORE ADDING A LINE HERE, check nothing on the site links to it. The
+# only file the pages reference from this category is the PDF above, and
+# it is deliberately not listed.
+
+
+# ---- Internal documents ----------------------------------------------
+# Written for the people building this, not for readers. The site is
+# deliberately open about its limits — that is what Technical
+# Transparency is for, curated and written to be read. A raw internal
+# state file is a different thing, and the business proposal is not
+# public material at all.
+PROJECT-STATE.md
+ARCHITECTURE.md
+PAGES-SETUP.md
+UPLOAD-NOTES.md
+SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md
+
+# Superseded whitepaper editions. Unlinked, but publicly fetchable and
+# now CONTRADICTING the published HTML — a visitor who found one would
+# be reading claims the site has since corrected. That is worse than a
+# missing document.
+SaveSaveSaveSave_Whitepaper_v3.0.md
+SaveSaveSaveSave_Whitepaper_Short_v3.0.md
+
+# Duplicates the whitepaper as raw markdown. Two copies of the same text
+# at two URLs is a duplicate-content problem, and the HTML version is
+# the one meant to be read.
+README.md
+
+
+# ---- Engine source ----------------------------------------------------
+# These are embedded verbatim inside index.html, which is why the
+# scanner works as a single self-contained file. Nothing fetches them,
+# so serving them only publishes a second copy that can fall out of step
+# with the page. The repository remains public; this is about which
+# copy is authoritative.
+core.js
+scanmodel.js
+promptscan.js
+goplus-proxy-worker.js
+
+
+# ---- Build and test tooling -------------------------------------------
+# Developer tools. No visitor has a reason to fetch them.
+*.test.js
+redteam.js
+apply-ads.js
+embed.js
+verify_embedded.js
+build-sitemap.js
+build-suffixes.js
+make-pdf.js
+shot.js
+icons.py
+switch-domain.sh

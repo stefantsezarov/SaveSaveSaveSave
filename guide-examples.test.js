@@ -345,6 +345,69 @@ if (fs.existsSync(guidePath)) {
     'on the scanner the logo would reload the page and discard whatever was pasted');
 }
 
+
+// ---- what the site publishes ------------------------------------------
+// The deploy's asset directory is the repository root, so by DEFAULT every
+// file here becomes a URL. That was not a decision anyone made: it was
+// found by fetching savesavesavesave.xyz/README.md and getting the whole
+// whitepaper back. .assetsignore is what turns "everything is published"
+// into a list somebody chose.
+//
+// The check that matters most runs in the SAFE direction: nothing the
+// pages actually link to may be ignored. Getting that wrong ships a site
+// with a broken download link and no error anywhere.
+{
+  const ignorePath = path.join(__dirname, '.assetsignore');
+  check('.assetsignore exists', fs.existsSync(ignorePath),
+    'without it every file in this folder is served at its own URL');
+
+  if (fs.existsSync(ignorePath)) {
+    const pats = fs.readFileSync(ignorePath, 'utf8')
+      .split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+    const toRe = p => new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+    const isIgnored = f => pats.some(p => toRe(p).test(f));
+
+    // Internal documents must not be public.
+    for (const doc of ['PROJECT-STATE.md', 'ARCHITECTURE.md', 'UPLOAD-NOTES.md',
+                       'PAGES-SETUP.md', 'SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md',
+                       'SaveSaveSaveSave_Whitepaper_v3.0.md', 'SaveSaveSaveSave_Whitepaper_Short_v3.0.md']) {
+      check('not published: ' + doc, isIgnored(doc),
+        'this document was written for the people building the site, not for readers');
+    }
+
+    // Engine source is embedded in the page; serving a second copy only
+    // creates something that can fall out of step with what runs.
+    for (const src of ['promptscan.js', 'core.js', 'scanmodel.js']) {
+      check('not published: ' + src, isIgnored(src),
+        'index.html carries this verbatim — a served copy is a second source of truth');
+    }
+
+    // THE SAFE DIRECTION. Anything the pages link to must still be served.
+    const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
+      'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
+      'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+    const referenced = new Set();
+    for (const f of PAGES) {
+      const fp = path.join(__dirname, f);
+      if (!fs.existsSync(fp)) continue;
+      const html = fs.readFileSync(fp, 'utf8');
+      for (const m of html.matchAll(/(?:href|src)="(?!https?:|data:|#|mailto:)([^"?#]+)"/g)) {
+        referenced.add(m[1].replace(/^\.\//, ''));
+      }
+    }
+    const broken = [...referenced].filter(r => isIgnored(r));
+    check('nothing the pages link to is excluded from the deploy',
+      broken.length === 0,
+      broken.length ? 'these would 404: ' + broken.join(', ') : '');
+
+    // And every page itself must still be served.
+    check('every published page is still served',
+      !PAGES.some(isIgnored));
+  }
+}
+
 console.log('\n' + '='.repeat(60));
 if (fail) {
   console.log(`${fail} FAILED, ${pass} passed`);
