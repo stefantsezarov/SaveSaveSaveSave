@@ -224,13 +224,15 @@ if (fs.existsSync(guidePath)) {
     used.length === 0, used.join('; '));
 
   check('the guide keeps the central lesson prominent',
-    guide.includes('The familiar name being present is not evidence'));
+    guide.includes('The familiar name being there is not evidence'));
 
   check('the guide states that structure is not reputation',
     guide.includes('Structure is not reputation'));
 
-  check('the example message is labelled as fictional',
-    /Fictional example using reserved domains/i.test(guide));
+  // The label must sit ON the message block, not in the prose above it,
+  // so it travels with the example if the page is skimmed or excerpted.
+  check('the example message is labelled as fictional, on the block itself',
+    /<p class="msg-label">Fictional example \u00b7 reserved domains<\/p>\s*<div class="msg">/.test(guide));
 
   // The note must be accurate, not merely present. metamask.io is real
   // and resolvable, and the guide prints it deliberately as the example
@@ -238,8 +240,8 @@ if (fs.existsSync(guidePath)) {
   // claim would be false in the one article that must be exact about
   // domains. The note has to name the exception.
   check('the reserved-name note is present and names the live exception',
-    /demonstrates a trick uses a reserved example name/i.test(guide)
-    && /metamask\.io<\/code>, which is real/i.test(guide));
+    /demonstrates a trick points at a reserved example domain/i.test(guide)
+    && /The one live domain printed here is <code>metamask\.io<\/code>/i.test(guide));
 }
 
 

@@ -285,6 +285,22 @@
       text-transform:uppercase; color:var(--paper-muted); margin-bottom:3px;}
   }
 
+
+  /* Section numbers as their own mark above the heading, rather than
+     "1." glued to the title. Two reasons: the eye can find a section
+     without reading it, and a screen reader announces the heading text
+     first instead of a bare digit. */
+  .paper h2 .sec-n{display:block; font-family:'IBM Plex Mono',monospace;
+    font-size:0.74rem; font-weight:500; letter-spacing:0.14em;
+    color:var(--paper-accent); margin:0 0 6px;}
+
+  /* The label that marks the worked example as invented. It sits on the
+     message block itself, not in the prose above it, so it travels with
+     the thing it describes if the page is skimmed or excerpted. */
+  .msg-label{display:block; font-family:'IBM Plex Mono',monospace;
+    font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--paper-muted); margin:0 0 6px;}
+
   /* ---- Guides index ----------------------------------------------- */
   .guide-list{display:grid; gap:14px; margin:26px 0 10px;}
   .guide-card{display:block; border:1px solid var(--paper-border); border-left:3px solid var(--paper-accent);
