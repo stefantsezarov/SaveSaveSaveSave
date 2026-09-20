@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<!--
+  SaveSaveSaveSave — Guide: links that hide where they go
+  © 2026 Stefan Tsezarov. All rights reserved.
+
+  EDITOR'S NOTE. Five rules when editing this one.
+
+  1. Every address printed here that illustrates a TRICK is a reserved
+     documentation name (RFC 2606 / RFC 6761), and none of them is a
+     clickable link. The one real domain in the article is metamask.io,
+     shown as the example of where a name BELONGS. The closing note says
+     so in those terms — keep it accurate if you change an example.
+     guide-examples.test.js enforces both rules.
+
+  2. The capability table in section 9 must match what the production
+     engine actually checks. guide-examples.test.js probes the engine
+     for each claimed row and fails if one is claimed but absent.
+
+  3. Do not reintroduce the "last two labels" shortcut. Where a public
+     suffix ends is decided by public-suffix data, not by counting. The
+     scanner got that wrong once and accused a real website.
+
+  4. Section 9 states limits the scanner genuinely has. Do not trim it
+     to make the tool sound better. Published limits are the point.
+
+  5. THIS PAGE CARRIES NO ADVERTISING, by the route policy in
+     apply-ads.js, and the ad hosts are absent from its CSP above as
+     well as from its markup. An article teaching people to distrust a
+     message is not a place for an unreviewed commercial link.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Stefan Tsezarov">
+<meta name="description" content="A web address tells you exactly where it goes — just not in the order you read it. How to inspect a link without opening it, the main tricks used to disguise one, and what a structural scan can and cannot tell you.">
+<title>Read It From the Right: How Links Hide Where They Go — SaveSaveSaveSave</title>
+<link rel="canonical" href="https://savesavesavesave.xyz/disguised-links.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="paper.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="nav-link" href="guides.html">← All guides</a>
+</header>
+<div class="top-rule"></div>
+
+<div class="paper-wrap">
+  <article class="paper">
+    <p class="eyebrow">Guide · Link risk · September 2026</p>
+    <h1 class="title">Read It From the Right</h1>
+    <p class="subtitle">A web address tells you exactly where it goes. It just doesn't tell you in the order you read it.</p>
+
+    <p>You've been told to check a link before clicking it. That's good advice, but most people check the wrong part.</p>
+    <p>A link can carry a familiar company name and still land somewhere else entirely. The name might sit in a subdomain, in the path, or before an <code>@</code> sign. On a phone, the real domain may be cut off unless you expand the link first.</p>
+    <p>One habit fixes most of this:</p>
+
+    <div class="rule-box">
+      <p><strong>Read the domain from the right.</strong></p>
+      <p>This guide shows you how to inspect a link without opening it. It won't prove a link is safe. It will help you catch the common tricks before you click.</p>
+    </div>
+
+    <p>Below: the main tricks, how to check for each one without opening anything, and what a structural scan can and can't tell you.</p>
+
+    <h2>1. Where an address points</h2>
+    <p>Take this address:</p>
+    <div class="pattern"><b>https://metamask.io.secure-verify.example/login</b></div>
+    <p>The browser splits it into a <strong>scheme</strong>, a <strong>host</strong>, and a <strong>path</strong>. The host is where you actually connect. The path is chosen by whoever runs that host, and it can say anything they want.</p>
+
+    <div class="urlparts">
+      <ol>
+        <li class="muted"><code>https://</code><span class="up-tag">scheme</span></li>
+        <li class="warn"><code>metamask.io.</code><span class="up-tag">subdomain — chosen by the owner below</span></li>
+        <li class="owner"><code>secure-verify.example</code><span class="up-tag">registrable domain — the destination</span></li>
+        <li class="muted"><code>/login</code><span class="up-tag">path — chosen by that same owner</span></li>
+      </ol>
+    </div>
+    <p class="urlparts-note">The four parts of <code>https://metamask.io.secure-verify.example/login</code>, in order.</p>
+
+    <p>Inside that host, the registrable domain is <code>secure-verify.example</code>. Everything to its left is a subdomain, controlled by whoever owns <code>secure-verify.example</code>. An owner can create as many subdomains as they like and name them more or less freely — including naming one <code>metamask.io</code>.</p>
+    <p>So <code>metamask.io</code> isn't the destination here. It's just a label on the left.</p>
+
+    <h3>What "registrable domain" means</h3>
+    <p>The part that matters is the <strong>registrable domain</strong>: the name a person or company can actually register. It's the public suffix plus the one label in front of it. Often that looks like <code>example.com</code>. With some country-code structures it looks like <code>example.co.uk</code> or <code>example.com.au</code>.</p>
+    <p>Browsers and security tools use public-suffix data to find that boundary. Don't assume every suffix uses the same number of labels. The practical instruction is:</p>
+    <div class="pattern"><b>Read the host right to left until you hit the public suffix,<br>then take the label just before it.</b></div>
+    <p>That's the registrable domain.</p>
+    <p>This boundary isn't a footnote. Our own scanner counted labels until 19 September 2026, decided the owner of <code>coinbase.co.uk</code> was <code>co.uk</code>, and flagged an ordinary legitimate link as brand impersonation. A tool that shouts about real websites gets switched off, and then it protects nobody. What changed, and what it still can't work out, is in <a href="technical-appendix.html#link-limits">Technical Transparency</a>.</p>
+
+    <h2>2. The name on the left</h2>
+    <p>A trusted name can sit in a subdomain or in the path without controlling anything.</p>
+
+    <div class="two-up">
+      <div class="src yours">
+        <span class="lbl">Where the name belongs</span>
+        <q>https://metamask.io/download</q>
+      </div>
+      <div class="src theirs">
+        <span class="lbl">Where it carries nothing</span>
+        <q>https://metamask.io.wallet-check.example/download</q>
+      </div>
+    </div>
+
+    <p>The same trick works in the path, where it reads even more naturally:</p>
+    <div class="pattern"><b>https://cdn-assets-9931.example/metamask/verify</b></div>
+    <p>In both misleading examples the registrable domain is <code>wallet-check.example</code> or <code>cdn-assets-9931.example</code>. The brand name only appears in a spot that domain's owner gets to fill in.</p>
+    <p>On a phone, a long address can push the real domain out of view. Expand or copy the link before you judge it.</p>
+
+    <h2>3. Lookalike characters</h2>
+    <p>Here there's nothing clever going on in the address. Someone registers a domain that simply looks like another one.</p>
+
+    <div class="tbl-wrap stack" tabindex="0" role="region" aria-label="Familiar spellings and their lookalike counterparts">
+      <table class="gtable">
+        <thead>
+          <tr><th scope="col">Familiar spelling</th><th scope="col">Lookalike</th><th scope="col">What changed</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-label="Familiar spelling"><code>metamask</code></td><td data-label="Lookalike"><code>metarnask</code></td><td data-label="What changed"><code>rn</code> can pass for <code>m</code></td></tr>
+          <tr><td data-label="Familiar spelling"><code>paypal</code></td><td data-label="Lookalike"><code>paypa1</code></td><td data-label="What changed">digit <code>1</code> can pass for lowercase <code>l</code></td></tr>
+          <tr><td data-label="Familiar spelling"><code>binance</code></td><td data-label="Lookalike"><code>b1nance</code></td><td data-label="What changed">digit <code>1</code> can pass for lowercase <code>i</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note">At this size the difference is obvious. In an address bar, it often isn't.</p>
+
+    <p>A lookalike domain is a real domain. This isn't a browser bug. It works because our eyes round off similar shapes.</p>
+    <p>Look at the third row: the same character stands in for a different letter than it did in the second. That's why catching this by machine is harder than it sounds — fix one spelling and you catch <code>paypa1</code> while walking straight past <code>b1nance</code>. Our scanner tries several ways a name could be read instead of reducing it to one.</p>
+    <p>A related version needs no lookalike characters at all. It just bolts extra words onto the real name:</p>
+    <div class="pattern"><b>metamask-wallet.example</b> · <b>secure-metamask.example</b> · <b>ledgerlive-verify.example</b></div>
+    <p>Each of those puts the brand at the registrable-domain position. The name isn't misplaced and isn't misspelled. It just has company. Companies do legitimately run several domains, so this isn't proof of anything on its own — but an unfamiliar brand-plus-word domain shouldn't be treated as official just because the brand is in it.</p>
+    <p>Don't trust your eyes alone. Compare the domain against something you already trust: a saved bookmark, or the official app.</p>
+
+    <h2>4. Internationalized and punycode domains</h2>
+    <p>Internationalized domain names let people write domains in scripts like Greek, Cyrillic, Arabic and Chinese. So that older systems still work, many of these names also have an ASCII form that starts with <code>xn--</code>. That's punycode.</p>
+    <p>Punycode isn't automatically a red flag. Plenty of legitimate organizations use internationalized domains. But an unexpected punycode link deserves a closer look, especially in a message you didn't ask for about money, account access, or urgent verification.</p>
+    <p>Several Cyrillic letters are drawn much like Latin ones — <span lang="ru">а</span>, <span lang="ru">е</span>, <span lang="ru">о</span>, <span lang="ru">р</span>, <span lang="ru">с</span> — so a substituted name can look almost identical on screen while being an unrelated domain on the network.</p>
+    <p>Browsers may show the Unicode form or the ASCII form, depending on the domain and the browser's own rules. A scanner can spot punycode without being able to prove what the rendered name looks like. Flagging punycode marks something for review; it doesn't prove fraud.</p>
+
+    <h2>5. The <code>@</code> sign</h2>
+    <p>In an HTTP or HTTPS URL, anything before <code>@</code> is user information. It is not the destination host.</p>
+    <div class="pattern"><b>https://ledger.com@ledgerlive-verify.example/device</b></div>
+
+    <div class="urlparts">
+      <ol>
+        <li class="muted"><code>https://</code><span class="up-tag">scheme</span></li>
+        <li class="warn strike"><code>ledger.com</code><span class="up-tag">user information — not the destination</span></li>
+        <li class="muted"><code>@</code><span class="up-tag">separator</span></li>
+        <li class="owner"><code>ledgerlive-verify.example</code><span class="up-tag">host — the site you reach</span></li>
+        <li class="muted"><code>/device</code><span class="up-tag">path</span></li>
+      </ol>
+    </div>
+    <p class="urlparts-note">The five parts of <code>https://ledger.com@ledgerlive-verify.example/device</code>, in order.</p>
+
+    <p>The host is <code>ledgerlive-verify.example</code>. The text <code>ledger.com</code> is not the site you're visiting.</p>
+    <p>This is the trick that survives careful reading, because the familiar name really is there, really is part of the address, and really is spelled correctly. A familiar name before <code>@</code> proves nothing about who owns the link.</p>
+
+    <h2>6. Shortened links and QR codes</h2>
+    <p>A shortened link hides the destination until you expand or follow it. Services like <code>bit.ly</code>, <code>t.co</code> and <code>cutt.ly</code> are ordinary and widely used for good reasons — which is part of what makes them useful cover.</p>
+    <p>A QR code hides the address completely. The code may be fine, but you can't inspect the destination from the image.</p>
+    <p>Our scanner flags shorteners it recognizes but doesn't resolve them for you. If it followed a stranger's link, it would contact the attacker's server and tell them the link had been inspected.</p>
+    <p>If you need to expand a short link, use a service you trust, and treat whatever comes back as untrusted until you've checked it.</p>
+
+    <h2>7. A worked example</h2>
+    <p class="eyebrow">Fictional example using reserved domains</p>
+    <p>Read it the way it would actually arrive: on a phone, in a notification, about a device you own.</p>
+
+    <div class="msg">Ledger Live — device verification required
+
+Your device was flagged during a routine firmware audit on 2 September.
+Until it is re-verified, outgoing transfers from the connected accounts
+are paused.
+
+Re-verify your device here:
+
+  https://ledger.com@ledgerlive-verify.example/device
+
+If that link does not open on your phone, use the mirror:
+
+  https://xn--ledgr-2we.example/verify
+
+Verification closes in 48 hours. Devices not verified by then will need
+to be re-paired at a service centre.
+
+Ledger Support</div>
+
+    <p>Nothing in that message asks for anything secret. No recovery phrase, no private key, no password. It asks for a click — and that's the attack, because the page on the other side can make the next request once you're there.</p>
+
+    <details class="reveal">
+      <summary>Show me what is wrong with it</summary>
+      <div class="inner">
+        <p>The message uses several tricks at once:</p>
+        <ol>
+          <li>The main link puts <code>ledger.com</code> before <code>@</code>, where it's user information rather than the destination. The host is <code>ledgerlive-verify.example</code>.</li>
+          <li>That host carries the brand name with extra words attached, at the registrable-domain position — so it still reads as official once you've found the right part of the address.</li>
+          <li>The fallback uses a punycode domain, offered as a helpful mirror. The sentence before it explains in advance why the first link might fail, so a failure feels anticipated rather than suspicious.</li>
+          <li>It adds urgency and a consequence: 48 hours, and outgoing transfers described as paused.</li>
+          <li>It asks only for a click. The page on the other side makes the next request once you're there.</li>
+        </ol>
+        <p>The detail doing most of the work is the restriction itself. The message gives a technical-sounding explanation for a state the recipient can't independently verify, and believing it costs nothing in the moment.</p>
+        <p>Our engine returns <strong>FAIL</strong> on this message — on the <code>@</code> link, the punycode host, and the brand-with-extra-words domain. It gets there without interpreting a single sentence of the English.</p>
+      </div>
+    </details>
+
+    <h2>8. How to read an address before you open it</h2>
+
+    <div class="tile">
+      <span class="n">Step one</span>
+      <h3>Stop at the first single slash after the host begins</h3>
+      <p>Everything after that slash is the path. It can say anything and proves nothing about who owns the site. If there's an <code>@</code> before the path, ignore everything to the left of it when you're working out the host.</p>
+    </div>
+    <div class="tile">
+      <span class="n">Step two</span>
+      <h3>Find the host and read it right to left</h3>
+      <p>Find the public suffix and the label just before it. Together, that's the registrable domain.</p>
+    </div>
+    <div class="tile">
+      <span class="n">Step three</span>
+      <h3>Compare it with the exact domain you meant to visit</h3>
+      <p>Not "does this look official", and not "does it contain the brand".</p>
+    </div>
+    <div class="tile">
+      <span class="n">Step four</span>
+      <h3>If the address is cut off, expand it before deciding</h3>
+      <p>Better still, open the service through your own bookmark, your saved app, or an address you typed yourself.</p>
+    </div>
+
+    <div class="rule-box">
+      <p><strong>Don't click first and inspect later.</strong></p>
+      <p>Inspect before you arrive.</p>
+    </div>
+
+    <h2>9. What the scan can and can't tell you</h2>
+    <p>Paste a message into the <a href="index.html">scanner</a> and it checks the structure of the addresses and links it covers, looking for the usual warning signs.</p>
+    <p>The scan itself contacts nothing. It runs in your browser, and no link in the message is fetched or resolved. If you then press <strong>Check this address</strong> on a crypto address the scan found, that address — and nothing else from the message — goes to the address-security provider. That's a separate step you choose to take, and <a href="technical-appendix.html">Technical Transparency</a> lists exactly what each provider receives.</p>
+
+    <div class="tbl-wrap stack" tabindex="0" role="region" aria-label="What the scan can help identify, and what it cannot prove">
+      <table class="gtable">
+        <thead>
+          <tr><th scope="col">The scan can help identify</th><th scope="col">The scan cannot prove</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="can" data-label="The scan can help identify"><code>@</code> user-information tricks</td><td class="cannot" data-label="The scan cannot prove">That a structurally normal site is legitimate</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Bare IP hosts</td><td class="cannot" data-label="The scan cannot prove">That the sender is who they claim</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Recognized shorteners</td><td class="cannot" data-label="The scan cannot prove">That a shortened destination is safe without resolving it</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Punycode indicators</td><td class="cannot" data-label="The scan cannot prove">What every punycode domain looks like when rendered</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Brand names in suspicious positions</td><td class="cannot" data-label="The scan cannot prove">That a plain misspelling is malicious</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Brand names with extra words attached</td><td class="cannot" data-label="The scan cannot prove">That a clean result means no scam exists</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Some confusable characters</td><td class="cannot" data-label="The scan cannot prove">That a website will behave safely once you open it</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Suspicious encoded URL content</td><td class="cannot" data-label="The scan cannot prove">Who owns a domain on a suffix it can't resolve</td></tr>
+          <tr><td class="can" data-label="The scan can help identify">Supported crypto addresses in the message</td><td class="cannot" data-label="The scan cannot prove">That an address with no findings belongs to who you think</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rule-box">
+      <p><strong>Structure is not reputation.</strong></p>
+      <p>A clean result means only that no covered structural trick turned up in the text you submitted. It doesn't mean the link, the website, the sender or the offer is safe.</p>
+    </div>
+
+    <p>Three limits are worth stating on their own.</p>
+    <p><strong>A domain with no trick in it is invisible to a structural check.</strong> <code>wallet-refund-centre.example</code> has no lookalike character, no brand name, nothing out of place. Registered this morning and hosting a convincing copy of a wallet login page, it would pass this check and most others like it. Reputation systems — services that keep lists of known-bad addresses — answer a different question, and this scanner doesn't do their job.</p>
+    <p><strong>Plain misspellings aren't reliably caught.</strong> <code>metamsk.io</code> is a typo, not a confusable-character substitution. The scanner doesn't catch every one of these. That's a known limitation, not a quiet promise.</p>
+    <p><strong>Punycode is identified, not translated.</strong> The scanner can tell you a domain is in punycode form. It can't always tell you what name that form spells out.</p>
+
+    <h2>The rule</h2>
+    <p class="closing-quote">The familiar name being present is not evidence. Find the registrable domain.</p>
+    <p>It's the cheapest thing in the whole address to put there — and the part a reader is most likely to stop at.</p>
+
+    <hr class="sep">
+    <p class="living-note">Every address in this guide that demonstrates a trick uses a reserved example name, so none of them resolves and none is a real service. The one exception is <code>metamask.io</code>, which is real and is shown as the example of where a name belongs. Nothing here is a clickable link, and the example message is fictional. Related: <a href="seed-phrase-phishing.html">what the page on the other end of a link tends to ask for</a>, <a href="invisible-characters.html">text that renders as nothing at all</a>, and <a href="prompt-injection.html">instructions written for an AI rather than for you</a>. This article is for educational purposes only and is not financial advice.</p>
+
+    <div class="bottom-cta">
+      <a class="dl-btn" href="index.html">Check a message →</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+</footer>
+
+<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
+
+</body>
+</html>

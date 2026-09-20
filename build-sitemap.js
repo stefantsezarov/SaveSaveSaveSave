@@ -29,6 +29,7 @@ const PAGES = [
   { file: 'invisible-characters.html', loc: '/invisible-characters.html', changefreq: 'monthly', priority: '0.7' },
   { file: 'prompt-injection.html', loc: '/prompt-injection.html', changefreq: 'monthly', priority: '0.7' },
   { file: 'seed-phrase-phishing.html', loc: '/seed-phrase-phishing.html', changefreq: 'monthly', priority: '0.7' },
+  { file: 'disguised-links.html', loc: '/disguised-links.html', changefreq: 'monthly', priority: '0.7' },
   { file: 'privacy.html',    loc: '/privacy.html',    changefreq: 'monthly', priority: '0.3' },
   { file: 'terms.html',      loc: '/terms.html',      changefreq: 'monthly', priority: '0.3' },
 ];
@@ -37,11 +38,35 @@ function lastCommitDate(file) {
   const out = execSync(`git log -1 --format=%ad --date=short -- "${file}"`, {
     cwd: __dirname, encoding: 'utf8',
   }).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(out)) {
-    throw new Error(`No usable git date for ${file} (got "${out}"). `
-      + 'A shallow clone reports one date for every file — run this in a full clone.');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(out)) return out;
+
+  // No commit date. There are two very different reasons for that, and
+  // guessing the same answer for both is how a sitemap starts lying.
+  //
+  // A brand-new page genuinely has no history yet: it is being added in
+  // this very commit, so today IS its last-modified date, and refusing
+  // to build would mean every new page needs two commits — one to exist,
+  // one to appear in the sitemap. That is a chore nobody remembers, and
+  // a page missing from the sitemap is a page search engines do not see.
+  //
+  // A shallow clone, by contrast, has history it simply cannot read, and
+  // filling in today's date there would silently mark the entire site as
+  // modified today, every time.
+  const tracked = execSync(`git ls-files --error-unmatch "${file}" 2>/dev/null || true`, {
+    cwd: __dirname, encoding: 'utf8',
+  }).trim();
+  const shallow = fs.existsSync(path.join(__dirname, '.git', 'shallow'));
+
+  if (!tracked && !shallow) {
+    const today = new Date().toISOString().slice(0, 10);
+    console.log(`  NOTE: ${file} is not committed yet — using today (${today}) as its date.`);
+    return today;
   }
-  return out;
+
+  throw new Error(`No usable git date for ${file} (got "${out}"). `
+    + (shallow
+      ? 'This is a shallow clone, which reports one date for every file — run this in a full clone.'
+      : 'The file is tracked but has no commit date, which should not happen. Investigate before shipping a sitemap.'));
 }
 
 const missing = PAGES.filter(p => !fs.existsSync(path.join(__dirname, p.file)));

@@ -449,11 +449,27 @@ function stubScans(map) {
   check('neither slot contains any template interpolation',
     railSource.every(r => !/\$\{|\+\s*escapeHtml|innerHTML/.test(r)),
     'a slot built by string concatenation is a slot that can be fed scan text');
-  check('the ad slots carry only the publisher and slot ids',
+  // data-ad-state is ours: a rail stays hidden until AdSense reports a
+  // filled creative, so an unfilled slot cannot leave the word
+  // "Advertisement" floating over an empty box. It is permitted here
+  // ONLY with its three fixed values — an open-ended attribute on an ad
+  // slot is precisely the channel this section exists to keep shut.
+  check('the ad slots carry only the publisher, the slot id and a fixed state',
     railSource.every(r => {
       const attrs = r.match(/data-[a-z-]+="[^"]*"/g) || [];
-      return attrs.every(a => /^data-(ad-client|ad-slot|ad-format|full-width-responsive)=/.test(a));
+      return attrs.every(a =>
+        /^data-(ad-client|ad-slot|ad-format|full-width-responsive)=/.test(a)
+        || /^data-ad-state="(pending|filled|empty)"$/.test(a));
     }), 'no scan-derived data attribute may ride along on an ad slot');
+
+  // The reveal script may read only the attribute AdSense sets on its
+  // own element. If it ever grows a reference to the scan, the result,
+  // or the page text, that is a data path out of the tool.
+  const revealScript = (html.match(/Reveal a rail only once[\s\S]*?\}\)\(\);/) || [''])[0];
+  check('the rail-reveal script touches nothing but the ad status attribute',
+    revealScript.length > 0
+    && !/promptscan|scanResult|#result|textarea|value|innerText|textContent|dataLayer|adsbygoogle\.push/i.test(revealScript),
+    'the script that shows a rail must not be able to see what was scanned');
 
   check('no ad global is assigned scanned text anywhere in the page',
     !/adsbygoogle[^;]{0,200}(MSG|promptScan|findings|composite|entry\.address)/.test(html),

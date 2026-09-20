@@ -42,7 +42,7 @@
   </div>
 
   <article class="paper">
-    <p class="eyebrow">Whitepaper · September 2026 · about a five-minute read</p>
+    <p class="eyebrow">Before you act · September 2026 · about a five-minute read</p>
     <h1 class="title">SaveSaveSaveSave</h1>
     <p class="subtitle">A clear risk check before you click, sign, send, or trust.</p>
 
@@ -129,7 +129,7 @@
       <tr><td>Other networks</td><td>Not currently covered</td></tr>
     </table>
     <p>Bitcoin is not covered. Neither are Cosmos-family chains or Cardano. If you paste a Bitcoin address, the scanner will not offer to check it rather than guessing.</p>
-    <p>Chain-by-chain detail is in the <a href="technical-appendix.html">technical appendix</a>.</p>
+    <p>Chain-by-chain detail is in the <a href="technical-appendix.html">Technical Transparency document</a>.</p>
 
     <h2>7. What the product does not do</h2>
     <ul>
@@ -158,7 +158,7 @@
     <h3>Address scan</h3>
     <ul>
       <li>The address must be sent to the relevant security provider to obtain external risk data. There is no way to look up external data without sending the thing being looked up.</li>
-      <li>The provider and the scope of that request are named in the <a href="technical-appendix.html">technical appendix</a>.</li>
+      <li>The provider and the scope of that request are named in the <a href="technical-appendix.html">Technical Transparency document</a>.</li>
       <li>We do not claim that third-party processing is equivalent to local-only analysis. It is not.</li>
     </ul>
 
@@ -184,7 +184,7 @@
     <p><strong>Pause first. Check the evidence. Then decide.</strong></p>
 
     <hr class="sep">
-    <p class="living-note">Everything technical — the chains, the data providers, the sanctions oracle, the test suite, the known gaps and the exact privacy verification — is in the <a href="technical-appendix.html">technical and transparency appendix</a>. You do not need to read it to use the product. It exists so that anyone who wants to check our claims can.</p>
+    <p class="living-note">Everything technical — the chains, the data providers, the sanctions oracle, the test suite, the known gaps and the exact privacy verification — is in the <a href="technical-appendix.html">Technical Transparency document</a>. You do not need to read it to use the product. It exists so that anyone who wants to check our claims can.</p>
 
     <div class="bottom-cta">
       <a class="dl-btn" href="index.html">Scan something →</a>
@@ -194,7 +194,7 @@
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="technical-appendix.html">Technical appendix</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
@@ -203,23 +203,32 @@
 <!-- ADVERTISING ==========================================================
      Google AdSense, publisher ca-pub-7192453271158919.
 
-     Placement rule, and the reason these are rails rather than inline
-     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
-     The ad code receives the page URL and nothing else. It is not given
-     a finding, a verdict, an address, a URL from a message, or any part
-     of pasted text, and promptscan.ui.test.js asserts that.
+     This page carries advertising by an explicit decision recorded in
+     AD_POLICY in apply-ads.js. Pages whose subject is a scam, a
+     phishing message or an unsafe instruction do NOT carry it, and
+     their Content-Security-Policy omits these hosts entirely.
+
+     NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL. The ad
+     code receives the page URL and nothing else: no finding, no
+     verdict, no address, no URL taken from a message, no part of
+     pasted text. promptscan.ui.test.js asserts the code path; a live
+     network capture is the only thing that proves the behaviour, and
+     that check belongs in the release routine, not in this comment.
 
      The rails are position:fixed in the page gutters and are NOT
      RENDERED below 1280px — they do not exist in the flow, so they
      cannot shift the page or crowd the scanner on a phone.
 
-     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
-     with no deploy of the page content itself.
+     A RAIL STAYS HIDDEN UNTIL AN AD ACTUALLY FILLS, so an unfilled
+     slot cannot leave the word "Advertisement" over an empty box.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot
+     disappears with no deploy of the page content itself.
      ================================================================== -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
      crossorigin="anonymous"></script>
 
-  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-left" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -232,7 +241,7 @@
     </script>
   </aside>
 
-  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-right" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -244,5 +253,31 @@
          (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   </aside>
+<script>
+/* Reveal a rail only once AdSense reports a filled creative. Reads one
+   attribute AdSense sets on its own element; sends nothing anywhere. */
+(function () {
+  var rails = document.querySelectorAll('.ad-rail');
+  if (!rails.length) return;
+  function sync() {
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      var filled = !!ins && ins.getAttribute('data-ad-status') === 'filled';
+      rails[i].setAttribute('data-ad-state', filled ? 'filled' : 'empty');
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    var obs = new MutationObserver(sync);
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      if (ins) obs.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    }
+    /* Stop watching once the network has had its chance. */
+    setTimeout(function () { sync(); obs.disconnect(); }, 8000);
+  } else {
+    setTimeout(sync, 4000);
+  }
+})();
+</script>
 </body>
 </html>

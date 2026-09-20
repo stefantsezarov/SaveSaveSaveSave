@@ -382,7 +382,7 @@
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="technical-appendix.html">Appendix</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
@@ -391,23 +391,32 @@
 <!-- ADVERTISING ==========================================================
      Google AdSense, publisher ca-pub-7192453271158919.
 
-     Placement rule, and the reason these are rails rather than inline
-     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
-     The ad code receives the page URL and nothing else. It is not given
-     a finding, a verdict, an address, a URL from a message, or any part
-     of pasted text, and promptscan.ui.test.js asserts that.
+     This page carries advertising by an explicit decision recorded in
+     AD_POLICY in apply-ads.js. Pages whose subject is a scam, a
+     phishing message or an unsafe instruction do NOT carry it, and
+     their Content-Security-Policy omits these hosts entirely.
+
+     NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL. The ad
+     code receives the page URL and nothing else: no finding, no
+     verdict, no address, no URL taken from a message, no part of
+     pasted text. promptscan.ui.test.js asserts the code path; a live
+     network capture is the only thing that proves the behaviour, and
+     that check belongs in the release routine, not in this comment.
 
      The rails are position:fixed in the page gutters and are NOT
      RENDERED below 1280px — they do not exist in the flow, so they
      cannot shift the page or crowd the scanner on a phone.
 
-     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
-     with no deploy of the page content itself.
+     A RAIL STAYS HIDDEN UNTIL AN AD ACTUALLY FILLS, so an unfilled
+     slot cannot leave the word "Advertisement" over an empty box.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot
+     disappears with no deploy of the page content itself.
      ================================================================== -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
      crossorigin="anonymous"></script>
 
-  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-left" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -420,7 +429,7 @@
     </script>
   </aside>
 
-  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-right" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -432,5 +441,31 @@
          (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   </aside>
+<script>
+/* Reveal a rail only once AdSense reports a filled creative. Reads one
+   attribute AdSense sets on its own element; sends nothing anywhere. */
+(function () {
+  var rails = document.querySelectorAll('.ad-rail');
+  if (!rails.length) return;
+  function sync() {
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      var filled = !!ins && ins.getAttribute('data-ad-status') === 'filled';
+      rails[i].setAttribute('data-ad-state', filled ? 'filled' : 'empty');
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    var obs = new MutationObserver(sync);
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      if (ins) obs.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    }
+    /* Stop watching once the network has had its chance. */
+    setTimeout(function () { sync(); obs.disconnect(); }, 8000);
+  } else {
+    setTimeout(sync, 4000);
+  }
+})();
+</script>
 </body>
 </html>

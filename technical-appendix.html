@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <meta name="description" content="The technical and transparency appendix for SaveSaveSaveSave: supported chains, data providers, the sanctions oracle, the counterparty method, the verdict combination policy, the test suite, the privacy verification, and the known gaps.">
-<title>Technical and Transparency Appendix — SaveSaveSaveSave</title>
+<title>Technical Transparency — SaveSaveSaveSave</title>
 <link rel="canonical" href="https://savesavesavesave.xyz/technical-appendix.html">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,15 +28,15 @@
 
 <header class="top">
   <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
-  <a class="nav-link" href="whitepaper.html">← Whitepaper</a>
+  <a class="nav-link" href="whitepaper.html">← Before You Act</a>
 </header>
 <div class="top-rule"></div>
 
 <div class="paper-wrap">
   <article class="paper">
-    <p class="eyebrow">Technical and transparency appendix · September 2026</p>
+    <p class="eyebrow">Technical transparency · September 2026</p>
     <h1 class="title">How it actually works</h1>
-    <p class="subtitle">Every claim in the whitepaper, with the detail behind it.</p>
+    <p class="subtitle">Every claim in Before You Act, with the detail behind it.</p>
 
     <p>You do not need this document to use the product. It exists so that anyone who wants to check the claims can check them, including the unflattering ones.</p>
     <p>Scan engine <code>v0.2.0</code> · result model <code>v1.0.0</code>.</p>
@@ -68,10 +68,10 @@
       <tr><td>Public blockchain nodes</td><td>The address, via the Worker</td><td>Sanctions oracle and counterparty queries</td></tr>
       <tr><td>Google Fonts</td><td>Standard request metadata</td><td>Typefaces</td></tr>
       <tr><td>Cloudflare Web Analytics</td><td>Page URL and standard request metadata</td><td>Page-view counting, cookieless</td></tr>
-      <tr><td>Google AdSense</td><td>Page URL and standard request metadata</td><td>Advertising in the side rails</td></tr>
+      <tr><td>Google AdSense</td><td>Page URL and standard request metadata</td><td>Advertising in the side rails, on the five pages that carry it</td></tr>
     </table>
     <p>No account is required for any of these. <strong>None of them receives submitted scan text, a finding, a verdict, or an address extracted from a message.</strong></p>
-    <p>The advertising code is the newest entry and the one worth being precise about. It is loaded on every page, including the scanner. It is given the page address and nothing else. The ad slots are <code>position: fixed</code> in the page gutters, so they are not inside the result markup and are not rendered at all below 1280px. A test in the UI suite asserts that no ad element appears inside the results container, that the two slots contain no template interpolation, and that no ad global is ever assigned scanned text.</p>
+    <p>The advertising code is the newest entry and the one worth being precise about. It is loaded on five of the eleven pages. The six that carry no advertising — the four guides that explain message-based deception, plus the privacy policy and the terms — have the advertising hosts stripped from their own Content-Security-Policy as well as their markup. Because a browser combines a page’s meta policy with the response header and enforces the intersection, those pages cannot load an ad even though the site-wide header still permits the hosts for the pages that do carry one. The route list and the reason for each entry are in <code>apply-ads.js</code>. It is given the page address and nothing else. The ad slots are <code>position: fixed</code> in the page gutters, so they are not inside the result markup and are not rendered at all below 1280px. A test in the UI suite asserts that no ad element appears inside the results container, that the two slots contain no template interpolation, and that no ad global is ever assigned scanned text.</p>
 
     <h3>Provider routing</h3>
     <p>Direct call first, proxy second, per chain. A rate-limited response is never retried through the shared proxy — doing so would spend a shared quota on a request that was already refused, and would eventually get the proxy limited for everyone. Sixteen tests hold this ordering down.</p>
@@ -96,8 +96,19 @@
       <li><strong>Encoded payloads.</strong> Base64 and similar encodings carrying text never meant to be read by the person pasting it.</li>
       <li><strong>Instruction override.</strong> Prompt injection: text addressed to an AI system rather than to the reader. Includes attempts aimed at this scanner itself, which are reported as the strongest finding rather than as an error.</li>
       <li><strong>Credential solicitation.</strong> Requests for a seed phrase, recovery words, a private key, a password or a two-factor code, in the phrasings used to make them sound routine.</li>
-      <li><strong>Link structure.</strong> Destinations hidden before an <code>@</code> sign, bare IP hosts, punycode domains that display as a different name entirely, shorteners, trusted brand names placed where they hold no authority, and long encoded query payloads.</li>
+      <li><strong>Link structure.</strong> Destinations hidden before an <code>@</code> sign, bare IP hosts, punycode domains that display as a different name entirely, shorteners, trusted brand names placed where they hold no authority, domains spelled to be misread as a brand, domains that carry a wallet brand with extra words attached, and long encoded query payloads.</li>
     </ol>
+
+    <h3 id="link-limits">What the link checks get wrong, and what they miss</h3>
+    <p>Two of these were defective until 19 September 2026, and both are recorded here rather than quietly corrected.</p>
+    <p><strong>The false alarm.</strong> Deciding whether a brand name sits at the real owner position requires knowing where a domain's public suffix ends. The engine took the last two labels, which reads the owner of <code>coinbase.co.uk</code> as <code>co.uk</code> — so an ordinary legitimate link produced a HIGH brand-impersonation finding.</p>
+
+    <h4>Where the suffix boundary comes from</h4>
+    <p>The engine now carries a table of multi-label public suffixes. <strong>That table is a dated subset of the Public Suffix List, not the list itself</strong>, and it is labelled as such in the source. The upstream list runs to roughly fifteen thousand entries and changes every few weeks; embedding a frozen copy of all of it in a page that has to stay small would be a stale dependency presented as authoritative. The shipped table covers the country-code second levels ordinary sites use, and omits the upstream list's wildcard and exception rules entirely, because a simple membership test cannot express them.</p>
+    <p><code>build-suffixes.js</code> regenerates the table from the upstream list and stamps it with the date it was taken. It refuses to write a table it could not fetch, and refuses to write one that fails its own sanity checks — a silently wrong suffix table is worse than a visibly old one. Hosting suffixes such as <code>github.io</code> are excluded deliberately: there the label really is registered by whoever asked for it, so a wallet brand sitting on one is worth flagging rather than excusing.</p>
+    <p><strong>An unresolved boundary is never guessed.</strong> This is the part that stops the original bug returning in a new form. When a host ends in a suffix the table does not carry and has the shape of a country-code registry — a two-letter country code with a short administrative label before it, like the real <code>msk.ru</code> or <code>nom.za</code> — the boundary is reported as unknown. Every brand judgement is then withheld, and the reader is told the ownership could not be determined rather than being told the site is impersonating someone. A missed detection on an unusual suffix is a smaller failure than telling somebody that their bank's real website is impersonating their bank.</p>
+    <p><strong>The blind spot.</strong> The commonest link trick in circulation — registering a domain spelled to be misread, <code>metarnask</code> for <code>metamask</code> — was not detected at all. It is now, by testing every way a glance could read the name rather than by reducing it to one spelling: the digit <code>1</code> stands for <code>l</code> in one domain and <code>i</code> in the next, so a single normalisation pass catches one and misses the other.</p>
+    <p><strong>What is still missed.</strong> A plain misspelling with no confusable character in it — <code>metamsk.io</code> — is not caught. There is a test in the suite asserting that it is not, so the gap stays a known quantity instead of becoming a surprise. The engine also never resolves a shortened link: following an address chosen by a stranger is the attack, so a shortener is reported as unresolved rather than expanded.</p>
     <p>Every finding carries a rule identifier, a severity, a confidence, the exact character offsets where it matched, and a plain-English explanation.</p>
 
     <h3>Education is not execution</h3>
@@ -152,18 +163,20 @@
     <p>A claim about rigour is worth exactly as much as the suite behind it. These cover materially different guarantees and are reported separately for that reason.</p>
     <table class="chains">
       <tr><th>Suite</th><th class="num">Assertions</th><th>What it holds down</th></tr>
-      <tr><td>Message engine</td><td class="num">153</td><td>Each detection family, the education-versus-execution boundary, address extraction, context excerpts and explorer links</td></tr>
-      <tr><td>UI / integration / XSS</td><td class="num">80</td><td>The code actually embedded in the page, including a full cross-site-scripting suite and the advertising-isolation checks</td></tr>
+      <tr><td>Message engine</td><td class="num">176</td><td>Each detection family, the education-versus-execution boundary, address extraction, context excerpts and explorer links</td></tr>
+      <tr><td>UI / integration / XSS</td><td class="num">81</td><td>The code actually embedded in the page, including a full cross-site-scripting suite and the advertising-isolation checks</td></tr>
       <tr><td>Address engine regression</td><td class="num">61</td><td>Verdict labels across malicious, benign, partial, contradictory and malformed provider data</td></tr>
       <tr><td>Scan model</td><td class="num">57</td><td>The combination policy, exhaustively — including that one failing component is never diluted</td></tr>
       <tr><td>Provider routing</td><td class="num">16</td><td>Direct-then-proxy ordering per chain; a rate-limited call is never retried through a shared proxy</td></tr>
       <tr><td>Adversarial review</td><td class="num">20</td><td>Engine output scored against a careful human reading, benign cases included</td></tr>
-      <tr><td><strong>Total</strong></td><td class="num"><strong>387</strong></td><td></td></tr>
+      <tr><td>Published pages</td><td class="num">51</td><td>Every worked example still reaches its stated verdict, every capability the guides claim is one the engine performs, no guide prints a resolvable address, and each page's advertising state matches the route policy in both its markup and its own Content-Security-Policy</td></tr>
+      <tr><td><strong>Total</strong></td><td class="num"><strong>462</strong></td><td></td></tr>
     </table>
 
     <h3>Drift detection</h3>
     <p>The scanner is a single self-contained file, so each engine exists twice — once as its own module, once embedded in the page. A build check compares them and fails loudly if they disagree.</p>
     <p>It was added after exactly that happened: a fix lived in the module nobody loads, shipping a broken chain-routing path for a week while the module's own tests kept passing.</p>
+    <p>Detecting the drift was only half of it, because the remaining half was a person remembering to re-paste. Since 19 September 2026 a second script performs the copy itself, from the modules into the page, and refuses to write anything at all if a landmark is missing — a half-written page is worse than a stale one, because a stale one still runs.</p>
 
     <h3>Cross-site scripting</h3>
     <p>This feature takes hostile text from a stranger and prints it back onto the page. Every value is escaped, including the security provider's own response text, because a spoofed or compromised upstream response must not become markup either.</p>
@@ -241,13 +254,13 @@
     <p class="living-note">Corrections are welcome through <a href="https://github.com/stefantsezarov/SaveSaveSaveSave/issues">the project's issue tracker</a>. A claim in this document that has drifted from the code is a bug, and worth reporting as one.</p>
 
     <div class="bottom-cta">
-      <a class="dl-btn" href="whitepaper.html">← Back to the whitepaper</a>
+      <a class="dl-btn" href="whitepaper.html">← Back to Before You Act</a>
     </div>
   </article>
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="privacy.html">Privacy</a> · <a class="nav-link" href="terms.html">Terms</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content. -->
@@ -256,23 +269,32 @@
 <!-- ADVERTISING ==========================================================
      Google AdSense, publisher ca-pub-7192453271158919.
 
-     Placement rule, and the reason these are rails rather than inline
-     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
-     The ad code receives the page URL and nothing else. It is not given
-     a finding, a verdict, an address, a URL from a message, or any part
-     of pasted text, and promptscan.ui.test.js asserts that.
+     This page carries advertising by an explicit decision recorded in
+     AD_POLICY in apply-ads.js. Pages whose subject is a scam, a
+     phishing message or an unsafe instruction do NOT carry it, and
+     their Content-Security-Policy omits these hosts entirely.
+
+     NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL. The ad
+     code receives the page URL and nothing else: no finding, no
+     verdict, no address, no URL taken from a message, no part of
+     pasted text. promptscan.ui.test.js asserts the code path; a live
+     network capture is the only thing that proves the behaviour, and
+     that check belongs in the release routine, not in this comment.
 
      The rails are position:fixed in the page gutters and are NOT
      RENDERED below 1280px — they do not exist in the flow, so they
      cannot shift the page or crowd the scanner on a phone.
 
-     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
-     with no deploy of the page content itself.
+     A RAIL STAYS HIDDEN UNTIL AN AD ACTUALLY FILLS, so an unfilled
+     slot cannot leave the word "Advertisement" over an empty box.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot
+     disappears with no deploy of the page content itself.
      ================================================================== -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
      crossorigin="anonymous"></script>
 
-  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-left" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -285,7 +307,7 @@
     </script>
   </aside>
 
-  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-right" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -297,5 +319,31 @@
          (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   </aside>
+<script>
+/* Reveal a rail only once AdSense reports a filled creative. Reads one
+   attribute AdSense sets on its own element; sends nothing anywhere. */
+(function () {
+  var rails = document.querySelectorAll('.ad-rail');
+  if (!rails.length) return;
+  function sync() {
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      var filled = !!ins && ins.getAttribute('data-ad-status') === 'filled';
+      rails[i].setAttribute('data-ad-state', filled ? 'filled' : 'empty');
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    var obs = new MutationObserver(sync);
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      if (ins) obs.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    }
+    /* Stop watching once the network has had its chance. */
+    setTimeout(function () { sync(); obs.disconnect(); }, 8000);
+  } else {
+    setTimeout(sync, 4000);
+  }
+})();
+</script>
 </body>
 </html>

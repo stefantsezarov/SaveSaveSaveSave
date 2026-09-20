@@ -6,7 +6,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; connect-src 'self' https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <meta name="description" content="What SaveSaveSaveSave does and does not collect. Message and prompt text is analysed in your browser and is never transmitted. This site sets no cookies of its own; Google advertising may. Full third-party list included.">
@@ -76,8 +76,14 @@
     <p>An ad blocker removes all of it. We do not detect one, do not ask you to turn it off, and the scanner works identically either way.</p>
 
     <h2>7. Advertising</h2>
-    <p><strong>This site carries advertising.</strong> The provider is <strong>Google AdSense</strong>, publisher ID <code>ca-pub-7192453271158919</code>. It runs on every page, in two labelled columns at the sides of wide screens. It is not shown on phones or narrow windows at all.</p>
-    <p>At the time of writing the site is still under review by Google, so the ad slots are usually empty. That will change without this page changing again.</p>
+    <p><strong>Some pages carry advertising. Several deliberately do not.</strong> The provider is <strong>Google AdSense</strong>, publisher ID <code>ca-pub-7192453271158919</code>, shown in two labelled columns at the sides of wide screens. It is not shown on phones or narrow windows at all.</p>
+    <p><strong>Advertising is switched off entirely on the pages where it could do harm</strong>, and on those pages the advertising hosts are removed from the page's own Content-Security-Policy as well as from its markup, so nothing can load even by accident:</p>
+    <ul>
+      <li><a href="seed-phrase-phishing.html">The Twelve Words</a>, <a href="disguised-links.html">Read It From the Right</a>, <a href="prompt-injection.html">The Instruction You Didn't Write</a> and <a href="invisible-characters.html">The Text You Can't See</a> — someone may be reading these while being defrauded, and a commercial link beside that warning could be mistaken for our recommendation.</li>
+      <li>This page and the <a href="terms.html">Terms</a> — a commitment should not be surrounded by advertising.</li>
+    </ul>
+    <p>Between 18 and 20 September 2026 every page carried the ad code, including those four. That was a default rather than a decision, and it has been corrected. The full list of which pages carry advertising and why is in <code>apply-ads.js</code> in the public repository.</p>
+    <p>At the time of writing the site is still under review by Google, so the remaining ad slots are usually empty, and a slot that has nothing to show now stays hidden rather than displaying an empty labelled box.</p>
 
     <div class="rule-box">
       <p><strong>The content of your scans is never used for advertising.</strong> Not the message, not the prompt, not the address, not the verdict, not any finding, not any link extracted from your text.</p>
@@ -88,7 +94,7 @@
     <p>These commitments are part of this policy:</p>
     <ul>
       <li>No advertiser can influence a verdict, and no payment can remove or downgrade a risk finding.</li>
-      <li>Ads are labelled as advertising and kept out of the scan result area.</li>
+      <li>Ads are labelled as advertising, kept out of the scan result area, and kept off the guides that explain scams.</li>
       <li>Scan data is never sold, shared, or aggregated for anyone else's use.</li>
       <li>No sponsorship will be accepted from a project this scanner would reasonably need to assess.</li>
     </ul>
@@ -123,7 +129,7 @@
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Whitepaper</a> · <a class="nav-link" href="technical-appendix.html">Appendix</a> · <a class="nav-link" href="terms.html">Terms</a></p>
+  <p>© 2026 Stefan Tsezarov. All rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="terms.html">Terms</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
@@ -132,50 +138,5 @@
      answered every automatic beacon with 503. The manual snippet posts to
      Cloudflare's own endpoint instead, which the CSP allows. -->
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
-
-<!-- ADVERTISING ==========================================================
-     Google AdSense, publisher ca-pub-7192453271158919.
-
-     Placement rule, and the reason these are rails rather than inline
-     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
-     The ad code receives the page URL and nothing else. It is not given
-     a finding, a verdict, an address, a URL from a message, or any part
-     of pasted text, and promptscan.ui.test.js asserts that.
-
-     The rails are position:fixed in the page gutters and are NOT
-     RENDERED below 1280px — they do not exist in the flow, so they
-     cannot shift the page or crowd the scanner on a phone.
-
-     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
-     with no deploy of the page content itself.
-     ================================================================== -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
-     crossorigin="anonymous"></script>
-
-  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
-    <span class="ad-label">Advertisement</span>
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-7192453271158919"
-         data-ad-slot="1457626247"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </aside>
-
-  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
-    <span class="ad-label">Advertisement</span>
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-7192453271158919"
-         data-ad-slot="1457626247"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </aside>
 </body>
 </html>

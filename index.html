@@ -463,8 +463,8 @@
   <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
   <div class="top-nav">
     <a class="nav-link" href="guides.html">Guides</a>
-    <a class="nav-link" href="whitepaper.html">Whitepaper</a>
-    <a class="nav-link" href="technical-appendix.html">Technical appendix</a>
+    <a class="nav-link" href="whitepaper.html">Before You Act</a>
+    <a class="nav-link" href="technical-appendix.html">Technical Transparency</a>
     <div class="brand-tag">v0.5 — EVM + Solana + Sui + TRON</div>
   </div>
 </header>
@@ -590,7 +590,7 @@
   <p>SaveSaveSaveSave is an independent screening aid built on public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
   <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — SaveSaveSaveSave itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
   <p>Message and prompt text is analysed inside your browser and is never sent anywhere — see the <a class="nav-link" href="privacy.html">privacy policy</a> for exactly what does and does not leave this page.</p>
-  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read the Whitepaper</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
+  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
   <p style="margin-top:14px; color:var(--text-muted);">© 2026 Stefan Tsezarov. All rights reserved.</p>
 </footer>
 
@@ -1685,6 +1685,7 @@ if (typeof module !== 'undefined' && module.exports) {
     recommendedActions, fromPromptScan, fromAddressScan, pendingAddressScan,
   };
 }
+
 /* =====================================================================
    PROMPT SAFETY SCAN ENGINE  (verbatim from promptscan.js)
    ===================================================================== */
@@ -1977,10 +1978,166 @@ function hostOf(s) {
   const m = String(s).match(/\b((?:[a-z0-9¡-￿-]{1,63}\.){1,8}[a-z¡-￿]{2,24})\b/i);
   return m ? m[1].toLowerCase() : null;
 }
-function registrable(host) {
-  const parts = String(host).split('.');
-  return parts.slice(-2).join('.');
+// ---------------------------------------------------------------------
+// WHO OWNS A DOMAIN
+//
+// Almost every check below turns on one question: where does the public
+// suffix end and the registered name begin? Get it wrong and the tool
+// accuses real websites. It already did once — with a last-two-labels
+// rule, the owner of coinbase.co.uk reads as "co.uk", and an ordinary
+// legitimate link earned a HIGH brand-impersonation finding.
+//
+// THE TABLE BELOW IS A DATED SUBSET OF THE PUBLIC SUFFIX LIST, NOT THE
+// LIST. The real list runs to roughly fifteen thousand entries and
+// changes every few weeks. Embedding a frozen copy of all of it in a
+// page that must stay small would be a stale dependency presented as
+// authoritative. build-suffixes.js regenerates this block from the
+// upstream list; the provenance line says when it was last done and by
+// what method.
+//
+//   SOURCE: curated from the ICANN section of the Public Suffix List
+//   METHOD: hand-maintained subset; run `node build-suffixes.js` to
+//           replace it with a generated snapshot of the upstream list
+//   UPDATED: 2026-09-19
+//
+// Because it is a subset, a boundary it cannot resolve is treated as
+// UNKNOWN rather than guessed — see domainParts() below. That is the
+// part that actually keeps the false accusation from coming back: no
+// brand judgement is ever made on a boundary we are not sure of.
+//
+// Hosting suffixes (github.io and similar) are deliberately EXCLUDED.
+// On those the label really is registered by whoever asked for it, so a
+// wallet brand sitting on one is worth flagging rather than excusing.
+// >>> PUBLIC-SUFFIX-TABLE >>>
+const MULTI_LABEL_SUFFIXES = new Set([
+  'co.uk','org.uk','ac.uk','gov.uk','me.uk','net.uk','sch.uk','ltd.uk','plc.uk','nhs.uk','police.uk','mod.uk',
+  'com.au','net.au','org.au','edu.au','gov.au','id.au','asn.au','csiro.au',
+  'co.nz','net.nz','org.nz','govt.nz','ac.nz','geek.nz','school.nz','iwi.nz','maori.nz','health.nz',
+  'co.jp','ne.jp','or.jp','ac.jp','go.jp','lg.jp','ad.jp','ed.jp','gr.jp',
+  'co.kr','or.kr','ne.kr','go.kr','re.kr','pe.kr','seoul.kr','busan.kr',
+  'com.cn','net.cn','org.cn','gov.cn','edu.cn','ac.cn','mil.cn',
+  'com.hk','org.hk','net.hk','edu.hk','gov.hk','idv.hk',
+  'com.tw','net.tw','org.tw','idv.tw','edu.tw','gov.tw',
+  'com.sg','net.sg','org.sg','edu.sg','gov.sg','per.sg',
+  'com.br','net.br','org.br','gov.br','edu.br','art.br','eco.br','ind.br','blog.br','adv.br',
+  'com.mx','org.mx','net.mx','edu.mx','gob.mx',
+  'com.ar','net.ar','org.ar','gob.ar','edu.ar','int.ar','tur.ar',
+  'com.co','net.co','org.co','edu.co','gov.co','mil.co','nom.co',
+  'com.pe','net.pe','org.pe','edu.pe','gob.pe','nom.pe',
+  'com.ve','net.ve','org.ve','edu.ve','gob.ve','web.ve',
+  'com.ec','net.ec','org.ec','edu.ec','gob.ec','fin.ec','med.ec',
+  'com.uy','net.uy','org.uy','edu.uy','gub.uy',
+  'com.bo','net.bo','org.bo','edu.bo','gob.bo','gov.bo',
+  'com.py','net.py','org.py','edu.py','gov.py',
+  'com.do','net.do','org.do','edu.do','gob.do','gov.do',
+  'com.gt','net.gt','org.gt','edu.gt','gob.gt',
+  'com.pa','net.pa','org.pa','edu.pa','gob.pa','ac.pa',
+  'com.sv','org.sv','edu.sv','gob.sv',
+  'com.ni','net.ni','org.ni','edu.ni','gob.ni',
+  'com.hn','net.hn','org.hn','edu.hn','gob.hn',
+  'co.cr','ac.cr','fi.cr','go.cr','or.cr','sa.cr',
+  'com.cu','net.cu','org.cu','edu.cu','gov.cu',
+  'com.tr','net.tr','org.tr','gov.tr','edu.tr','bel.tr','pol.tr','k12.tr','av.tr','web.tr',
+  'co.za','org.za','net.za','gov.za','ac.za','web.za','edu.za',
+  'co.in','net.in','org.in','gen.in','firm.in','gov.in','ac.in','edu.in','res.in','ind.in','mil.in','nic.in',
+  'com.my','net.my','org.my','gov.my','edu.my','mil.my','name.my',
+  'co.id','or.id','ac.id','go.id','web.id','net.id','sch.id','my.id','biz.id','desa.id',
+  'com.ph','net.ph','org.ph','edu.ph','gov.ph','mil.ph','ngo.ph',
+  'com.vn','net.vn','org.vn','edu.vn','gov.vn','ac.vn','biz.vn','info.vn','name.vn','pro.vn','health.vn',
+  'co.il','org.il','net.il','ac.il','gov.il','k12.il','muni.il','idf.il',
+  'co.th','in.th','ac.th','go.th','mi.th','net.th','or.th',
+  'com.ua','net.ua','org.ua','gov.ua','edu.ua','in.ua','kiev.ua','kyiv.ua',
+  'com.pl','net.pl','org.pl','gov.pl','edu.pl','info.pl','biz.pl','waw.pl','krakow.pl','gda.pl','wroc.pl',
+  'co.at','or.at','ac.at','gv.at','biz.at','priv.at',
+  'com.es','org.es','nom.es','gob.es','edu.es',
+  'com.pt','org.pt','edu.pt','gov.pt','int.pt','nome.pt','publ.pt',
+  'com.gr','net.gr','org.gr','edu.gr','gov.gr',
+  'com.ru','net.ru','org.ru','edu.ru','gov.ru','int.ru','pp.ru','msk.ru','spb.ru',
+  'com.by','net.by','org.by','gov.by',
+  'com.kz','net.kz','org.kz','edu.kz','gov.kz',
+  'com.ge','net.ge','org.ge','edu.ge','gov.ge','pvt.ge',
+  'com.az','net.az','org.az','edu.az','gov.az',
+  'com.sa','net.sa','org.sa','edu.sa','gov.sa','med.sa','pub.sa','sch.sa',
+  'com.eg','net.eg','org.eg','edu.eg','gov.eg','sci.eg','mil.eg',
+  'com.ng','net.ng','org.ng','edu.ng','gov.ng','sch.ng','name.ng',
+  'com.gh','org.gh','edu.gh','gov.gh','mil.gh',
+  'com.pk','net.pk','org.pk','edu.pk','gov.pk','biz.pk','web.pk','fam.pk',
+  'com.bd','net.bd','org.bd','edu.bd','gov.bd','ac.bd','mil.bd',
+  'com.lk','net.lk','org.lk','edu.lk','gov.lk','ac.lk','sch.lk','web.lk',
+  'com.np','net.np','org.np','edu.np','gov.np',
+  'com.qa','net.qa','org.qa','edu.qa','gov.qa','mil.qa','sch.qa',
+  'com.kw','net.kw','org.kw','edu.kw','gov.kw',
+  'com.bh','net.bh','org.bh','edu.bh','gov.bh',
+  'com.om','net.om','org.om','edu.om','gov.om','med.om','pro.om',
+  'com.jo','net.jo','org.jo','edu.jo','gov.jo','mil.jo','sch.jo',
+  'com.lb','net.lb','org.lb','edu.lb','gov.lb',
+  'com.ae','net.ae','org.ae','ac.ae','gov.ae','sch.ae','mil.ae',
+  'co.ke','or.ke','ne.ke','go.ke','ac.ke','sc.ke','me.ke','info.ke',
+  'co.tz','or.tz','ne.tz','go.tz','ac.tz','sc.tz','hotel.tz','mil.tz',
+  'co.ug','or.ug','ne.ug','go.ug','ac.ug','sc.ug',
+  'co.zw','org.zw','ac.zw','gov.zw',
+  'co.zm','org.zm','ac.zm','gov.zm','sch.zm',
+  'co.mz','org.mz','ac.mz','gov.mz','edu.mz',
+  'co.ma','net.ma','org.ma','ac.ma','gov.ma','press.ma',
+  'com.tn','net.tn','org.tn','edu.tn','gov.tn','ens.tn','fin.tn',
+  'com.dz','net.dz','org.dz','edu.dz','gov.dz','asso.dz','pol.dz',
+  'com.ly','net.ly','org.ly','edu.ly','gov.ly','med.ly','sch.ly',
+  'com.et','net.et','org.et','edu.et','gov.et','biz.et','name.et',
+  'com.bn','net.bn','org.bn','edu.bn','gov.bn',
+  'com.kh','net.kh','org.kh','edu.kh','gov.kh','per.kh',
+  'com.mm','net.mm','org.mm','edu.mm','gov.mm',
+  'com.mt','net.mt','org.mt','edu.mt','gov.mt',
+  'com.cy','net.cy','org.cy','ac.cy','gov.cy','biz.cy','press.cy',
+  'com.hr','from.hr','iz.hr','name.hr',
+  'com.ee','pri.ee','fie.ee','med.ee','aip.ee','org.ee',
+  'com.lv','net.lv','org.lv','edu.lv','gov.lv','asn.lv','conf.lv','id.lv',
+  'com.mk','net.mk','org.mk','edu.mk','gov.mk','inf.mk','name.mk',
+  'com.ro','org.ro','store.ro','tm.ro','info.ro','nom.ro','nt.ro','www.ro',
+  'com.bg','net.bg','org.bg','edu.bg',
+  'com.rs','org.rs','edu.rs','in.rs','ac.rs','gov.rs',
+  'com.ba','net.ba','org.ba','edu.ba','gov.ba','unsa.ba',
+  'com.al','net.al','org.al','edu.al','gov.al',
+  'co.me','net.me','org.me','ac.me','edu.me','gov.me','its.me','priv.me',
+  'com.ki','com.fj','com.pg','com.sb','com.vu','com.to','com.ws','com.nf',
+  'co.mu','com.mu','org.mu','ac.mu','gov.mu',
+  'co.ao','it.ao','ed.ao','gv.ao','og.ao','pb.ao',
+  'co.bw','org.bw','ac.bw','gov.bw',
+  'com.na','co.na','org.na','alt.na',
+  'com.ni','com.gi','com.gl','com.im','co.im','net.im','org.im','ac.im',
+  'co.je','net.je','org.je','co.gg','net.gg','org.gg',
+  'co.hu','film.hu','info.hu','org.hu','priv.hu','sport.hu','tm.hu',
+]);
+// <<< PUBLIC-SUFFIX-TABLE <<<
+
+// Split a host into the registered name and the label that identifies
+// its owner, and say whether we are SURE of the boundary.
+//
+// The third return value is the important one. When the suffix is not in
+// our table and the host has the shape of a country-code registry we do
+// not carry — a two-letter country code with a short administrative
+// label before it, like the real "msk.ru" or "nom.za" — the boundary is
+// reported as uncertain, and every brand judgement downstream is
+// withheld. A missed detection on an unusual suffix is a smaller failure
+// than telling somebody their bank's real website is impersonating their
+// bank.
+function domainParts(host) {
+  const parts = String(host).toLowerCase().split('.').filter(Boolean);
+  if (parts.length <= 2) {
+    return { domain: parts.join('.'), label: parts[0] || '', certain: true };
+  }
+  if (MULTI_LABEL_SUFFIXES.has(parts.slice(-2).join('.'))) {
+    return { domain: parts.slice(-3).join('.'), label: parts[parts.length - 3], certain: true };
+  }
+  const tld = parts[parts.length - 1];
+  const sld = parts[parts.length - 2];
+  const couldBeSuffix = tld.length === 2 && sld.length <= 3 && /^[a-z]+$/.test(sld);
+  return { domain: parts.slice(-2).join('.'), label: sld, certain: !couldBeSuffix };
 }
+
+function registrable(host) { return domainParts(host).domain; }
+function ownerLabel(host) { return domainParts(host).label; }
+function suffixCertain(host) { return domainParts(host).certain; }
+
 function sameSite(a, b) {
   return registrable(a) === registrable(b);
 }
@@ -2400,6 +2557,70 @@ function runRules(text) {
 const SHORTENERS = new Set(['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','is.gd','buff.ly','cutt.ly','rb.gy','shorturl.at','rebrand.ly','t.ly','v.gd','tiny.cc','shorte.st','adf.ly','bl.ink','lnkd.in','db.tt','qr.ae','trib.al','x.co','soo.gd','clck.ru','tr.im']);
 const BRANDS = ['metamask','coinbase','binance','ledger','trezor','phantom','uniswap','opensea','kraken','etherscan','trustwallet','exodus','blockchain','pancakeswap','solflare','openai','anthropic','google','microsoft','apple','paypal'];
 
+// The wallet and exchange names this scanner exists to protect. Kept
+// separate from BRANDS because the affix check below is too aggressive
+// for the general-technology names: google-analytics.com, googleapis.com
+// and paypalobjects.com are all real, and flagging them would be exactly
+// the kind of false alarm that teaches people to ignore the tool.
+const CRYPTO_BRANDS = ['metamask','coinbase','binance','ledger','trezor','phantom','uniswap','opensea','kraken','etherscan','trustwallet','exodus','pancakeswap','solflare'];
+
+// Verified legitimate owner labels that would otherwise trip the affix
+// check. DO NOT ADD A DOMAIN HERE WITHOUT CONFIRMING IT IS REALLY THE
+// BRAND'S — an unverified entry here is a hole that silently excuses the
+// exact domain an attacker wants excused. Empty is the honest default.
+const BRAND_LABEL_ALLOW = new Set([]);
+
+// Substitutions used to make one name read as another. Every entry is a
+// trick seen in real campaigns, not every pair a font could confuse: a
+// long confusables table produces matches nobody can explain, and an
+// unexplainable HIGH finding is worse than no finding.
+//
+// WHY THIS BRANCHES INSTEAD OF NORMALISING. A single canonical spelling
+// cannot work, because the same character imitates more than one letter:
+// the digit 1 stands for l in "paypa1" and for i in "b1nance". Collapsing
+// 1 to l catches the first and silently misses the second. So each
+// ambiguous position produces alternatives and the whole set is tested.
+const CONFUSABLE_SEQ = [[/rn/g, 'm'], [/vv/g, 'w'], [/nn/g, 'm'], [/cl/g, 'd']];
+const CONFUSABLE_ALT = {
+  '0': ['o'], '1': ['l', 'i'], '3': ['e'], '4': ['a'], '5': ['s'],
+  '7': ['t'], '8': ['b'], '|': ['l', 'i'], '!': ['i', 'l'],
+  'l': ['i'], 'i': ['l'],
+};
+const MAX_SEQ_FORMS = 8;
+const MAX_CHAR_FORMS = 128;
+
+// Every way this label could be read by someone glancing at it.
+// Bounded on purpose: this runs in the visitor's browser, once per URL.
+function deconfusions(label) {
+  const base = String(label).toLowerCase();
+
+  // Sequence swaps are OPTIONAL, not mandatory — a label that genuinely
+  // contains "rn" must still be tested as itself.
+  let forms = new Set([base]);
+  for (const [re, to] of CONFUSABLE_SEQ) {
+    for (const s of [...forms]) {
+      const r = s.replace(re, to);
+      if (r !== s) forms.add(r);
+    }
+    if (forms.size >= MAX_SEQ_FORMS) break;
+  }
+
+  const out = new Set();
+  for (const form of forms) {
+    let variants = [''];
+    for (const ch of form) {
+      const alts = CONFUSABLE_ALT[ch];
+      if (!alts) { variants = variants.map(v => v + ch); continue; }
+      const grown = [];
+      for (const v of variants) { grown.push(v + ch); for (const a of alts) grown.push(v + a); }
+      variants = grown.length > MAX_CHAR_FORMS ? grown.slice(0, MAX_CHAR_FORMS) : grown;
+      if (variants.length >= MAX_CHAR_FORMS) break;
+    }
+    for (const v of variants) out.add(v);
+  }
+  return out;
+}
+
 function analyseUrls(text) {
   const findings = [];
   const urls = [];
@@ -2421,12 +2642,50 @@ function analyseUrls(text) {
       userinfo: !!(u.username || u.password),
       offset: m.index,
     };
-    // A known brand that appears anywhere except the registrable domain.
-    info.brandMisplaced = BRANDS.find(b =>
-      (host.includes(b) && !registrable(host).startsWith(b)) ||
-      (u.pathname.toLowerCase().includes(b) && !registrable(host).includes(b))
-    ) || null;
     info.encodedParams = /%[0-9a-f]{2}/i.test(u.search) && u.search.length > 40;
+
+    const parts = domainParts(host);
+    const label = parts.label;
+    info.ownerLabel = label;
+    info.suffixCertain = parts.certain;
+
+    // EVERY BRAND JUDGEMENT BELOW DEPENDS ON KNOWING WHERE THE PUBLIC
+    // SUFFIX ENDS. When we do not know, we say nothing about brands
+    // rather than guessing — a missed detection on an unusual country
+    // suffix is a far smaller failure than telling somebody that their
+    // bank's real website is impersonating their bank.
+    info.brandMisplaced = null;
+    info.lookalike = null;
+    info.brandAffix = null;
+    info.boundaryUnknown = false;
+
+    if (!parts.certain) {
+      info.boundaryUnknown = BRANDS.some(b => host.includes(b));
+    } else {
+      // A known brand appearing anywhere except at the registrable domain.
+      info.brandMisplaced = BRANDS.find(b =>
+        (host.includes(b) && !parts.domain.startsWith(b)) ||
+        (u.pathname.toLowerCase().includes(b) && !parts.domain.includes(b))
+      ) || null;
+
+      // 1. Deliberate character substitution: metarnask, paypa1, b1nance.
+      //    The label is not a brand, but reading it the way an eye reads
+      //    it makes it one. Nobody registers the collision by accident.
+      if (!BRANDS.includes(label)) {
+        for (const cand of deconfusions(label)) {
+          if (cand !== label && BRANDS.includes(cand)) { info.lookalike = cand; break; }
+        }
+      }
+
+      // 2. Brand plus extra words: metamask-wallet, secure-metamask,
+      //    metamask1. The brand IS at the front of the registrable
+      //    domain, so the misplacement check above says nothing at all.
+      if (!info.lookalike && !BRAND_LABEL_ALLOW.has(label)) {
+        const hit = CRYPTO_BRANDS.find(b => label !== b && label.replace(/[-_]/g, '').includes(b));
+        if (hit) info.brandAffix = hit;
+      }
+    }
+
     urls.push(info);
   }
 
@@ -2479,6 +2738,36 @@ function analyseUrls(text) {
         technical: `Brand token "${u.brandMisplaced}" outside the registrable domain (${registrable(u.host)}) at offset ${u.offset}.`,
         evidence: { excerpt: clampExcerpt(text, u.offset, u.offset + u.raw.length), start: u.offset, end: u.offset + u.raw.length, fromNormalized: false },
         action: `Do not open this. Reach ${u.brandMisplaced} by typing its address yourself.`, source: 'url',
+      }));
+    }
+    if (u.lookalike) {
+      findings.push(makeFinding({
+        ruleId: 'URL_LOOKALIKE_001', category: 'BRAND_IMPERSONATION', severity: 'HIGH', confidence: 0.9,
+        title: `A link uses a near-copy of the name "${u.lookalike}"`,
+        plain: `The owner of this address is "${u.ownerLabel}", which is not "${u.lookalike}" — it is spelled to be misread as it. Characters like rn for m, or the digit 1 for the letter l, look identical at normal size.`,
+        technical: `Owner label "${u.ownerLabel}" normalises to "${u.lookalike}" under the confusable map, at offset ${u.offset}.`,
+        evidence: { excerpt: clampExcerpt(text, u.offset, u.offset + u.raw.length), start: u.offset, end: u.offset + u.raw.length, fromNormalized: false },
+        action: `Do not open this. Reach ${u.lookalike} by typing its address yourself or using a bookmark you made earlier.`, source: 'url',
+      }));
+    }
+    if (u.brandAffix) {
+      findings.push(makeFinding({
+        ruleId: 'URL_BRAND_AFFIX_001', category: 'BRAND_IMPERSONATION', severity: 'MEDIUM', confidence: 0.7,
+        title: `A link uses the name "${u.brandAffix}" with other words attached`,
+        plain: `The owner of this address is "${u.ownerLabel}", not "${u.brandAffix}". Anyone may register a domain that contains a brand name — a real company's own site is almost always the bare name and nothing else.`,
+        technical: `Owner label "${u.ownerLabel}" contains crypto brand "${u.brandAffix}" but is not equal to it, at offset ${u.offset}.`,
+        evidence: { excerpt: clampExcerpt(text, u.offset, u.offset + u.raw.length), start: u.offset, end: u.offset + u.raw.length, fromNormalized: false },
+        action: `Confirm the exact address on ${u.brandAffix}'s official channel before opening it. This can be a genuine sub-brand domain, and we cannot tell the difference from the text alone.`, source: 'url',
+      }));
+    }
+    if (u.boundaryUnknown) {
+      findings.push(makeFinding({
+        ruleId: 'URL_SUFFIX_UNKNOWN_001', category: 'SUSPICIOUS_URL', severity: 'LOW', confidence: 0.5,
+        title: 'A familiar name appears in an address we cannot fully resolve',
+        plain: `This address ends in a suffix our list does not cover, so we cannot say for certain which part of "${u.host}" identifies its owner. We are not calling it an impersonation, because we would be guessing. Check the exact domain against one you already trust.`,
+        technical: `Public-suffix boundary for ${u.host} is unresolved by the shipped suffix table; brand checks withheld. Offset ${u.offset}.`,
+        evidence: { excerpt: clampExcerpt(text, u.offset, u.offset + u.raw.length), start: u.offset, end: u.offset + u.raw.length, fromNormalized: false },
+        action: 'Open the service through a bookmark or an address you typed yourself rather than through this link.', source: 'url',
       }));
     }
     if (u.subdomainDepth >= 5) {
@@ -3011,6 +3300,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     scanPrompt, analyseUnicode, analyseMarkup, analyseUrls, analyseEncoding,
     runRules, detectChains, decideVerdict, directiveScore, registrable, sameSite,
+    ownerLabel, suffixCertain, domainParts, deconfusions, MULTI_LABEL_SUFFIXES,
     extractAddresses, addressFindings, looksLikeSolanaAddress,
     contextExcerpt, explorerUrl, EXPLORERS,
     RULES, LIMITS, SEVERITY_ORDER, SCANNER_VERSION,
@@ -3722,23 +4012,32 @@ renderCapabilityNote();
 <!-- ADVERTISING ==========================================================
      Google AdSense, publisher ca-pub-7192453271158919.
 
-     Placement rule, and the reason these are rails rather than inline
-     units: NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL.
-     The ad code receives the page URL and nothing else. It is not given
-     a finding, a verdict, an address, a URL from a message, or any part
-     of pasted text, and promptscan.ui.test.js asserts that.
+     This page carries advertising by an explicit decision recorded in
+     AD_POLICY in apply-ads.js. Pages whose subject is a scam, a
+     phishing message or an unsafe instruction do NOT carry it, and
+     their Content-Security-Policy omits these hosts entirely.
+
+     NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL. The ad
+     code receives the page URL and nothing else: no finding, no
+     verdict, no address, no URL taken from a message, no part of
+     pasted text. promptscan.ui.test.js asserts the code path; a live
+     network capture is the only thing that proves the behaviour, and
+     that check belongs in the release routine, not in this comment.
 
      The rails are position:fixed in the page gutters and are NOT
      RENDERED below 1280px — they do not exist in the flow, so they
      cannot shift the page or crowd the scanner on a phone.
 
-     KILL SWITCH: set data-ads="off" on <html> and every slot disappears
-     with no deploy of the page content itself.
+     A RAIL STAYS HIDDEN UNTIL AN AD ACTUALLY FILLS, so an unfilled
+     slot cannot leave the word "Advertisement" over an empty box.
+
+     KILL SWITCH: set data-ads="off" on <html> and every slot
+     disappears with no deploy of the page content itself.
      ================================================================== -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
      crossorigin="anonymous"></script>
 
-  <aside class="ad-rail ad-rail-left" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-left" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -3751,7 +4050,7 @@ renderCapabilityNote();
     </script>
   </aside>
 
-  <aside class="ad-rail ad-rail-right" aria-label="Advertisement">
+  <aside class="ad-rail ad-rail-right" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
@@ -3763,5 +4062,31 @@ renderCapabilityNote();
          (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   </aside>
+<script>
+/* Reveal a rail only once AdSense reports a filled creative. Reads one
+   attribute AdSense sets on its own element; sends nothing anywhere. */
+(function () {
+  var rails = document.querySelectorAll('.ad-rail');
+  if (!rails.length) return;
+  function sync() {
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      var filled = !!ins && ins.getAttribute('data-ad-status') === 'filled';
+      rails[i].setAttribute('data-ad-state', filled ? 'filled' : 'empty');
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    var obs = new MutationObserver(sync);
+    for (var i = 0; i < rails.length; i++) {
+      var ins = rails[i].querySelector('ins.adsbygoogle');
+      if (ins) obs.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    }
+    /* Stop watching once the network has had its chance. */
+    setTimeout(function () { sync(); obs.disconnect(); }, 8000);
+  } else {
+    setTimeout(sync, 4000);
+  }
+})();
+</script>
 </body>
 </html>

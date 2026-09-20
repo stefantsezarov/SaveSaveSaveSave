@@ -268,6 +268,114 @@ check('markdown link mismatch -> flagged',
 check('legitimate link is not flagged as brand impersonation',
   !hasRule(S.scanPrompt('Docs are at https://docs.metamask.io/guide/'), 'URL_BRAND_001'));
 
+// ---- who actually owns a domain ---------------------------------------
+// registrable() used to take the last two labels unconditionally, which
+// made the owner of coinbase.co.uk read as "co.uk" — so an ordinary
+// legitimate link earned a HIGH brand-impersonation finding. A security
+// tool that cries wolf at real sites gets switched off, and then it
+// protects nobody.
+check('registrable domain respects multi-label suffixes',
+  S.registrable('www.coinbase.co.uk') === 'coinbase.co.uk',
+  'got ' + S.registrable('www.coinbase.co.uk'));
+
+check('registrable domain unchanged for ordinary suffixes',
+  S.registrable('a.b.metamask.io') === 'metamask.io',
+  'got ' + S.registrable('a.b.metamask.io'));
+
+check('owner label is the name, not the suffix',
+  S.ownerLabel('www.binance.com.tr') === 'binance',
+  'got ' + S.ownerLabel('www.binance.com.tr'));
+
+check('a brand on a country suffix is NOT called impersonation',
+  !hasRule(S.scanPrompt('Support is at https://www.coinbase.co.uk/help'), 'URL_BRAND_001'));
+
+// The shipped suffix table is a subset, so some boundaries are genuinely
+// unresolvable. The rule for those is: say so, never guess. Guessing is
+// what produced the coinbase.co.uk false accusation in the first place,
+// and a wrong HIGH finding against a real company is the single most
+// expensive mistake this tool can make.
+check('an unresolvable suffix is reported as uncertain',
+  S.suffixCertain('coinbase.nom.za') === false,
+  'nom.za is a real public suffix the shipped table does not carry');
+
+check('...and no brand accusation is made on it',
+  !hasRule(S.scanPrompt('Log in at https://coinbase.nom.za/account'), 'URL_BRAND_001')
+  && !hasRule(S.scanPrompt('Log in at https://coinbase.nom.za/account'), 'URL_BRAND_AFFIX_001'));
+
+check('...but the reader is told the boundary could not be resolved',
+  hasRule(S.scanPrompt('Log in at https://coinbase.nom.za/account'), 'URL_SUFFIX_UNKNOWN_001'));
+
+check('the uncertainty note is LOW, not an accusation dressed up',
+  S.scanPrompt('Log in at https://coinbase.nom.za/account')
+    .findings.filter(f => f.ruleId === 'URL_SUFFIX_UNKNOWN_001')
+    .every(f => f.severity === 'LOW'));
+
+check('a resolvable boundary raises no uncertainty note',
+  !hasRule(S.scanPrompt('Support is at https://www.coinbase.co.uk/help'), 'URL_SUFFIX_UNKNOWN_001'));
+
+check('an ordinary long domain on a ccTLD is not mistaken for a suffix',
+  S.suffixCertain('docs.metamask.io') === true && S.registrable('docs.metamask.io') === 'metamask.io');
+
+check('the suffix table covers the registries that caused the original bug',
+  ['co.uk', 'com.au', 'com.br', 'co.jp', 'com.tr', 'co.za', 'co.in', 'com.mx']
+    .every(s => S.MULTI_LABEL_SUFFIXES.has(s)));
+
+// ---- look-alike domains -----------------------------------------------
+// The commonest trick on this whole list, and the one the scanner was
+// completely blind to: a domain the attacker really registered, spelled
+// to be misread as one you trust.
+check('rn-for-m look-alike -> flagged HIGH',
+  hasRule(S.scanPrompt('Restore your wallet at https://metarnask.io/verify'), 'URL_LOOKALIKE_001'));
+
+check('digit-for-letter look-alike (1 as l) -> flagged',
+  hasRule(S.scanPrompt('Sign in at https://paypa1.com/login'), 'URL_LOOKALIKE_001'));
+
+// The same character imitates a DIFFERENT letter here. One normalisation
+// pass catches one of these two and silently misses the other, which is
+// the whole reason the reading branches instead of normalising.
+check('digit-for-letter look-alike (1 as i) -> flagged',
+  hasRule(S.scanPrompt('Sign in at https://b1nance.com/login'), 'URL_LOOKALIKE_001'));
+
+check('look-alike readings cover both letters the digit 1 imitates',
+  S.deconfusions('b1nance').has('binance') && S.deconfusions('paypa1').has('paypal'));
+
+check('a real brand domain is not a look-alike of itself',
+  !hasRule(S.scanPrompt('Download from https://metamask.io/download/'), 'URL_LOOKALIKE_001'));
+
+// ---- brand plus extra words -------------------------------------------
+// Here the brand DOES sit at the front of the registrable domain, so the
+// misplacement check above is satisfied and says nothing at all.
+check('brand with words attached -> flagged',
+  hasRule(S.scanPrompt('Recover at https://metamask-wallet.com/restore'), 'URL_BRAND_AFFIX_001'));
+
+check('brand with a trailing digit -> flagged',
+  hasRule(S.scanPrompt('Recover at https://metamask1.io/restore'), 'URL_BRAND_AFFIX_001'));
+
+check('brand-affix finding is MEDIUM, not HIGH',
+  S.scanPrompt('Recover at https://metamask-wallet.com/restore')
+    .findings.filter(f => f.ruleId === 'URL_BRAND_AFFIX_001')
+    .every(f => f.severity === 'MEDIUM'),
+  'a genuine sub-brand domain looks identical from the text alone');
+
+// General-technology names are excluded from the affix check on purpose:
+// these are real Google and PayPal domains, and flagging them is exactly
+// the false alarm that teaches people to ignore the tool.
+for (const real of ['https://www.google-analytics.com/collect',
+                    'https://fonts.googleapis.com/css2?family=X',
+                    'https://www.paypalobjects.com/img/a.png']) {
+  check('real infrastructure domain not flagged: ' + real.split('/')[2],
+    !S.scanPrompt('Loads from ' + real).findings.some(f => f.ruleId.startsWith('URL_')));
+}
+
+// ---- the limit we are not pretending away -----------------------------
+// A look-alike that is a plain English misspelling with no confusable
+// character in it is NOT caught. Recorded as a test so the gap is a known
+// quantity rather than a surprise, and so nobody claims coverage we do
+// not have.
+check('KNOWN GAP: plain misspelling without confusables is not detected',
+  !hasRule(S.scanPrompt('Go to https://metamsk.io/restore'), 'URL_LOOKALIKE_001'),
+  'if this now FAILS the gap has been closed — update the guide and the appendix');
+
 // --------------------------------------------------------------- wallets
 section('Wallet-specific risk');
 

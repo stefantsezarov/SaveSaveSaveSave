@@ -209,6 +209,82 @@
   .two-up .theirs .lbl{color:#B91C1C;}
   @media (max-width: 640px){ .two-up{grid-template-columns:1fr;} }
 
+  /* ---- URL anatomy -------------------------------------------------
+     A diagram built out of text instead of a picture.
+
+     The SVG version of this looked right and failed four ways: it could
+     not wrap on a phone, its alignment depended on a web font arriving,
+     its text could not be selected or copied, and with styles stripped
+     its labels collapsed into one unreadable run of words. A list of
+     labelled parts survives all four, and a screen reader reads it out
+     part by part instead of reaching for a summary written beside it.
+
+     Colour is never the only signal here: every part also carries its
+     name in words, so the diagram works in greyscale and for a reader
+     who cannot distinguish the tints. */
+  .urlparts{margin:0 0 10px; border:1px solid var(--paper-border);
+    background:#FFFFFF; padding:16px;}
+  .urlparts ol{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px;}
+  .urlparts li{flex:0 1 auto; min-width:0; border-left:3px solid var(--paper-border);
+    padding:7px 11px; background:var(--paper-tint);}
+  .urlparts code{display:block; font-size:0.95rem; word-break:break-all;
+    color:var(--paper-text); background:none; padding:0;}
+  .urlparts .up-tag{display:block; font-family:'IBM Plex Sans',sans-serif;
+    font-size:0.78rem; line-height:1.45; color:var(--paper-muted); margin-top:4px;}
+  .urlparts .owner{border-left-color:var(--paper-text); background:#EDF0F4;}
+  .urlparts .owner code{font-weight:600;}
+  .urlparts .owner .up-tag{color:var(--paper-text); font-weight:600;}
+  .urlparts .warn{border-left-color:#B91C1C; background:#FEF2F2;}
+  .urlparts .warn .up-tag{color:#B91C1C;}
+  .urlparts .muted code{color:var(--paper-muted);}
+  .urlparts .strike code{text-decoration:line-through;
+    text-decoration-color:#B91C1C; text-decoration-thickness:2px;}
+  .urlparts-note{font-size:0.9rem; color:var(--paper-muted); margin:0 0 22px;}
+  @media (max-width: 640px){
+    .urlparts ol{display:block;}
+    .urlparts li{margin:0 0 8px;}
+    .urlparts li:last-child{margin-bottom:0;}
+  }
+
+  /* ---- Tables in guides --------------------------------------------
+     Two things a table must not do on a phone: push the page sideways,
+     or shrink until it cannot be read. This one scrolls inside its own
+     frame, the frame is focusable so a keyboard can reach the scroll,
+     and a line underneath says it scrolls — an invisible scroll area is
+     the same as a missing column. */
+  .tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;
+    border:1px solid var(--paper-border); margin:0 0 6px; background:#FFFFFF;}
+  .gtable{border-collapse:collapse; width:100%; min-width:440px; font-size:0.97rem;}
+  .gtable th, .gtable td{text-align:left; padding:10px 14px; vertical-align:top;
+    line-height:1.55; border-bottom:1px solid var(--paper-border);}
+  .gtable thead th{font-family:'Space Grotesk',sans-serif; font-size:0.8rem;
+    letter-spacing:0.05em; text-transform:uppercase; color:var(--paper-muted);
+    background:var(--paper-tint);}
+  .gtable tbody tr:last-child td{border-bottom:none;}
+  .gtable code{font-size:0.92rem; word-break:break-all;}
+  .gtable .can{border-left:3px solid #15803D;}
+  .gtable .cannot{border-left:3px solid #B91C1C;}
+  .tbl-note{font-size:0.85rem; color:var(--paper-muted); margin:0 0 22px;}
+
+  /* On a phone, a comparison table read sideways is a table nobody
+     finishes. `.tbl-wrap.stack` turns each row into a block and moves
+     the column heading onto each cell, so the pairing survives without
+     a horizontal scroll. Every cell keeps its own heading, so the
+     meaning does not depend on remembering which column you were in. */
+  @media (max-width: 640px){
+    .tbl-wrap.stack{overflow-x:visible;}
+    .tbl-wrap.stack .gtable{min-width:0;}
+    .tbl-wrap.stack thead{position:absolute; width:1px; height:1px;
+      overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+    .tbl-wrap.stack tbody tr{display:block; padding:6px 0;
+      border-bottom:1px solid var(--paper-border);}
+    .tbl-wrap.stack tbody tr:last-child{border-bottom:none;}
+    .tbl-wrap.stack td{display:block; border-bottom:none; padding:7px 14px;}
+    .tbl-wrap.stack td::before{content:attr(data-label); display:block;
+      font-family:'Space Grotesk',sans-serif; font-size:0.7rem; letter-spacing:0.05em;
+      text-transform:uppercase; color:var(--paper-muted); margin-bottom:3px;}
+  }
+
   /* ---- Guides index ----------------------------------------------- */
   .guide-list{display:grid; gap:14px; margin:26px 0 10px;}
   .guide-card{display:block; border:1px solid var(--paper-border); border-left:3px solid var(--paper-accent);
@@ -244,10 +320,17 @@
      the full width. Roughly a third of visitors arrive on Android and
      none of them should meet a rail.
 
+     NOTHING IS SHOWN UNTIL AN AD ACTUALLY FILLS. A rail starts at
+     data-ad-state="pending" and stays hidden; a small script promotes it
+     to "filled" only once AdSense reports a creative. Without this an
+     unfilled slot leaves the word "Advertisement" floating above an
+     empty box — which is exactly how the page read during review, and
+     how it would read on every page AdSense declines to fill.
+
      KILL SWITCH: <html data-ads="off"> removes every slot instantly. */
   .ad-rail{display:none;}
   @media (min-width: 1280px){
-    .ad-rail{
+    .ad-rail[data-ad-state="filled"]{
       display:block; position:fixed; top:96px; width:160px; z-index:1;
       max-height:calc(100vh - 140px); overflow:hidden;
     }
