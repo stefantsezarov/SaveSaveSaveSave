@@ -43,7 +43,21 @@ const fs = require('fs');
 const path = require('path');
 
 const PUB = 'ca-pub-7192453271158919';
-const SLOT = '1457626247';
+
+// ONE AD UNIT PER PLACEMENT.
+//
+// Both rails used slot 1457626247. AdSense permits the same unit twice
+// on a page, but the two rails then sit in one auction and report as a
+// single line, so neither placement can be judged on its own — you
+// cannot tell whether the left rail earns anything, or whether the
+// right one is carrying both.
+//
+// Each rail now has its own unit, so the two placements report
+// separately and can be judged on their own. If they ever collapse back
+// to one id the run below says so rather than letting it pass quietly.
+const SLOT_LEFT = '1457626247';    // original unit
+const SLOT_RIGHT = '8189344100';   // "rail-right", created 20 Sep 2026
+const SLOTS_ARE_DISTINCT = SLOT_LEFT !== SLOT_RIGHT;
 
 // ---------------------------------------------------------------------
 // THE POLICY. `enabled` is the whole decision; `reason` is owed to
@@ -160,13 +174,13 @@ function narrowCsp(csp) {
 // splitting into two units before anyone tries to read performance per
 // placement. Recorded here rather than in somebody's memory.
 function railsHtml() {
-  const unit = side => `
+  const unit = (side, slot) => `
   <aside class="ad-rail ad-rail-${side}" data-ad-state="pending">
     <span class="ad-label">Advertisement</span>
     <ins class="adsbygoogle"
          style="display:block"
          data-ad-client="${PUB}"
-         data-ad-slot="${SLOT}"
+         data-ad-slot="${slot}"
          data-ad-format="auto"
          data-full-width-responsive="true"></ins>
     <script>
@@ -202,8 +216,8 @@ function railsHtml() {
      ================================================================== -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${PUB}"
      crossorigin="anonymous"></script>
-${unit('left')}
-${unit('right')}
+${unit('left', SLOT_LEFT)}
+${unit('right', SLOT_RIGHT)}
 <script>
 /* Reveal a rail only once AdSense reports a filled creative. Reads one
    attribute AdSense sets on its own element; sends nothing anywhere. */
@@ -289,3 +303,8 @@ fs.writeFileSync(hp, headers, 'utf8');
 
 console.log(`\n${on} page(s) carry advertising, ${off} deliberately do not. ${changed} file(s) rewritten.`);
 console.log('Reasons are in AD_POLICY at the top of this file.');
+if (!SLOTS_ARE_DISTINCT) {
+  console.log(`\nNOTE: both rails still use the same ad unit (${SLOT_LEFT}), so they`);
+  console.log('      compete in one auction and report as one line. Set SLOT_RIGHT');
+  console.log('      to a second unit id to separate them.');
+}

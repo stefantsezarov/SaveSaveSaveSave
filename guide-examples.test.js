@@ -310,6 +310,41 @@ if (fs.existsSync(guidePath)) {
     !/It runs on every page/i.test(priv) && /deliberately do not/i.test(priv));
 }
 
+
+// ---- the wordmark is the way home -------------------------------------
+// Every page except the scanner must let a visitor get back with one
+// click on the logo. It has to be a real <a href> rather than a click
+// handler on a <div>, so the keyboard reaches it, middle-click opens a
+// tab, and a screen reader announces it as a link.
+//
+// index.html is deliberately excluded: there the logo would reload a
+// page someone may have just pasted a long message into, and losing
+// their input to a stray click is worse than a logo that does nothing
+// while they are already home.
+{
+  const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
+    'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
+    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+
+  for (const f of SUBPAGES) {
+    const fp = path.join(__dirname, f);
+    if (!fs.existsSync(fp)) { check(f + ' exists', false); continue; }
+    const html = fs.readFileSync(fp, 'utf8');
+    const brand = (html.match(/<a class="brand"[^>]*>/) || [])[0];
+    check(f + ': the logo links home',
+      !!brand && /href="index\.html"/.test(brand),
+      brand ? 'found a brand link but it does not point at index.html' : 'the logo is not a link');
+    check(f + ': the logo link has an accessible name',
+      !!brand && /aria-label="[^"]{10,}"/.test(brand),
+      'a link whose text is four styled spans needs a label saying where it goes');
+  }
+
+  const home = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  check('index.html does NOT link the logo',
+    !/<a class="brand"/.test(home),
+    'on the scanner the logo would reload the page and discard whatever was pasted');
+}
+
 console.log('\n' + '='.repeat(60));
 if (fail) {
   console.log(`${fail} FAILED, ${pass} passed`);

@@ -446,6 +446,15 @@ function stubScans(map) {
   const railSource = (html.match(/<aside class="ad-rail[\s\S]*?<\/aside>/g) || []);
   check('the page defines exactly two ad slots', railSource.length === 2,
     'got ' + railSource.length);
+
+  // Each rail has its own ad unit. With one id in both, the two
+  // placements sit in a single auction and report as one line, so
+  // neither can be judged on its own — and nobody notices, because
+  // everything still works.
+  const slots = railSource.map(r => (r.match(/data-ad-slot="(\d+)"/) || [])[1]);
+  check('each rail carries its own ad unit',
+    slots.length === 2 && slots[0] && slots[1] && slots[0] !== slots[1],
+    'both rails use ' + slots[0]);
   check('neither slot contains any template interpolation',
     railSource.every(r => !/\$\{|\+\s*escapeHtml|innerHTML/.test(r)),
     'a slot built by string concatenation is a slot that can be fed scan text');
