@@ -68,3 +68,19 @@ make-pdf.js
 shot.js
 icons.py
 switch-domain.sh
+
+# ---- The deploy's own git directory -----------------------------------
+# Cloudflare's builder clones this repository, checks the commit out, and
+# uploads the directory it produced — .git included. Confirmed against the
+# live site, not assumed: /.git/config, /.git/HEAD, /.git/logs/HEAD,
+# /.git/index and /.gitignore all returned 200.
+#
+# This is what made the list above insufficient rather than untidy.
+# .git/index carries the blob hash of every tracked file, and loose objects
+# are served, so each document excluded above was still readable in full at
+# /.git/objects/<hash> — verified for PROJECT-STATE.md, ARCHITECTURE.md,
+# the business proposal and promptscan.js. Excluding files by name achieves
+# nothing while a complete second copy of them is published from .git.
+.git
+.git/**
+.gitignore

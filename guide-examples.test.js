@@ -384,6 +384,24 @@ if (fs.existsSync(guidePath)) {
         'index.html carries this verbatim — a served copy is a second source of truth');
     }
 
+    // The deploy's own .git directory. Cloudflare's builder uploads the
+    // checkout it produced, .git and all — confirmed live: /.git/config,
+    // /.git/HEAD, /.git/logs/HEAD and /.git/index each returned 200, and
+    // .git/index holds the blob hash of every tracked file, so each
+    // document excluded above was still fetchable at /.git/objects/<hash>.
+    // Excluding files by name is worth nothing while a second copy of all
+    // of them is served from .git. This asserts the rule is present; only
+    // a fetch against the deployed site proves the upload honoured it.
+    const ignoresPath = p => pats.some(pat => {
+      const base = pat.replace(/\/+$/, '');
+      return toRe(base).test(p) || p === base || p.startsWith(base + '/');
+    });
+    for (const p of ['.git', '.git/config', '.git/index', '.git/logs/HEAD',
+                     '.git/objects/33/bf2bfd58cf52cc587383ac007d3a7d9c5cac21']) {
+      check('not published: ' + p, ignoresPath(p),
+        'the git directory republishes every file this list excludes');
+    }
+
     // THE SAFE DIRECTION. Anything the pages link to must still be served.
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
