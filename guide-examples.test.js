@@ -462,6 +462,40 @@ if (fs.existsSync(guidePath)) {
     !/privacy requests: <a href="https:\/\/github\.com[^"]*">[^<]*<\/a>\.<\/p>/.test(priv));
 }
 
+
+// ---- the declared address is the served address -----------------------
+// The deploy serves /guides and 301s /guides.html to it. Both work, but
+// a canonical tag naming the redirecting form tells a crawler the
+// authoritative address is one the site answers with a redirect rather
+// than a page, and every sitemap entry cost an extra round trip.
+//
+// Internal links deliberately keep .html — they survive the redirect and
+// cannot break if the platform's extension handling changes. This is
+// only about the addresses published AS authoritative.
+{
+  const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
+    'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
+    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+
+  for (const f of PAGES) {
+    const fp = path.join(__dirname, f);
+    if (!fs.existsSync(fp)) continue;
+    const canon = (fs.readFileSync(fp, 'utf8').match(/rel="canonical" href="([^"]+)"/) || [])[1];
+    check(f + ': canonical names the served address',
+      !!canon && !/\.html$/.test(canon),
+      canon ? canon + ' redirects; it is not the address served' : 'no canonical tag');
+  }
+
+  const sm = path.join(__dirname, 'sitemap.xml');
+  if (fs.existsSync(sm)) {
+    const locs = [...fs.readFileSync(sm, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
+    check('sitemap lists every page', locs.length === PAGES.length, 'found ' + locs.length);
+    const withExt = locs.filter(l => /\.html$/.test(l));
+    check('no sitemap entry points at a redirecting address',
+      withExt.length === 0, withExt.join(', '));
+  }
+}
+
 console.log('\n' + '='.repeat(60));
 if (fail) {
   console.log(`${fail} FAILED, ${pass} passed`);

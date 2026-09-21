@@ -2,66 +2,66 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://savesavesavesave.xyz/</loc>
-    <lastmod>2026-09-20</lastmod>
+    <lastmod>2026-09-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/whitepaper.html</loc>
+    <loc>https://savesavesavesave.xyz/whitepaper</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/technical-appendix.html</loc>
+    <loc>https://savesavesavesave.xyz/technical-appendix</loc>
     <lastmod>2026-09-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/guides.html</loc>
+    <loc>https://savesavesavesave.xyz/guides</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/honeypot-tokens.html</loc>
+    <loc>https://savesavesavesave.xyz/honeypot-tokens</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/invisible-characters.html</loc>
+    <loc>https://savesavesavesave.xyz/invisible-characters</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/prompt-injection.html</loc>
+    <loc>https://savesavesavesave.xyz/prompt-injection</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/seed-phrase-phishing.html</loc>
+    <loc>https://savesavesavesave.xyz/seed-phrase-phishing</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/disguised-links.html</loc>
+    <loc>https://savesavesavesave.xyz/disguised-links</loc>
     <lastmod>2026-09-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/privacy.html</loc>
+    <loc>https://savesavesavesave.xyz/privacy</loc>
     <lastmod>2026-09-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://savesavesavesave.xyz/terms.html</loc>
+    <loc>https://savesavesavesave.xyz/terms</loc>
     <lastmod>2026-09-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>

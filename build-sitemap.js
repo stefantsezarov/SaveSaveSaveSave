@@ -20,18 +20,33 @@ const SITE = 'https://savesavesavesave.xyz';
 // Only pages a person should land on. Deliberately excludes the .md
 // documents and the test files: a search result pointing at
 // promptscan.test.js helps nobody.
+// WHY THESE HAVE NO .html EXTENSION.
+//
+// The deploy serves /guides and 301-redirects /guides.html to it. Both
+// work, but only one is the address actually served, and a sitemap
+// should name that one: every entry pointing at the redirecting form
+// costs a crawler an extra round trip, and the canonical tags used to
+// name an address the site answers with a redirect rather than a page.
+//
+// Internal links in the pages deliberately still use .html. They work
+// through the redirect, they cannot break if the platform's extension
+// handling ever changes, and nothing about them is published to a
+// crawler as authoritative.
+//
+// live.test.js asserts that no entry here redirects, so if the deploy's
+// behaviour changes this stops being a silent assumption.
 const PAGES = [
   { file: 'index.html',      loc: '/',                changefreq: 'weekly',  priority: '1.0' },
-  { file: 'whitepaper.html', loc: '/whitepaper.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'technical-appendix.html', loc: '/technical-appendix.html', changefreq: 'monthly', priority: '0.5' },
-  { file: 'guides.html',     loc: '/guides.html',     changefreq: 'weekly',  priority: '0.8' },
-  { file: 'honeypot-tokens.html', loc: '/honeypot-tokens.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'invisible-characters.html', loc: '/invisible-characters.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'prompt-injection.html', loc: '/prompt-injection.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'seed-phrase-phishing.html', loc: '/seed-phrase-phishing.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'disguised-links.html', loc: '/disguised-links.html', changefreq: 'monthly', priority: '0.7' },
-  { file: 'privacy.html',    loc: '/privacy.html',    changefreq: 'monthly', priority: '0.3' },
-  { file: 'terms.html',      loc: '/terms.html',      changefreq: 'monthly', priority: '0.3' },
+  { file: 'whitepaper.html', loc: '/whitepaper', changefreq: 'monthly', priority: '0.7' },
+  { file: 'technical-appendix.html', loc: '/technical-appendix', changefreq: 'monthly', priority: '0.5' },
+  { file: 'guides.html',     loc: '/guides',     changefreq: 'weekly',  priority: '0.8' },
+  { file: 'honeypot-tokens.html', loc: '/honeypot-tokens', changefreq: 'monthly', priority: '0.7' },
+  { file: 'invisible-characters.html', loc: '/invisible-characters', changefreq: 'monthly', priority: '0.7' },
+  { file: 'prompt-injection.html', loc: '/prompt-injection', changefreq: 'monthly', priority: '0.7' },
+  { file: 'seed-phrase-phishing.html', loc: '/seed-phrase-phishing', changefreq: 'monthly', priority: '0.7' },
+  { file: 'disguised-links.html', loc: '/disguised-links', changefreq: 'monthly', priority: '0.7' },
+  { file: 'privacy.html',    loc: '/privacy',    changefreq: 'monthly', priority: '0.3' },
+  { file: 'terms.html',      loc: '/terms',      changefreq: 'monthly', priority: '0.3' },
 ];
 
 function lastCommitDate(file) {
