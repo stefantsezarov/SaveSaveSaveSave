@@ -38,21 +38,41 @@ function check(name, cond, detail) {
 }
 function section(t) { console.log('\n== ' + t + ' =='); }
 
-// A plain GET that resolves rather than throws, so one dead URL cannot
-// end the run before the checks that matter have been made.
-function get(path) {
+// A GET that resolves rather than throws, so one dead URL cannot end the
+// run before the checks that matter have been made.
+//
+// IT FOLLOWS REDIRECTS, and the first version did not. That single
+// omission produced about forty failures on the first real run: this
+// deploy serves /guides.html as a 301 to /guides, so every page request
+// came back as an empty redirect body and every check that read a page
+// failed at once. A checker that cannot tell "the page is wrong" from
+// "I did not fetch the page" is worse than no checker, because a wall of
+// red teaches everyone to stop reading it.
+//
+// The redirect chain is RETURNED rather than swallowed — a URL that
+// redirects is itself worth knowing about when it came from a sitemap or
+// a canonical tag.
+async function get(path, depth) {
+  depth = depth || 0;
   return new Promise(resolve => {
     let u;
-    try { u = new URL(BASE + path); } catch (e) { return resolve({ status: 0, body: '', headers: {}, error: String(e) }); }
+    try { u = new URL(path.startsWith('http') ? path : BASE + path); }
+    catch (e) { return resolve({ status: 0, body: '', headers: {}, redirects: 0, error: String(e) }); }
     const client = u.protocol === 'http:' ? http : https;
     const req = client.get(u, { timeout: 15000, headers: { 'User-Agent': 'savesavesavesave-live-check' } }, res => {
+      const loc = res.headers.location;
+      if (res.statusCode >= 300 && res.statusCode < 400 && loc && depth < 5) {
+        res.resume();
+        const next = new URL(loc, u).href;
+        return resolve(get(next, depth + 1).then(r => ({ ...r, redirects: r.redirects + 1, redirectedFrom: u.href, firstStatus: res.statusCode })));
+      }
       let body = '';
       res.setEncoding('utf8');
       res.on('data', c => { if (body.length < 400000) body += c; });
-      res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers }));
+      res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers, redirects: 0, finalUrl: u.href }));
     });
-    req.on('timeout', () => { req.destroy(); resolve({ status: 0, body: '', headers: {}, error: 'timeout' }); });
-    req.on('error', e => resolve({ status: 0, body: '', headers: {}, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, body: '', headers: {}, redirects: 0, error: 'timeout' }); });
+    req.on('error', e => resolve({ status: 0, body: '', headers: {}, redirects: 0, error: e.message }));
   });
 }
 
@@ -153,6 +173,26 @@ const MUST_404 = [
     try { p = new URL(loc).pathname || '/'; } catch (_) { p = loc; }
     const r = await get(p);
     check('sitemap entry resolves: ' + p, r.status === 200, 'returned ' + r.status);
+  }
+
+  section('Addresses the site gives out are the addresses it serves');
+  // Not cosmetic. A canonical tag that redirects tells a crawler the
+  // authoritative address is somewhere other than the one it just
+  // fetched, and every sitemap entry costs an extra round trip.
+  const redirecting = [];
+  for (const loc of locs) {
+    let p; try { p = new URL(loc).pathname || '/'; } catch (_) { p = loc; }
+    const r = await get(p);
+    if (r.redirects > 0) redirecting.push(p + ' -> ' + (r.finalUrl || '').replace(BASE, ''));
+  }
+  check('no sitemap entry redirects', redirecting.length === 0,
+    redirecting.join(', '));
+
+  const canon = (idx.body.match(/<link rel="canonical" href="([^"]+)"/) || [])[1];
+  if (canon) {
+    const cr = await get(canon);
+    check('the canonical URL does not redirect', cr.redirects === 0,
+      canon + ' redirects, so it is not the address being served');
   }
 
   // The logo is the way home from every page but the scanner, where it
