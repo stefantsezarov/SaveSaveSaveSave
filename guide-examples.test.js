@@ -369,12 +369,24 @@ if (fs.existsSync(guidePath)) {
       .replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
     const isIgnored = f => pats.some(p => toRe(p).test(f));
 
-    // Internal documents must not be public.
-    for (const doc of ['PROJECT-STATE.md', 'ARCHITECTURE.md', 'UPLOAD-NOTES.md',
-                       'PAGES-SETUP.md', 'SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md',
+    // Internal documents must not be published by the deploy.
+    for (const doc of ['ARCHITECTURE.md', 'UPLOAD-NOTES.md', 'PAGES-SETUP.md',
                        'SaveSaveSaveSave_Whitepaper_v3.0.md', 'SaveSaveSaveSave_Whitepaper_Short_v3.0.md']) {
       check('not published: ' + doc, isIgnored(doc),
         'this document was written for the people building the site, not for readers');
+    }
+
+    // PRIVATE documents are held to a stricter rule: they must not be in
+    // the repository AT ALL. This repository is public, so an ignore list
+    // only controls what the website serves — it does nothing about what
+    // GitHub shows, and nothing about the deploy's own .git directory.
+    // Both of these were committed and stayed public for weeks before
+    // anyone checked. They live in ../private/ now.
+    for (const doc of ['PROJECT-STATE.md',
+                       'SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md']) {
+      check('absent from the repository: ' + doc,
+        !fs.existsSync(path.join(__dirname, doc)),
+        'a public repository is the wrong place to decide what stays unread');
     }
 
     // Engine source is embedded in the page; serving a second copy only
@@ -424,6 +436,30 @@ if (fs.existsSync(guidePath)) {
     check('every published page is still served',
       !PAGES.some(isIgnored));
   }
+}
+
+
+// ---- the site must stay reachable -------------------------------------
+// The privacy policy once gave a GitHub issue tracker as the ONLY way to
+// reach the operator, including for privacy requests. Making the
+// repository private turned that into a dead end overnight: a legally
+// meaningful contact route, broken by a setting on somebody else's
+// platform. A contact route must not depend on a reader having an
+// account, or on a repository's visibility.
+{
+  for (const f of ['privacy.html', 'terms.html']) {
+    const fp = path.join(__dirname, f);
+    if (!fs.existsSync(fp)) { check(f + ' exists', false); continue; }
+    const html = fs.readFileSync(fp, 'utf8');
+    check(f + ': offers a contact route that needs no third-party account',
+      /href="mailto:[^"@]+@[^"]+"/.test(html),
+      'the only contact was an issue tracker, which broke the moment the repo went private');
+  }
+
+  // And no page may present a platform link as the sole route.
+  const priv = fs.readFileSync(path.join(__dirname, 'privacy.html'), 'utf8');
+  check('privacy.html does not call the issue tracker the only route',
+    !/privacy requests: <a href="https:\/\/github\.com[^"]*">[^<]*<\/a>\.<\/p>/.test(priv));
 }
 
 console.log('\n' + '='.repeat(60));

@@ -19,16 +19,14 @@
 
 
 # ---- Internal documents ----------------------------------------------
-# Written for the people building this, not for readers. The site is
-# deliberately open about its limits — that is what Technical
-# Transparency is for, curated and written to be read. A raw internal
-# state file is a different thing, and the business proposal is not
-# public material at all.
-PROJECT-STATE.md
+# Written for the people building this, not for readers. The handover
+# document and the business proposal are no longer here at all — they
+# live in ../private/, outside the repository, because a public repo is
+# the wrong place to decide what stays unread. These remaining files are
+# harmless but useless to a visitor.
 ARCHITECTURE.md
 PAGES-SETUP.md
 UPLOAD-NOTES.md
-SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md
 
 # Superseded whitepaper editions. Unlinked, but publicly fetchable and
 # now CONTRADICTING the published HTML — a visitor who found one would

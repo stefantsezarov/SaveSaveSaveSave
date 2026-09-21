@@ -10,3 +10,18 @@ report-*.png
 toolbar-*.png
 new-look-*.png
 monetization/
+
+# ---- Private material -------------------------------------------------
+# This repository is PUBLIC. Anything committed here is published twice
+# over: once on GitHub, and once by the deploy, which uploads the
+# checked-out directory as the site's assets.
+#
+# These two documents were committed and were public for weeks before
+# anyone checked. They now live in ../private/, outside the repository,
+# and these lines stop them coming back by accident.
+#
+# BEFORE ADDING A FILE HERE, ask the better question: does it belong in
+# a public repository at all? If the answer is no, it belongs in
+# ../private/, not in an ignore list.
+PROJECT-STATE.md
+SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md
