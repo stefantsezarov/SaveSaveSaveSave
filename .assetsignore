@@ -56,6 +56,8 @@ goplus-proxy-worker.js
 # ---- Build and test tooling -------------------------------------------
 # Developer tools. No visitor has a reason to fetch them.
 *.test.js
+.github
+.github/**
 redteam.js
 apply-ads.js
 embed.js

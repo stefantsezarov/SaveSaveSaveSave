@@ -492,7 +492,67 @@ function stubScans(map) {
       || /^ onchange="setAddressChain\(\d+, this\.value\)"$/.test(h));
   })(), 'every handler must be a fixed literal plus an integer index');
 
-  console.log('\n' + '='.repeat(60));
+  
+// ---- the token scan must state its limits -----------------------------
+// The message scanner has always ended with "What this scan did not do".
+// The token scanner ended with a checklist and a raw-response button —
+// on the screen most likely to be the last thing somebody reads before
+// spending money. These assert the panel exists and, more importantly,
+// that it is DERIVED rather than a reassuring paragraph somebody typed.
+section('Token scan states its limits');
+{
+  const src = html.slice(html.indexOf('function scanLimitations'), html.indexOf('function checkRow'));
+  check('scanLimitations() exists', src.length > 0);
+
+  check('the renderer actually shows it',
+    /What this scan did not do[\s\S]{0,300}scanLimitations\(adapter, result, mode\)/.test(html),
+    'the function existing is not the same as the user seeing it');
+
+  check('every line is escaped before it reaches the page',
+    /escapeHtml\(l\.text\)/.test(html),
+    'these strings are ours today; the escaping is what keeps that from mattering');
+
+  // Drive the real function rather than reading the source for keywords.
+  const fn = new Function('return (' + src.slice(src.indexOf('function scanLimitations')) + ')')();
+
+  const full = { capabilities: { tokenSecurity:true, walletScreening:true, txSimulation:true, liquidityAnalysis:true, contractAnalysis:true } };
+  const bare = { capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:false, contractAnalysis:false } };
+  const clean = { checksUnknown: 0, checksExpected: 12, checksValid: 12 };
+  const partial = { checksUnknown: 5, checksExpected: 12, checksValid: 7 };
+  const nothing = { checksUnknown: 12, checksExpected: 12, checksValid: 0 };
+
+  check('a clean scan on a fully capable chain still states limits',
+    fn(full, clean, 'token').length >= 4,
+    'a PASS is exactly when the limits most need saying');
+
+  check('a chain with fewer capabilities states more limits',
+    fn(bare, clean, 'token').length > fn(full, clean, 'token').length,
+    'the list is derived from capabilities, not typed once');
+
+  check('unreadable checks are reported as unknowns, not passes',
+    fn(full, partial, 'token').some(l => /5 of 12/.test(l.text) && /NOT verified/.test(l.text)));
+
+  check('no data at all is called unverified rather than clear',
+    fn(full, nothing, 'token').some(l => /unverified rather than clear/i.test(l.text)));
+
+  check('a chain without trade simulation says so as a material limit',
+    fn(bare, clean, 'token').some(l => l.material && /No trade was simulated/.test(l.text)));
+
+  check('a wallet scan on a chain without screening says so',
+    fn(bare, clean, 'wallet').some(l => l.material && /not checked against known-malicious lists/.test(l.text)));
+
+  check('...and a TOKEN scan does not claim that wallet limit',
+    !fn(bare, clean, 'token').some(l => /known-malicious lists/.test(l.text)),
+    'a limit that does not apply is noise, and noise is how a limits panel gets ignored');
+
+  check('the single-provider dependency is always stated',
+    fn(full, clean, 'token').some(l => /one provider/i.test(l.text)));
+
+  check('it never claims the result means the thing is safe to buy',
+    fn(full, clean, 'token').some(l => /not a judgement about whether this is a good thing to buy/i.test(l.text)));
+}
+
+console.log('\n' + '='.repeat(60));
   console.log(`${pass}/${pass + fail} UI/integration tests passed`);
   if (failures.length) { console.log('\nFailures:'); failures.forEach(f => console.log('  - ' + f)); }
   console.log('='.repeat(60));

@@ -590,7 +590,7 @@
   <p>SaveSaveSaveSave is an independent screening aid built on public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
   <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — SaveSaveSaveSave itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
   <p>Message and prompt text is analysed inside your browser and is never sent anywhere — see the <a class="nav-link" href="privacy.html">privacy policy</a> for exactly what does and does not leave this page.</p>
-  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
+  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
   <p style="margin-top:14px; color:var(--text-muted);">© 2026 Stefan Tsezarov. All rights reserved.</p>
 </footer>
 
@@ -3946,6 +3946,11 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
           ${clear.map(checkRow).join('')}
           ${result.checks.length === 0 ? '<li class="check-item"><div class="check-text">No usable flag data was returned for this address — treat as unverified rather than safe, and check manually.</div></li>' : ''}
         </ul>
+        ${sectionShell('What this scan did not do', null, null,
+          '<ul class="limit-list">'
+          + scanLimitations(adapter, result, mode).map(l =>
+              '<li' + (l.material ? ' class="material"' : '') + '>' + escapeHtml(l.text) + '</li>').join('')
+          + '</ul>')}
         <button class="raw-toggle" onclick="toggleRaw(this)">View raw API response</button>
         <pre class="raw">${JSON.stringify(raw, null, 2).replace(/</g,'&lt;')}</pre>
       </div>
@@ -3959,6 +3964,64 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
   results.innerHTML = html;
   results.style.display = 'block';
   results.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ---------------------------------------------------------------------
+// WHAT A TOKEN OR WALLET SCAN DID NOT DO
+//
+// The message scanner has said this since it shipped. The token scanner
+// never has — it showed a verdict, a checklist, and stopped. That is the
+// screen most likely to be the last thing somebody reads before they
+// spend money, and it was the one screen making no statement about its
+// own limits.
+//
+// Every line below is DERIVED, not written. It comes from the adapter's
+// declared capabilities, from how many checks actually returned usable
+// data, and from facts about the provider that are true on every run.
+// Nothing here is a reassuring sentence somebody typed once; if a
+// capability changes, this changes with it.
+function scanLimitations(adapter, result, mode) {
+  const out = [];
+  const caps = adapter.capabilities || {};
+
+  // The one that matters most, and the one a clean result most invites
+  // somebody to forget.
+  out.push({ material: true, text:
+    'This is a check of what the contract and the provider\u2019s data say right now. '
+    + 'It is not a judgement about whether this is a good thing to buy, hold, or trust.' });
+
+  if (result.checksUnknown > 0) {
+    out.push({ material: true, text:
+      result.checksUnknown + ' of ' + result.checksExpected + ' checks came back unreadable and were NOT verified. '
+      + 'Those are unknowns, not passes.' });
+  }
+  if (result.checksValid === 0) {
+    out.push({ material: true, text:
+      'No usable data was returned at all. Treat this as unverified rather than clear.' });
+  }
+
+  if (!caps.txSimulation) {
+    out.push({ material: true, text:
+      'No trade was simulated. Whether a sale would actually succeed was not tested on this chain.' });
+  }
+  if (!caps.liquidityAnalysis) {
+    out.push({ text: 'Liquidity was not examined, so nothing here says whether you could sell at a sensible price.' });
+  }
+  if (!caps.contractAnalysis) {
+    out.push({ text: 'The contract source was not analysed on this chain — only the provider\u2019s flag data was read.' });
+  }
+  if (mode !== 'token' && !caps.walletScreening) {
+    out.push({ material: true, text: 'Wallet screening is not available on this chain, so this address was not checked against known-malicious lists.' });
+  }
+
+  out.push({ text:
+    'The flag data comes from one provider, GoPlus Security. If their data is wrong, stale, or missing for this address, so is this result.' });
+  out.push({ text:
+    'A contract\u2019s behaviour can change after it is checked. Ownership, permissions and upgradeable logic can all be altered later by whoever holds those rights.' });
+  out.push({ text:
+    'Nothing here checks who is behind the project, how the token is promoted, or what happens off-chain.' });
+
+  return out;
 }
 
 function checkRow(c){

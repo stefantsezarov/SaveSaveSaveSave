@@ -1,0 +1,41 @@
+# Check the LIVE site after every deploy.
+#
+# The repository's other suites prove the files are right and stop at the
+# door. This one opens the door. Three separate failures in one week were
+# all the same shape — correct in the repository, wrong on the deploy —
+# and each was found by somebody happening to look.
+#
+# It runs on a schedule as well as on push, because a deploy is not the
+# only way the live site changes: a Cloudflare setting, an expired
+# certificate, or a build that silently did not run will all show up here
+# and nowhere else.
+name: Live site check
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Every morning, 07:00 UTC. A quiet failure found the next morning is
+    # a much better outcome than one found by a visitor.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Cloudflare builds and deploys after the push lands. Without this
+      # the check races the deploy and fails on the previous version,
+      # which teaches everyone to ignore a red run.
+      - name: Wait for the deploy to land
+        if: github.event_name == 'push'
+        run: sleep 90
+
+      - name: Check what is actually being served
+        run: node live.test.js https://savesavesavesave.xyz
