@@ -76,6 +76,10 @@
     <h3>Provider routing</h3>
     <p>Direct call first, proxy second, per chain. A rate-limited response is never retried through the shared proxy — doing so would spend a shared quota on a request that was already refused, and would eventually get the proxy limited for everyone. Sixteen tests hold this ordering down.</p>
 
+    <h3>What the scan console shows</h3>
+    <p>While a scan runs, the page shows a stage list rather than a spinner. Every row in it corresponds to an operation that really happens, and the list is built per scan from the chain and the scan type — the counterparty row exists only when the engine's own supported-chain list says that second request will be made, and the greyed rows come from the same capability flags that draw the dots under the input box. The network rows are driven by observed requests: a row lights because a request went over the wire, and it names the host it reached.</p>
+    <p><strong>Two deliberate choices.</strong> Checks this product does not perform are shown greyed and marked <em>not performed</em> rather than left off the list, because a check nobody mentions is a check nobody misses. And because local steps finish faster than the eye can follow, state changes are spaced apart so they can be read — so the console prints the real analysis time next to the time it was on screen. A message scan that took 3&nbsp;ms says so, beside the half-second it was displayed for. The address is printed in full and never abbreviated; address poisoning works precisely because people check the first and last few characters.</p>
+
     <h2>3. The sanctions oracle</h2>
     <p>The Chainalysis Sanctions Oracle is a free, publicly callable smart contract that answers whether an address is currently on a sanctions list. No account, no API key.</p>
     <p>It was verified rather than trusted: the contract address was cross-checked directly on Etherscan, and the function selector was computed and confirmed against the deployed bytecode. It is live here on 8 of its 9 deployed chains.</p>

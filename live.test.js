@@ -195,6 +195,21 @@ const MUST_404 = [
       canon + ' redirects, so it is not the address being served');
   }
 
+  // The live scan console. It is the only thing on screen while somebody
+  // waits for a verdict, and it is built entirely in JavaScript — so a
+  // deploy that shipped the script without the markup would show nothing
+  // at all and nothing else in this file would notice.
+  section('The scan console is actually on the page');
+  check('the console markup is served', /id="scanConsole"/.test(idx.body));
+  check('...as a polite live region', /id="scanConsole"[^>]*role="status"/.test(idx.body)
+    && /id="scanConsole"[^>]*aria-live="polite"/.test(idx.body),
+    'without this a screen reader hears nothing while a scan runs');
+  check('...with its stage list and figure', /id="consoleStages"/.test(idx.body) && /id="cfNodes"/.test(idx.body));
+  check('the console stylesheet shipped with it', /\.console-stages/.test(idx.body),
+    'the markup without the CSS is an unstyled list in the middle of the page');
+  check('reduced motion is honoured on the deploy',
+    /prefers-reduced-motion:reduce\)\{[\s\S]{0,800}?animation:none;/.test(idx.body));
+
   // The logo is the way home from every page but the scanner, where it
   // would discard a message somebody had just pasted.
   const guide = await get('/disguised-links.html');

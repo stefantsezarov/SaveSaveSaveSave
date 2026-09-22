@@ -518,7 +518,7 @@ const SolanaAdapter = {
   capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
   // "not yet available" is the right phrase for something not built yet.
   // This one IS built; the provider will not answer. Different sentence.
-  capabilityNotes: { walletScreening: 'not available on Solana — no provider data' },
+  capabilityNotes: { walletScreening: 'no provider data for Solana' },
   chains: { 'solana': 'Solana Mainnet' },
   validateAddress(addr){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(addr).trim()); },
 

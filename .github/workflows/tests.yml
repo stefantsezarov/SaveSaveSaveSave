@@ -1,0 +1,60 @@
+# Run every suite in this repository on push and on pull request.
+#
+# WHY THIS EXISTS. Until now the only workflow here checked the LIVE
+# site, ninety seconds after a deploy. That is the right check to have,
+# but it is the last possible moment to find out — the broken version is
+# already public by the time it runs, and it can only see what a browser
+# can see from outside.
+#
+# These suites run before that, on the files themselves, and they cover
+# the things a live fetch cannot: the engine's verdicts, the scan model's
+# combination policy, the XSS boundary, the advertising isolation, and
+# whether the code embedded in index.html is the code the tests just
+# passed. That last one matters most — a fix to a module the page does
+# not load has shipped from this repository before.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  suites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Before anything else. Every suite below that reads index.html is
+      # only meaningful if the page really carries the modules it claims.
+      - name: The page contains the engine the tests are about to check
+        run: node verify_embedded.js
+
+      - name: Message engine
+        run: node promptscan.test.js
+      - name: Page integration, XSS and advertising isolation
+        run: node promptscan.ui.test.js
+      - name: Live scan console
+        run: node scanconsole.test.js
+      - name: Address engine regressions
+        run: node savesavesavesave.regression.test.js
+      - name: Scan model
+        run: node scanmodel.test.js
+      - name: Provider routing
+        run: node goplus-routing.test.js
+      - name: Published guides still match the engine
+        run: node guide-examples.test.js
+      - name: Red team
+        run: node redteam.js
+
+      # Not a test: it rewrites files. Running it here proves the route
+      # policy is already applied, because a clean tree means the
+      # committed pages match the policy they are supposed to follow.
+      - name: Advertising route policy is already applied
+        run: |
+          node apply-ads.js
+          git diff --exit-code || (echo "::error::apply-ads.js changed files — the committed pages do not match AD_POLICY" && exit 1)

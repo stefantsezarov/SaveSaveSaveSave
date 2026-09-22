@@ -46,14 +46,55 @@ const uiSrc = html.slice(uiStart, uiEnd);
 
 // ---- minimal DOM ------------------------------------------------------
 const nodes = {};
-function makeEl(id) {
-  return {
-    id, value: '', textContent: '', innerHTML: '', style: {},
-    classList: { _s: new Set(), add(c){this._s.add(c);}, remove(c){this._s.delete(c);},
+// The fake DOM. It got richer when the live scan console arrived: that
+// code builds real element trees and inline SVG, and a stub that quietly
+// swallowed setAttribute would have let the console "pass" these tests
+// while rendering nothing. Everything below is the minimum the page
+// actually calls — no more, so an unimplemented method still throws
+// rather than hiding a mistake.
+function esc(v) {
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function makeEl(id, tag) {
+  const el = {
+    id, tagName: (tag || 'div').toUpperCase(), value: '', style: {},
+    _text: '', _kids: [], _attrs: {}, className: '',
+    classList: { _s: new Set(),
+                 add(...c){ c.forEach(x => this._s.add(x)); },
+                 remove(...c){ c.forEach(x => this._s.delete(x)); },
                  toggle(c, on){ on === undefined ? (this._s.has(c) ? this._s.delete(c) : this._s.add(c)) : (on ? this._s.add(c) : this._s.delete(c)); },
-                 contains(c){return this._s.has(c);} },
-    setAttribute(){}, scrollIntoView(){},
+                 contains(c){ return this._s.has(c); } },
+    setAttribute(k, v){ this._attrs[k] = String(v); if (k === 'class') this.className = String(v); },
+    getAttribute(k){ return Object.prototype.hasOwnProperty.call(this._attrs, k) ? this._attrs[k] : null; },
+    appendChild(c){ this._kids.push(c); return c; },
+    scrollIntoView(){},
+    // Only the one selector shape the console uses: [data-node="id"].
+    // Anything else throws, on purpose.
+    querySelector(sel){
+      const m = /^\[data-node="([^"]+)"\]$/.exec(sel);
+      if (!m) throw new Error('fake DOM: unsupported selector ' + sel);
+      const hit = [];
+      (function walk(n){ (n._kids || []).forEach(k => { if (k._attrs && k._attrs['data-node'] === m[1]) hit.push(k); walk(k); }); })(this);
+      return hit[0] || null;
+    },
   };
+  Object.defineProperty(el, 'textContent', {
+    get(){ return el._text; },
+    set(v){ el._text = String(v); el._kids = []; el._rawHtml = undefined; },
+  });
+  Object.defineProperty(el, 'innerHTML', {
+    // Two readers, one property. escapeHtml() sets textContent and reads
+    // innerHTML back, so text must come out escaped. The result renderer
+    // assigns a whole HTML string and the assertions read it straight
+    // back, so an assigned string wins until textContent replaces it.
+    get(){
+      if (el._rawHtml !== undefined) return el._rawHtml;
+      return el._kids.length ? el._kids.map(k => k.innerHTML).join('') : esc(el._text);
+    },
+    set(v){ el._rawHtml = String(v); el._text = ''; el._kids = []; },
+  });
+  return el;
 }
 ['addressPanel','promptPanel','smode-address','smode-prompt','promptInput','promptCount','promptError','results','scanError']
   .forEach(id => { nodes[id] = makeEl(id); });
@@ -61,10 +102,14 @@ function makeEl(id) {
 const sandbox = {
   document: {
     getElementById: (id) => nodes[id] || (nodes[id] = makeEl(id)),
-    createElement: () => ({ set textContent(v){ this._t = v; }, get innerHTML(){
-      return String(this._t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    } }),
+    createElement: (tag) => makeEl(null, tag),
+    createElementNS: (_ns, tag) => makeEl(null, tag),
   },
+  // The console asks whether the visitor has asked for less motion. In
+  // the suite it has not, so the paced path — the one with the timing
+  // bugs in it — is the path under test.
+  matchMedia: (q) => ({ matches: false, media: q }),
+  performance: { now: () => Date.now() },
   console, Date, Math, JSON, RegExp, String, Number, Array, Object, Buffer, URL,
   // checkAddress() retries once behind a timer. Fire it immediately so the
   // test does not sit for two seconds per address.
