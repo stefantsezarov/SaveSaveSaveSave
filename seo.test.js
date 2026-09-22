@@ -83,6 +83,15 @@ section('Titles and descriptions are unique');
   const longTitles = Object.entries(titles).filter(([, t]) => decode(t).length > 70).map(([f]) => f);
   check('titles stay inside what a result actually shows', longTitles.length === 0,
     longTitles.join(', ') + ' — anything past ~70 characters is cut off');
+
+  // Bing Webmaster Tools reports a description outside 25–160 characters
+  // as an ERROR, not a warning. It flagged the scanner's the first time
+  // it inspected the site, and every other page was over the limit too.
+  const badDesc = Object.entries(descs)
+    .map(([f, d]) => [f, decode(d || '').length])
+    .filter(([, n]) => n < 25 || n > 160);
+  check('every description is inside Bing\'s 25–160 character window',
+    badDesc.length === 0, badDesc.map(([f, n]) => f + ' (' + n + ')').join(', '));
 }
 
 section('Social cards exist on every page');

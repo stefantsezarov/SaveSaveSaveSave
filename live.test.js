@@ -227,6 +227,17 @@ const MUST_404 = [
   check('the card image is actually served', (await get('/og-image.png')).status === 200,
     'a card pointing at a 404 renders worse than no card');
 
+  // The IndexNow key file is the ownership proof. Checking it HERE, in
+  // the run that is about to submit URLs, turns an unexplained 403 from
+  // a search engine into a sentence naming the file that is missing.
+  {
+    const key = (require('fs').readFileSync('indexnow.js', 'utf8').match(/const KEY = '([0-9a-f]+)'/) || [])[1];
+    const r = await get('/' + key + '.txt');
+    check('the IndexNow key file is served', r.status === 200, 'got ' + r.status);
+    check('...and contains exactly the key', r.body.trim() === key,
+      'a key file whose contents do not match is a 403 on every submission');
+  }
+
   // The logo is the way home from every page but the scanner, where it
   // would discard a message somebody had just pasted.
   const guide = await get('/disguised-links.html');
