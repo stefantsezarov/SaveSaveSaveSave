@@ -291,6 +291,9 @@
      no canvas, no particle system, no animation library. */
   .console{display:none; margin:20px 0; border:1px solid var(--border); background:var(--surface); position:relative; overflow:hidden;}
   .console.on{display:block;}
+  /* Where a scroll lands: a little air above the console and the
+     result, rather than their top edge pressed against the window. */
+  .console, #results{scroll-margin-top:16px;}
   /* The one moving element outside the figure: a hairline sweeping the
      top edge while work is in flight. It stops the instant the scan does. */
   .console.running::before{content:''; position:absolute; top:0; left:0; height:2px; width:38%;
@@ -450,6 +453,9 @@
      that is also carried by colour, glyph and text. Removing them costs
      the user nothing. */
   @media(prefers-reduced-motion:reduce){
+    /* The page still goes to the scan and then to the verdict; it jumps
+       there instead of gliding. */
+    html{scroll-behavior:auto;}
     .console.running::before,
     .console.running .cf-arc-1, .console.running .cf-arc-2, .console.running .cf-arc-3,
     .console.running .cf-core-halo,
@@ -3704,6 +3710,27 @@ const ScanConsole = (function(){
     catch(_) { return false; }
   }
   function el(id){ return document.getElementById(id); }
+  // How every scan-related scroll moves: a glide normally, a jump for
+  // someone who has asked for less motion. One place, so the console and
+  // the result can never disagree about it.
+  function scrollOpts(){ return { behavior: reduced() ? 'auto' : 'smooth', block: 'start' }; }
+  function coarsePointer(){
+    try { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
+    catch(_) { return false; }
+  }
+  // The pass is taken to where the person is looking, in the same frame as
+  // the click, so the page is already moving while the first request is in
+  // flight -- the animation is watched from its first beat, not found half
+  // way through or skipped. On a phone, a field that still has focus is
+  // released first: the keyboard would otherwise cover the lower half of
+  // the console, and pressing Go in the address box leaves it open.
+  function bringIntoView(box){
+    try {
+      const a = document.activeElement;
+      if(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.blur && coarsePointer()) a.blur();
+    } catch(_) {}
+    if(box.scrollIntoView) box.scrollIntoView(scrollOpts());
+  }
   function dwell(){ return (reduced() || !run) ? 0 : run.dwellMs; }
   function visit(){ return (reduced() || !run) ? 0 : run.visitMs; }
   function wait(ms){ return ms > 0 ? new Promise(r => setTimeout(r, ms)) : Promise.resolve(); }
@@ -3905,6 +3932,7 @@ const ScanConsole = (function(){
     });
     buildFigure(opts.stages || []);
     box.classList.add('on', 'running');
+    bringIntoView(box);
     return id;
   }
 
@@ -4034,7 +4062,7 @@ const ScanConsole = (function(){
     return (ms / 1000).toFixed(1) + ' s';
   }
 
-  return { begin, step, set, signals, finish, fail, hide, isCurrent, elapsedMs, reduced,
+  return { begin, step, set, signals, finish, fail, hide, isCurrent, elapsedMs, reduced, scrollOpts,
            _targetMs: TARGET_MS, _minVisibleMs: MIN_VISIBLE_MS, _glyphs: GLYPH,
            _pace: () => run ? { visitMs: run.visitMs, dwellMs: run.dwellMs, signalMs: run.signalMs } : null };
 })();
@@ -4286,7 +4314,7 @@ function runPromptScan() {
 
   const reveal = () => {
     results.style.display = 'block';
-    if(results.scrollIntoView) results.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(results.scrollIntoView) results.scrollIntoView(ScanConsole.scrollOpts());
   };
   return replayMessageScan(runId, result).then(() => {
     if(!ScanConsole.isCurrent(runId)) return;
@@ -4658,7 +4686,7 @@ function renderComposite(scroll) {
   results.style.display = 'block';
   // Only on the first render. Re-scrolling on every address check would
   // yank the page out from under whoever just pressed the button.
-  if (scroll) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (scroll) results.scrollIntoView(ScanConsole.scrollOpts());
 }
 
 let ecosystem = 'evm';
@@ -5004,7 +5032,7 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
   const results = document.getElementById('results');
   results.innerHTML = html;
   results.style.display = 'block';
-  results.scrollIntoView({behavior:'smooth', block:'start'});
+  results.scrollIntoView(ScanConsole.scrollOpts());
 }
 
 // ---------------------------------------------------------------------

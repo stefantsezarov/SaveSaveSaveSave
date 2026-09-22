@@ -598,6 +598,142 @@ async function afterSweep() {
       /sv-|verdict/.test(nodes['results'].innerHTML || ''));
   }
 
+  section('The page goes to the scan the moment it starts');
+  {
+    // The console used to sit below the fold until the verdict existed,
+    // and the page only moved once the result was ready -- so the part of
+    // the pass that shows the work was the part nobody saw. The scroll now
+    // starts inside the click itself, while the request is still out.
+    const log = [];
+    const watch = (id) => {
+      nodes[id] = makeEl(id);
+      nodes[id].scrollIntoView = (o) => log.push({ id, o: o || {}, at: Date.now() });
+    };
+    freshPage();
+    watch('scanConsole'); watch('results');
+    let release;
+    const held = new Promise(r => { release = r; });
+    let answered = false;
+    sandbox.fetch = async () => {
+      await held;
+      answered = true;
+      return { ok: true, status: 200, json: async () => ({ code: 1, result: { '0xa': { is_honeypot: '0', is_open_source: '1' } } }) };
+    };
+    nodes['addrInput'] = makeEl('addrInput');
+    nodes['addrInput'].value = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+    nodes['chainSelect'] = makeEl('chainSelect');
+    nodes['chainSelect'].value = '1';
+
+    const scan = run('runScan()');
+    // Nothing awaited yet: this is still the click.
+    const atClick = log.slice();
+    check('an address scan scrolls to the console in the same turn as the click',
+      atClick.length === 1 && atClick[0].id === 'scanConsole', JSON.stringify(atClick));
+    check('...with a glide that lands on the top of the console',
+      atClick[0] && atClick[0].o.behavior === 'smooth' && atClick[0].o.block === 'start',
+      JSON.stringify(atClick[0] && atClick[0].o));
+    check('...before the provider has answered',
+      !answered, 'the scroll waited for the network');
+    check('...and the page does not also jump to an empty result area',
+      !atClick.some(e => e.id === 'results'));
+    await settle();
+    check('the page stays on the console while the request is out',
+      log.length === 1, JSON.stringify(log.map(e => e.id)));
+    release();
+    await scan;
+    await settle();
+    const toResult = log.filter(e => e.id === 'results');
+    check('once the verdict exists, the page moves on to it',
+      toResult.length === 1 && log.indexOf(toResult[0]) > 0, JSON.stringify(log.map(e => e.id)));
+    check('the console is scrolled to once per scan, not on every step',
+      log.filter(e => e.id === 'scanConsole').length === 1);
+
+    // An address that fails validation never starts a pass. The error is
+    // printed under the box the person is typing in, so the page must not
+    // move away from it.
+    log.length = 0;
+    nodes['addrInput'].value = 'not an address';
+    await run('runScan()');
+    check('an invalid address does not scroll anywhere',
+      log.length === 0, JSON.stringify(log.map(e => e.id)));
+    check('...and its error is shown by the input instead',
+      nodes['inlineError'].style.display === 'block');
+
+    // The message scan takes the same route.
+    freshPage();
+    log.length = 0;
+    watch('scanConsole'); watch('results');
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'Summarise this article in three bullets.';
+    const msg = run('runPromptScan()');
+    check('a message scan scrolls to the console in the same turn as the click',
+      log.length === 1 && log[0].id === 'scanConsole', JSON.stringify(log.map(e => e.id)));
+    await msg;
+    await settle();
+    check('...and then to the verdict when the console finishes',
+      log.length === 2 && log[1].id === 'results', JSON.stringify(log.map(e => e.id)));
+
+    // On a phone, a field that still has focus keeps the keyboard open
+    // over the console. Pressing Go in the address box does exactly that.
+    freshPage();
+    log.length = 0;
+    watch('scanConsole'); watch('results');
+    let blurred = 0;
+    const field = makeEl('addrInput', 'input');
+    field.value = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+    field.blur = () => { blurred++; };
+    nodes['addrInput'] = field;
+    nodes['chainSelect'] = makeEl('chainSelect');
+    nodes['chainSelect'].value = '1';
+    sandbox.document.activeElement = field;
+    sandbox.fetch = async () => ({ ok: true, status: 200, json: async () => ({ code: 1, result: { '0xa': { is_honeypot: '0' } } }) });
+    sandbox.matchMedia = (q) => ({ matches: /coarse/.test(q), media: q });
+    const phone = run('runScan()');
+    check('on a touch screen the focused field is released so the keyboard closes',
+      blurred === 1, 'blur called ' + blurred + ' times');
+    await phone; await settle();
+    freshPage();
+    log.length = 0;
+    watch('scanConsole'); watch('results');
+    blurred = 0;
+    field.blur = () => { blurred++; };
+    nodes['addrInput'] = field;
+    nodes['chainSelect'] = makeEl('chainSelect');
+    nodes['chainSelect'].value = '1';
+    sandbox.document.activeElement = field;
+    sandbox.fetch = async () => ({ ok: true, status: 200, json: async () => ({ code: 1, result: { '0xa': { is_honeypot: '0' } } }) });
+    const desk = run('runScan()');
+    check('...but with a mouse and keyboard, focus is left where it was (control)',
+      blurred === 0, 'blur called ' + blurred + ' times');
+    await desk; await settle();
+
+    // Reduced motion: same destinations, no glide.
+    reducedMotion = true;
+    freshPage();
+    log.length = 0;
+    watch('scanConsole'); watch('results');
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'Summarise this article in three bullets.';
+    await run('runPromptScan()');
+    await settle();
+    check('under reduced motion the page still goes to the console, then the verdict',
+      log.map(e => e.id).join(',') === 'scanConsole,results', JSON.stringify(log.map(e => e.id)));
+    check('...but jumps instead of gliding',
+      log.every(e => e.o.behavior === 'auto'), JSON.stringify(log.map(e => e.o.behavior)));
+    reducedMotion = false;
+
+    const cssAll = html.slice(html.indexOf('<style'), html.indexOf('</style>'));
+    const rm = cssAll.slice(cssAll.indexOf('@media(prefers-reduced-motion:reduce)'));
+    check('the page-wide smooth scrolling is switched off under reduced motion',
+      /html\{scroll-behavior:auto;\}/.test(rm.slice(0, 400)));
+    check('both scroll targets land with a margin above them',
+      /\.console, #results\{scroll-margin-top:\d+px;\}/.test(cssAll));
+    const src = html.slice(html.indexOf('const ScanConsole = (function'));
+    check('no scan-related scroll hard-codes a glide any more',
+      !/results\.scrollIntoView\(\{\s*behavior/.test(src),
+      'every scroll goes through ScanConsole.scrollOpts()');
+  }
+
   section('Reduced motion');
   {
     reducedMotion = true;
