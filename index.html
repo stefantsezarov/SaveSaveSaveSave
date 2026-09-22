@@ -312,6 +312,7 @@
   .console-body{display:grid; grid-template-columns:210px 1fr; gap:22px; padding:20px 18px;}
 
   /* ---- the figure ---- */
+  .console-figure-col{min-width:0;}
   .console-figure{display:flex; align-items:center; justify-content:center;}
   .console-figure svg{width:100%; max-width:190px; height:auto; display:block;}
   .cf-ring{fill:none; stroke:var(--border); stroke-width:1;}
@@ -348,8 +349,8 @@
      own while a stage is still running. Putting both on one element
      would mean the keyframe animation and the inline transform fighting
      over the same property. */
-  #cfAim{transform-origin:100px 100px; transition:transform 0.55s cubic-bezier(0.22,0.61,0.36,1);}
-  .console.running #cfScrub{animation:cfScrub 2.1s ease-in-out infinite; transform-origin:100px 100px;}
+  #cfAim{transform-origin:100px 100px; transition:transform 0.78s cubic-bezier(0.33,0.9,0.28,1);}
+  .console.running #cfScrub{animation:cfScrub 3.4s ease-in-out infinite; transform-origin:100px 100px;}
   @keyframes cfScrub{0%,100%{transform:rotate(-9deg);} 50%{transform:rotate(9deg);}}
   .cf-beam{fill:url(#cfBeamGrad); opacity:0; transition:opacity 0.4s ease;}
   .cf-beam-edge{stroke:var(--accent-2); stroke-width:2; opacity:0; transition:opacity 0.4s ease;}
@@ -371,13 +372,38 @@
      on the list. Not a percentage of anything invented. */
   .cf-progress{fill:none; stroke:var(--accent-solid); stroke-width:2.5; stroke-linecap:round;
     transform:rotate(-90deg); transform-origin:100px 100px;
-    transition:stroke-dashoffset 0.55s cubic-bezier(0.22,0.61,0.36,1);}
+    transition:stroke-dashoffset 0.8s cubic-bezier(0.33,0.9,0.28,1);}
 
 
   /* ---- target + stages ---- */
   .console-label{font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); margin-bottom:5px;}
   .console-target{font-family:'IBM Plex Mono', monospace; font-size:0.94rem; color:var(--text); word-break:break-all; line-height:1.4;}
   .console-sub{font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:var(--text-muted); margin-top:4px;}
+  /* ---- the signal grid ----
+     The part of the scan that was being hidden. A token record comes
+     back with a dozen or more individually named checks in it, and a
+     message is run against every rule in the table; both were being
+     collapsed into a single line reading "13 of 14 checks answered".
+     Each cell here is ONE of those real checks, filling in its real
+     result, one at a time. It is the most watchable part of the pass
+     because it is the part where the most is actually happening. */
+  .console-signals{display:none; margin-top:16px;}
+  .console-signals.on{display:block;}
+  .cs-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:5px;}
+  .cs-cell{aspect-ratio:1; border:1px solid var(--border); background:var(--ink);
+    opacity:0.3; transform:scale(0.62);
+    transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.34,1.4,0.64,1),
+               background-color 0.3s ease, border-color 0.3s ease;}
+  .cs-cell.lit{opacity:1; transform:scale(1);}
+  .cs-cell.pass{background:var(--safe-dim); border-color:var(--safe);}
+  .cs-cell.risk{background:var(--danger-dim); border-color:var(--danger);}
+  .cs-cell.warn{background:var(--caution-dim); border-color:var(--caution);}
+  .cs-cell.unknown{background:var(--unknown-dim); border-color:var(--unknown);}
+  .cs-caption{margin-top:9px; font-family:'IBM Plex Mono', monospace; font-size:0.66rem;
+    color:var(--text-muted); min-height:16px; display:flex; justify-content:space-between; gap:8px;}
+  .cs-caption .cs-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent-2);}
+  .cs-caption .cs-count{flex:0 0 auto;}
+
   /* Names the area being scanned right now, in one line, large enough to
      read from across the desk. */
   .console-current{display:flex; align-items:center; gap:9px; margin-top:12px; min-height:22px;
@@ -437,6 +463,7 @@
     #cfAim{transition:none;}
     .cf-spoke, .cf-progress{transition:none;}
     .console.running .cf-pulse{opacity:0;}
+    .cs-cell{transition:none; transform:none;}
   }
 
   /* ---- Composite message scan ------------------------------------- */
@@ -739,6 +766,7 @@
       <span class="console-state" id="consoleState"><span class="orb" aria-hidden="true"></span><span id="consoleStateText">Running</span></span>
     </div>
     <div class="console-body">
+      <div class="console-figure-col">
       <div class="console-figure" aria-hidden="true">
         <svg viewBox="0 0 200 200" role="presentation" focusable="false">
           <defs>
@@ -772,6 +800,14 @@
           <g id="cfNodes"></g>
           <circle class="cf-pulse" id="cfPulse" cx="100" cy="14" r="5"/>
         </svg>
+      </div>
+      <!-- One cell per real check. aria-hidden because the stage list and
+           the result below already carry every one of these in words; read
+           aloud it would be two dozen unlabelled squares. -->
+      <div class="console-signals" id="consoleSignals" aria-hidden="true">
+        <div class="cs-grid" id="consoleSignalGrid"></div>
+        <div class="cs-caption"><span class="cs-name" id="consoleSignalName"></span><span class="cs-count" id="consoleSignalCount"></span></div>
+      </div>
       </div>
       <div class="console-main">
         <div class="console-label" id="consoleTargetLabel">Target</div>
@@ -3644,9 +3680,21 @@ const ScanConsole = (function(){
   //             the real analysis time beside the displayed one, which
   //             is what keeps this from being a lie.
   // All three are zero under prefers-reduced-motion.
-  const VISIT_MS = 150;
-  const DWELL_MS = 60;
-  const MIN_VISIBLE_MS = 850;
+  //
+  // These are deliberately unhurried. The pass is worth watching, and a
+  // person who has just pasted an address they are unsure about is not
+  // in a hurry to be told nothing yet. What buys the time is real work
+  // being shown at its real granularity rather than summarised -- see
+  // signals() below.
+  // A BUDGET, not fixed steps. A message pass has ten rows and a token
+  // pass has five; fixed timings made one of them drag and the other
+  // flash by. So the pass is given a target length and divides it up:
+  // roughly half to walking the areas, half to filling the signal grid.
+  // Whatever the shape of the scan, it lands in the same window.
+  const TARGET_MS = 3400;
+  const STAGE_SHARE = 0.45;    // of the target, spent walking the areas
+  const SIGNAL_SHARE = 0.45;   // of the target, spent filling the grid
+  const MIN_VISIBLE_MS = 3200; // floor, so an instant scan is still watchable
 
   let seq = 0;
   let run = null;   // { id, stages, angles, order, nextAt, started }
@@ -3656,8 +3704,8 @@ const ScanConsole = (function(){
     catch(_) { return false; }
   }
   function el(id){ return document.getElementById(id); }
-  function dwell(){ return reduced() ? 0 : DWELL_MS; }
-  function visit(){ return reduced() ? 0 : VISIT_MS; }
+  function dwell(){ return (reduced() || !run) ? 0 : run.dwellMs; }
+  function visit(){ return (reduced() || !run) ? 0 : run.visitMs; }
   function wait(ms){ return ms > 0 ? new Promise(r => setTimeout(r, ms)) : Promise.resolve(); }
 
   // Polar placement for the satellite nodes. Starts at the top and goes
@@ -3724,6 +3772,54 @@ const ScanConsole = (function(){
     prog.setAttribute('stroke-dashoffset', (circ * (1 - done / total)).toFixed(1));
   }
 
+  // Fills the grid one cell at a time. `cells` is [{label, status}] and
+  // it comes from results that ALREADY EXIST -- the provider's checks, or
+  // the rule table run against the text. Nothing is computed here and
+  // nothing is invented; this is the moment those results are shown at
+  // the granularity they actually have, instead of being summed into one
+  // line. The footer still prints the real analysis time beside the time
+  // the console was displayed, which is what keeps the pacing honest.
+  async function signals(id, cells, opts){
+    if(!isCurrent(id)) return;
+    const wrap = el('consoleSignals'), grid = el('consoleSignalGrid');
+    const name = el('consoleSignalName'), count = el('consoleSignalCount');
+    if(!wrap || !grid || !cells || !cells.length) return;
+    const o = opts || {};
+    grid.textContent = '';
+    const made = cells.map(() => {
+      const d = document.createElement('div');
+      d.className = 'cs-cell';
+      grid.appendChild(d);
+      return d;
+    });
+    wrap.classList.add('on');
+    if(name) name.textContent = '';
+    if(count) count.textContent = '0 of ' + cells.length;
+
+    if(reduced()){
+      // No stagger and no spring: the grid arrives complete.
+      made.forEach((d, i) => { d.className = 'cs-cell lit ' + (cells[i].status || 'unknown'); });
+      if(count) count.textContent = cells.length + ' of ' + cells.length;
+      if(name) name.textContent = o.doneLabel || '';
+      return;
+    }
+    const gap = Math.max(28, Math.min(160, Math.round((o.spreadMs || run.signalMs) / cells.length)));
+    for(let i = 0; i < cells.length; i++){
+      await wait(gap);
+      if(!isCurrent(id)) return;
+      made[i].className = 'cs-cell lit ' + (cells[i].status || 'unknown');
+      if(name) name.textContent = cells[i].label || '';
+      if(count) count.textContent = (i + 1) + ' of ' + cells.length;
+    }
+    if(name && o.doneLabel) name.textContent = o.doneLabel;
+  }
+
+  function hideSignals(){
+    const wrap = el('consoleSignals'), grid = el('consoleSignalGrid');
+    if(wrap) wrap.classList.remove('on');
+    if(grid) grid.textContent = '';
+  }
+
   function setCurrent(text, finished){
     const wrap = el('consoleCurrent'), t = el('consoleCurrentText');
     if(wrap) wrap.className = 'console-current' + (finished ? ' done' : '');
@@ -3780,7 +3876,13 @@ const ScanConsole = (function(){
     const id = ++seq;
     const box = el('scanConsole');
     if(!box) return id;
+    // Areas that will actually be walked. Rows already marked skipped are
+    // shown from the start and never visited, so they get no time.
+    const walked = (opts.stages || []).filter(x => x.state !== 'skipped').length || 1;
+    const perStep = Math.max(110, Math.min(520, Math.round(TARGET_MS * STAGE_SHARE / walked)));
     run = { id, stages: new Map(), angles: new Map(), nextAt: 0,
+            visitMs: Math.round(perStep * 0.7), dwellMs: Math.round(perStep * 0.3),
+            signalMs: Math.round(TARGET_MS * SIGNAL_SHARE),
             started: (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now() };
 
     el('consoleTitle').textContent = opts.title || 'Risk pass · live scan';
@@ -3791,6 +3893,7 @@ const ScanConsole = (function(){
     el('consoleFootRight').textContent = '';
     setHeadState('', 'Running');
     setCurrent('Starting the pass\u2026');
+    hideSignals();
 
     const list = el('consoleStages');
     list.textContent = '';
@@ -3931,8 +4034,9 @@ const ScanConsole = (function(){
     return (ms / 1000).toFixed(1) + ' s';
   }
 
-  return { begin, step, set, finish, fail, hide, isCurrent, elapsedMs, reduced,
-           _dwellMs: DWELL_MS, _glyphs: GLYPH };
+  return { begin, step, set, signals, finish, fail, hide, isCurrent, elapsedMs, reduced,
+           _targetMs: TARGET_MS, _minVisibleMs: MIN_VISIBLE_MS, _glyphs: GLYPH,
+           _pace: () => run ? { visitMs: run.visitMs, dwellMs: run.dwellMs, signalMs: run.signalMs } : null };
 })();
 
 // Friendly names for the capabilities an adapter does NOT have. These
@@ -4110,6 +4214,16 @@ function messageScanStages(r){
 // starts and revealed when it ends; nothing is recomputed.
 async function replayMessageScan(runId, r){
   const stages = messageScanStages(r);
+  // Which rules matched. Every rule in the table is evaluated against
+  // the text, so every rule gets a cell; the ones that matched are the
+  // ones that produced findings.
+  const hit = new Set((r.findings || []).map(f => f.ruleId));
+  const ruleCells = RULES.map(rule => ({
+    label: String(rule.category || rule.id).replace(/_/g, ' ').toLowerCase()
+      .replace(/^./, c => c.toUpperCase()),
+    status: hit.has(rule.id) ? 'risk' : 'pass',
+  }));
+
   await ScanConsole.step(runId, 'read', 'done',
     (r.input && r.input.characters ? r.input.characters.toLocaleString() : '0') + ' characters · never sent anywhere');
   for(const s of stages){
@@ -4117,6 +4231,13 @@ async function replayMessageScan(runId, r){
     if(!ScanConsole.isCurrent(runId)) return;
     const state = s._state || 'done';
     const warn = /[1-9]\d* signal/.test(s._note || '');
+    if(s.id === 'rules'){
+      // One cell per rule, filled with whether that rule matched.
+      ScanConsole.set(runId, 'rules', 'active', 'running ' + RULES.length + ' rules over the text');
+      await ScanConsole.signals(runId, ruleCells,
+        { doneLabel: hit.size + ' of ' + RULES.length + ' matched' });
+      if(!ScanConsole.isCurrent(runId)) return;
+    }
     await ScanConsole.step(runId, s.id, state === 'done' && warn ? 'warn' : state, s._note || '');
   }
   if(!ScanConsole.isCurrent(runId)) return;
@@ -4740,7 +4861,16 @@ async function runScan(){
     const out = r.v;
     const workMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
 
+    // The record that just arrived contains a dozen or more individually
+    // named checks. Show them one at a time, each with its own real
+    // result, instead of adding them up into a single line.
     const answered = out.checks.filter(c => c.status === 'PASS' || c.status === 'RISK').length;
+    ScanConsole.set(runId, 'read', 'active', 'reading ' + out.checks.length + ' checks out of the record');
+    await ScanConsole.signals(runId, out.checks.map(c => ({
+      label: c.label,
+      status: c.status === 'PASS' ? 'pass' : c.status === 'RISK' ? 'risk' : 'unknown',
+    })), { doneLabel: answered + ' of ' + out.expected + ' answered' });
+    if(!ScanConsole.isCurrent(runId)) return;
     await ScanConsole.step(runId, 'read', 'done',
       answered + ' of ' + out.expected + ' checks answered by the provider');
     if(!ScanConsole.isCurrent(runId)) return;
