@@ -171,21 +171,39 @@ console.log('\n== Solana token checks ==');
   console.log((ok ? 'PASS' : 'FAIL') + ' Solana: trusted_token suppresses mintable risk (matches GoPlus\'s documented intent) -> ' + (mintCheck ? mintCheck.status : 'MISSING'));
   ok ? passed++ : failed++;
 }
-{ // 18. capability correctly reflects wallet screening being re-enabled — GoPlus's own
-  // documentation confirms chain_id: 'solana' is supported on this endpoint, which is
-  // why this was worth trying again rather than leaving permanently disabled on the
-  // strength of one unexplained past error
-  const capabilityDeclared = SolanaAdapter.capabilities.walletScreening === true;
-  console.log((capabilityDeclared ? 'PASS' : 'FAIL') + ' Solana adapter declares walletScreening: true (re-enabled, per GoPlus\'s own docs)');
-  capabilityDeclared ? passed++ : failed++;
+// ---------------------------------------------------------------------
+// 18–18f. SOLANA WALLET SCREENING IS OFF, and these tests exist to keep
+// it off until someone has evidence rather than an announcement.
+//
+// It was switched on once on the strength of GoPlus's published statement
+// that chain_id: 'solana' works on the Malicious Address API. Measured on
+// 21 September 2026, that endpoint answers code 5000 "system error" for
+// every Solana address tried, including USDC's mint — while answering
+// correctly for chain_id=1. A user scanning an address he had taken from
+// a sanctions list was told "system error … the address has no data yet".
+// ---------------------------------------------------------------------
+{ // 18. the capability is off, and says why in its own words
+  const off = SolanaAdapter.capabilities.walletScreening === false;
+  console.log((off ? 'PASS' : 'FAIL') + ' Solana adapter declares walletScreening: false (provider returns code 5000 for chain_id=solana)');
+  off ? passed++ : failed++;
+
+  const note = (SolanaAdapter.capabilityNotes || {}).walletScreening || '';
+  const explained = /no provider data/i.test(note) && !/not yet available/i.test(note);
+  console.log((explained ? 'PASS' : 'FAIL') + ' ...and the page says "no provider data", not "not yet available" -> "' + note + '"');
+  explained ? passed++ : failed++;
 }
-{ // 18a. fetchChecks actually routes wallet requests to _fetchWalletChecks now,
-  // rather than refusing them before any attempt is made
+{ // 18a. a wallet request is refused BEFORE any network call, and the
+  // refusal says it is a coverage gap. The old version of this test
+  // asserted the opposite; it was asserting a bug.
   let called = false;
   const mockFetch = async () => { called = true; return { ok: true, json: async () => ({ code: 1, result: { sanctioned: '0' } }) }; };
-  await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null, mockFetch);
-  console.log((called ? 'PASS' : 'FAIL') + ' Solana wallet: fetchChecks now actually attempts the call (mocked) -> called=' + called);
-  called ? passed++ : failed++;
+  let msg = '';
+  try {
+    await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null, mockFetch);
+  } catch(e){ msg = e.message; }
+  const ok = !called && /gap in coverage/i.test(msg) && /not a clean result/i.test(msg);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: refused without a network call, as a coverage gap -> fetched=' + called);
+  ok ? passed++ : failed++;
 }
 { // 18b. normalizeSolanaWalletRecord — this logic was never what broke; only the
   // endpoint routing was in question, and that's now restored
@@ -197,21 +215,41 @@ console.log('\n== Solana token checks ==');
   const { checks, expected, criticalDefsTotal } = normalizeSolanaWalletRecord(rec);
   assertVerdict('Solana wallet normalization: fully clean, full coverage', VerdictEngine.evaluate(checks, expected, 'test', criticalDefsTotal), 'PASS');
 }
-{ // 18d. the direct-then-proxy fallback mechanism, exercised through the actual
-  // public fetchChecks entry point now, not just the internal method directly
-  let directCalled = false, proxyCalled = false;
-  const mockFetch = async (url) => {
-    if(url.includes('api.gopluslabs.io')){
-      directCalled = true;
-      throw new TypeError('Failed to fetch'); // simulates a CORS/network-level block
-    }
-    proxyCalled = true;
-    return { ok: true, json: async () => ({ code: 1, result: { sanctioned: '0' } }) };
-  };
-  await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null, mockFetch);
-  const ok = directCalled && proxyCalled;
-  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet fallback, via the real entry point: direct failure falls back to proxy -> directCalled=' + directCalled + ', proxyCalled=' + proxyCalled);
+{ // 18d. if the capability is ever restored, the live 5000 must still be
+  // named as a coverage gap rather than handed up as the vendor's bare
+  // phrase "system error". That phrase is what the banner then wrapped in
+  // "the address has no data yet".
+  const mockFetch = async () => ({ ok: true, json: async () => ({ code: 5000, message: 'system error', result: null }) });
+  let msg = '';
+  try { await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111', mockFetch); }
+  catch(e){ msg = e.message; }
+  const ok = /gap in coverage/i.test(msg) && !/^system error$/i.test(msg);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: a live code 5000 is reported as a coverage gap -> "' + msg.slice(0, 60) + '…"');
   ok ? passed++ : failed++;
+}
+{ // 18e. THE DANGEROUS FIX. Dropping chain_id makes the endpoint return
+  // code 1 with every flag "0" and data_source "" — an empty record that
+  // the normalizer would turn into a full row of PASSes. An address with
+  // no record must never be rendered as an address with a clean record.
+  const mockFetch = async () => ({ ok: true, json: async () => ({
+    code: 1, message: 'ok',
+    result: Object.fromEntries([...EVM_WALLET_CHECK_DEFS.map(d => [d.key, '0']), ['data_source', '']]),
+  })});
+  let msg = '', threw = false;
+  try { await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111', mockFetch); }
+  catch(e){ threw = true; msg = e.message; }
+  const ok = threw && /no address record at all/i.test(msg) && /not absence of risk/i.test(msg);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: an empty record (no data_source) is refused, never rendered as PASS');
+  ok ? passed++ : failed++;
+}
+{ // 18f. and the adapter must never ask the address endpoint WITHOUT a
+  // chain_id, which is the request that produces that empty record.
+  const urls = [];
+  const mockFetch = async (url) => { urls.push(url); return { ok: true, json: async () => ({ code: 5000, message: 'system error', result: null }) }; };
+  try { await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111', mockFetch); } catch(_){}
+  const bare = urls.filter(u => /address_security/.test(u) && !/chain_id=/.test(u));
+  console.log((bare.length === 0 ? 'PASS' : 'FAIL') + ' Solana wallet: never queries address_security without chain_id -> ' + (bare[0] || 'none'));
+  bare.length === 0 ? passed++ : failed++;
 }
 { // 18e. liquidity: empty dex array is a soft risk signal, not silently ignored
   const { checks } = normalizeSolanaRecord({ dex: [] });

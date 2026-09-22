@@ -481,19 +481,54 @@ async function fetchGoPlus(directUrl, proxyUrl, fetchImpl){
 
 const SolanaAdapter = {
   id: 'solana', name: 'Solana',
-  // Re-enabled after an earlier revert. That revert was based on a "system
-  // error" response whose exact cause wasn't confirmed — and it directly
-  // contradicts GoPlus's own public announcement that chain_id: 'solana'
-  // is supported on this exact endpoint. Rather than trust an unexplained
-  // past failure over the vendor's own documentation, this is being tried
-  // again with the existing error-detail surfacing intact — if it fails
-  // again, the error banner will show GoPlus's actual response text this
-  // time, giving a real, checkable reason instead of a second vague one.
-  capabilities: { tokenSecurity:true, walletScreening:true, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
+  // WALLET SCREENING IS OFF FOR SOLANA, and this time the reason is
+  // measured rather than reasoned about.
+  //
+  // It was switched ON once before on the strength of GoPlus's public
+  // announcement that chain_id: 'solana' is accepted by the Malicious
+  // Address API. The announcement is real. The endpoint does not honour
+  // it. Queried directly, 21 September 2026:
+  //
+  //   address_security/42RLPACwZPx3…?chain_id=solana
+  //     -> {"code":5000,"message":"system error","result":null}
+  //   address_security/EPjFWdd5…?chain_id=solana   (USDC's mint)
+  //     -> {"code":5000,"message":"system error","result":null}
+  //   address_security/0x098B716B…?chain_id=1      (a listed address)
+  //     -> {"code":1, … "sanctioned":"1","data_source":"SlowMist,BlockSec"}
+  //
+  // So the route is healthy and the chain_id is what it refuses. Two
+  // addresses, one of them the best-known mint on Solana, rule out "that
+  // address simply has no record".
+  //
+  // This reached a user as "Scan failed: system error … the address has
+  // no data yet", on an address he had brought from a sanctions list.
+  // A security tool that answers a listed address with a shrug is worse
+  // than one that says it does not cover the chain, because the shrug
+  // reads as absence of evidence.
+  //
+  // DO NOT "FIX" THIS BY DROPPING chain_id. That was tested too:
+  // address_security/<solana addr> with no chain_id returns code 1 with
+  // every flag "0" and data_source "" — an empty record that this engine
+  // would faithfully render as a clean PASS. The failure would stop being
+  // visible and start being wrong, which is the only change that could
+  // make this worse.
+  //
+  // Re-enable when a query like the ones above returns code 1 with a
+  // populated data_source. Not before, and not on an announcement.
+  capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
+  // "not yet available" is the right phrase for something not built yet.
+  // This one IS built; the provider will not answer. Different sentence.
+  capabilityNotes: { walletScreening: 'not available on Solana — no provider data' },
   chains: { 'solana': 'Solana Mainnet' },
   validateAddress(addr){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(addr).trim()); },
 
   async fetchChecks(addr, assetType, chainId, fetchImpl){
+    // The same guard the EVM adapter has. The UI disables the wallet tab
+    // when walletScreening is false, but the UI is not the only caller and
+    // a capability flag that only the interface respects is decoration.
+    if(assetType === 'wallet' && !this.capabilities.walletScreening){
+      throw new Error('Wallet screening is not available on Solana. The security provider\'s address library does not answer for this chain, so this scanner has no wallet reputation data here — this is a gap in coverage, not a clean result.');
+    }
     if(assetType === 'wallet') return this._fetchWalletChecks(addr, fetchImpl);
     const res = await fetchGoPlus(
       `https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=${encodeURIComponent(addr)}`,
@@ -533,7 +568,19 @@ const SolanaAdapter = {
       throw new Error(`Network response was not OK (${res.status})${detail ? ': ' + detail : ''}`);
     }
     const data = await res.json();
+    // code 5000 / "system error" is what this endpoint returns for every
+    // Solana address (see the capability note above). Name it, rather than
+    // passing the vendor's word up to a banner that will guess at a cause.
+    if(data.code === 5000){
+      throw new Error('the security provider\'s address library does not currently answer for Solana (it returned "system error" for this chain). This is a gap in coverage — it is not a statement that the address is clean');
+    }
     if(data.code !== 1 || !data.result) throw new Error(data.message || data.error || 'No security data returned for this address.');
+    // An all-zero record with no data_source is an EMPTY record, not a
+    // clean one. Rendering it as a row of PASSes would manufacture
+    // reassurance out of a provider having nothing to say.
+    if(!String(data.result.data_source || '').trim()){
+      throw new Error('the security provider returned no address record at all (no data source), so there is nothing to screen against. Absence of a record is not absence of risk');
+    }
     const { checks, expected, criticalDefsTotal } = normalizeSolanaWalletRecord(data.result);
     return { checks, expected, criticalDefsTotal, record: data.result, raw: data, liquiditySummary: null };
   }

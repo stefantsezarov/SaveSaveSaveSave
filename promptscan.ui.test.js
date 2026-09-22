@@ -552,7 +552,72 @@ section('Token scan states its limits');
     fn(full, clean, 'token').some(l => /not a judgement about whether this is a good thing to buy/i.test(l.text)));
 }
 
-console.log('\n' + '='.repeat(60));
+// ---- a coverage gap must never be phrased as an all-clear -------------
+  //
+  // The shipped page told someone scanning an address he had taken from a
+  // sanctions list: "Scan failed: system error. This can happen if the
+  // address has no data yet." Both halves were wrong. It was the security
+  // provider refusing the chain, and "no data yet" invites the reader to
+  // supply the words "so it is probably fine".
+  //
+  // These read the PAGE, not the module, because the page is the copy
+  // that was stale the last three times this went wrong.
+  section('A gap in coverage never reads as a clean result');
+
+  check('the page has a separate branch for a provider coverage gap',
+    /isCoverageGap/.test(html),
+    'without it, a provider that cannot answer shares a sentence with a blocked request');
+
+  check('...and that branch tells the reader the address is UNCHECKED',
+    /Treat this address as UNCHECKED, not as safe/.test(html),
+    'the sentence a reader must not be left to supply for themselves');
+
+  // The adapters are `const` declarations, so they are lexical bindings in
+  // the page's scope and never become properties of the sandbox object.
+  // Evaluating in the same context reaches them; reading sandbox.X would
+  // silently return undefined and every assertion below would "fail" for
+  // a reason that has nothing to do with the code under test.
+  const inPage = expr => vm.runInContext(expr, sandbox, { timeout: 15000 });
+
+  check('the shipped page does not claim Solana wallet screening',
+    inPage('SolanaAdapter.capabilities.walletScreening') === false,
+    'the provider answers code 5000 for chain_id=solana; the dot must not be green');
+
+  check('...and explains why, rather than saying "not yet available"',
+    /no provider data/i.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')),
+    '"not yet available" describes something unbuilt; this is built and unanswered');
+
+  await (async () => {
+    const r = await inPage(`(async () => {
+      let fetched = false, msg = '';
+      try {
+        await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null,
+          async () => { fetched = true; return { ok: true, json: async () => ({ code: 1, result: {} }) }; });
+      } catch (e) { msg = e.message; }
+      return { fetched, msg };
+    })()`);
+    check('the shipped page refuses a Solana wallet scan before any fetch',
+      !r.fetched && /gap in coverage/i.test(r.msg) && /not a clean result/i.test(r.msg),
+      'fetched=' + r.fetched + ' msg="' + r.msg.slice(0, 70) + '"');
+  })();
+
+  await (async () => {
+    // The tempting fix, blocked in the page as well as in the module:
+    // without chain_id the endpoint answers code 1 with every flag "0"
+    // and no data_source, and that empty record would render as PASS.
+    const msg = await inPage(`(async () => {
+      try {
+        await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111',
+          async () => ({ ok: true, json: async () => ({ code: 1, result: { sanctioned: '0', data_source: '' } }) }));
+      } catch (e) { return e.message; }
+      return '';
+    })()`);
+    check('an empty provider record is refused, never rendered as a row of PASSes',
+      /no address record at all/i.test(msg) && /not absence of risk/i.test(msg),
+      'got: "' + String(msg).slice(0, 70) + '"');
+  })();
+
+  console.log('\n' + '='.repeat(60));
   console.log(`${pass}/${pass + fail} UI/integration tests passed`);
   if (failures.length) { console.log('\nFailures:'); failures.forEach(f => console.log('  - ' + f)); }
   console.log('='.repeat(60));

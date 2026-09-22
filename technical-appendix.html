@@ -45,9 +45,9 @@
     <table class="chains">
       <tr><th>Ecosystem</th><th>Coverage</th></tr>
       <tr><td><strong>EVM</strong> — 14 chains</td><td>Ethereum, BNB Smart Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom, zkSync Era, Linea, Scroll, Blast, Mantle, Gnosis. Token and wallet checks.</td></tr>
-      <tr><td><strong>Solana</strong></td><td>Native security model — mint authority, freeze authority, metadata mutability, transfer hooks — plus liquidity data (pool count, total value locked, LP-lock status) shown as context rather than as a verdict input. Wallet checks included.</td></tr>
+      <tr><td><strong>Solana</strong></td><td>Native security model — mint authority, freeze authority, metadata mutability, transfer hooks — plus liquidity data (pool count, total value locked, LP-lock status) shown as context rather than as a verdict input. <strong>Token checks only — wallet screening is not available.</strong> The provider's malicious-address endpoint answers <code>system error</code> for every Solana address, including the best-known mint on the chain, while answering correctly for Ethereum. Measured 21 September 2026, after a user scanned a listed address and was shown an error instead of a finding.</td></tr>
       <tr><td><strong>Sui</strong></td><td>Token security only. The data provider does not return liquidity or holder data for Sui, so the scope matches what is actually available rather than what would look better.</td></tr>
-      <tr><td><strong>TRON</strong></td><td>Token security and address checks. The provider's TRON response was confirmed to share the EVM schema rather than assumed to.</td></tr>
+      <tr><td><strong>TRON</strong></td><td>Token security only; TRON addresses are validated by format but not screened for reputation. The provider's TRON token response was confirmed to share the EVM schema rather than assumed to.</td></tr>
       <tr><td>Bitcoin, Cosmos, Cardano, others</td><td>Not covered. No adapter exists, and the address extractor deliberately declines to offer a scan it cannot perform.</td></tr>
     </table>
     <p><strong>Aptos was evaluated and not built.</strong> It appears in the data provider's marketing material, but no verifiable technical endpoint could be confirmed, so it is not claimed as supported.</p>
@@ -221,6 +221,7 @@
       <li>Coverage differs by chain and by scan type. The interface states which supports what.</li>
       <li>The sanctions oracle lags designations, as described in section 3.</li>
       <li>Counterparty checking sees token transfers only, within a bounded window.</li>
+      <li>Wallet reputation screening runs on EVM chains only. Solana, Sui and TRON have none: the provider returns no address record for them, and the interface says so rather than returning an empty result that would read as clean.</li>
       <li>Sui returns no liquidity or holder data from the provider.</li>
       <li>No Bitcoin support of any kind.</li>
     </ul>

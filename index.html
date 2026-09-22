@@ -32,7 +32,7 @@
 <meta property="og:site_name" content="SaveSaveSaveSave">
 <meta property="og:url" content="https://savesavesavesave.xyz/">
 <meta property="og:title" content="Is this a scam? Check the message and the address.">
-<meta property="og:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot, mint-authority and sanctions checks across EVM, Solana, Sui and TRON. Free, in your browser, no wallet connection.">
+<meta property="og:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot and mint-authority checks across EVM, Solana, Sui and TRON, and wallet sanctions screening on EVM chains. Free, in your browser, no wallet connection.">
 <meta property="og:image" content="https://savesavesavesave.xyz/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -42,7 +42,7 @@
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Is this a scam? Check the message and the address.">
-<meta name="twitter:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot, mint-authority and sanctions checks across EVM, Solana, Sui and TRON. Free, in your browser, no wallet connection.">
+<meta name="twitter:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot and mint-authority checks across EVM, Solana, Sui and TRON, and wallet sanctions screening on EVM chains. Free, in your browser, no wallet connection.">
 <meta name="twitter:image" content="https://savesavesavesave.xyz/og-image.png">
 
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -1081,19 +1081,54 @@ async function fetchGoPlus(directUrl, proxyUrl, fetchImpl){
 
 const SolanaAdapter = {
   id: 'solana', name: 'Solana',
-  // Re-enabled after an earlier revert. That revert was based on a "system
-  // error" response whose exact cause wasn't confirmed — and it directly
-  // contradicts GoPlus's own public announcement that chain_id: 'solana'
-  // is supported on this exact endpoint. Rather than trust an unexplained
-  // past failure over the vendor's own documentation, this is being tried
-  // again with the existing error-detail surfacing intact — if it fails
-  // again, the error banner will show GoPlus's actual response text this
-  // time, giving a real, checkable reason instead of a second vague one.
-  capabilities: { tokenSecurity:true, walletScreening:true, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
+  // WALLET SCREENING IS OFF FOR SOLANA, and this time the reason is
+  // measured rather than reasoned about.
+  //
+  // It was switched ON once before on the strength of GoPlus's public
+  // announcement that chain_id: 'solana' is accepted by the Malicious
+  // Address API. The announcement is real. The endpoint does not honour
+  // it. Queried directly, 21 September 2026:
+  //
+  //   address_security/42RLPACwZPx3…?chain_id=solana
+  //     -> {"code":5000,"message":"system error","result":null}
+  //   address_security/EPjFWdd5…?chain_id=solana   (USDC's mint)
+  //     -> {"code":5000,"message":"system error","result":null}
+  //   address_security/0x098B716B…?chain_id=1      (a listed address)
+  //     -> {"code":1, … "sanctioned":"1","data_source":"SlowMist,BlockSec"}
+  //
+  // So the route is healthy and the chain_id is what it refuses. Two
+  // addresses, one of them the best-known mint on Solana, rule out "that
+  // address simply has no record".
+  //
+  // This reached a user as "Scan failed: system error … the address has
+  // no data yet", on an address he had brought from a sanctions list.
+  // A security tool that answers a listed address with a shrug is worse
+  // than one that says it does not cover the chain, because the shrug
+  // reads as absence of evidence.
+  //
+  // DO NOT "FIX" THIS BY DROPPING chain_id. That was tested too:
+  // address_security/<solana addr> with no chain_id returns code 1 with
+  // every flag "0" and data_source "" — an empty record that this engine
+  // would faithfully render as a clean PASS. The failure would stop being
+  // visible and start being wrong, which is the only change that could
+  // make this worse.
+  //
+  // Re-enable when a query like the ones above returns code 1 with a
+  // populated data_source. Not before, and not on an announcement.
+  capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
+  // "not yet available" is the right phrase for something not built yet.
+  // This one IS built; the provider will not answer. Different sentence.
+  capabilityNotes: { walletScreening: 'not available on Solana — no provider data' },
   chains: { 'solana': 'Solana Mainnet' },
   validateAddress(addr){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(addr).trim()); },
 
   async fetchChecks(addr, assetType, chainId, fetchImpl){
+    // The same guard the EVM adapter has. The UI disables the wallet tab
+    // when walletScreening is false, but the UI is not the only caller and
+    // a capability flag that only the interface respects is decoration.
+    if(assetType === 'wallet' && !this.capabilities.walletScreening){
+      throw new Error('Wallet screening is not available on Solana. The security provider\'s address library does not answer for this chain, so this scanner has no wallet reputation data here — this is a gap in coverage, not a clean result.');
+    }
     if(assetType === 'wallet') return this._fetchWalletChecks(addr, fetchImpl);
     const res = await fetchGoPlus(
       `https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=${encodeURIComponent(addr)}`,
@@ -1133,7 +1168,19 @@ const SolanaAdapter = {
       throw new Error(`Network response was not OK (${res.status})${detail ? ': ' + detail : ''}`);
     }
     const data = await res.json();
+    // code 5000 / "system error" is what this endpoint returns for every
+    // Solana address (see the capability note above). Name it, rather than
+    // passing the vendor's word up to a banner that will guess at a cause.
+    if(data.code === 5000){
+      throw new Error('the security provider\'s address library does not currently answer for Solana (it returned "system error" for this chain). This is a gap in coverage — it is not a statement that the address is clean');
+    }
     if(data.code !== 1 || !data.result) throw new Error(data.message || data.error || 'No security data returned for this address.');
+    // An all-zero record with no data_source is an EMPTY record, not a
+    // clean one. Rendering it as a row of PASSes would manufacture
+    // reassurance out of a provider having nothing to say.
+    if(!String(data.result.data_source || '').trim()){
+      throw new Error('the security provider returned no address record at all (no data source), so there is nothing to screen against. Absence of a record is not absence of risk');
+    }
     const { checks, expected, criticalDefsTotal } = normalizeSolanaWalletRecord(data.result);
     return { checks, expected, criticalDefsTotal, record: data.result, raw: data, liquiditySummary: null };
   }
@@ -3755,15 +3802,20 @@ function populateChainSelect(){
 function renderCapabilityNote(){
   const adapter = currentAdapter();
   const labels = {tokenSecurity:'Token security', walletScreening:'Wallet screening', txSimulation:'Tx simulation', liquidityAnalysis:'Liquidity analysis', contractAnalysis:'Contract analysis'};
+  const notes = adapter.capabilityNotes || {};
   const html = Object.entries(adapter.capabilities).map(([key, val]) => {
-    return `<span class="cap ${val?'yes':'no'}"><span class="dot"></span>${labels[key]||key}${val ? '' : ' — not yet available'}</span>`;
+    // An adapter may say WHY a capability is off. "Not yet available"
+    // describes something unbuilt; a provider that has no data for this
+    // chain is a different fact and deserves its own words.
+    const off = notes[key] ? ' — ' + notes[key] : ' — not yet available';
+    return `<span class="cap ${val?'yes':'no'}"><span class="dot"></span>${labels[key]||key}${val ? '' : off}</span>`;
   }).join('');
   document.getElementById('capabilityNote').innerHTML = html;
 }
 
 const ADDR_PLACEHOLDERS = {
   evm:    { token: '0x… paste a token contract address', wallet: '0x… paste a wallet address to screen' },
-  solana: { token: 'Paste a Solana token mint address', wallet: 'Paste a Solana wallet address to screen' },
+  solana: { token: 'Paste a Solana token mint address', wallet: 'Solana wallet screening not available — no provider data' },
   sui:    { token: 'Paste a Sui token type (0x…::module::TYPE)', wallet: 'Sui wallet screening not yet available' },
   tron:   { token: 'Paste a TRON token contract address (starts with T)', wallet: 'TRON wallet screening not yet available' },
 };
@@ -3870,12 +3922,23 @@ async function runScan(){
     renderPass(result, out.record, addrRaw, chainId, out.raw, adapter, out.liquiditySummary);
   } catch(e){
     const isRateLimited = /too many requests|rate limit/i.test(e.message || '');
+    // A provider that cannot answer for this chain is a different thing
+    // from a request that never arrived, and the two must not share a
+    // sentence. The generic wording below — "this can happen if the
+    // address has no data yet" — was shown to someone scanning an address
+    // he had taken from a sanctions list, and it invited him to read a
+    // provider gap as a quiet all-clear.
+    const isCoverageGap = /gap in coverage|not available on|no address record at all|does not answer for this chain/i.test(e.message || '');
     if(e.name === 'AbortError'){
       scanErr.textContent = ecosystem === 'solana'
         ? `Scan timed out after ${timeoutMs/1000} seconds, twice in a row. GoPlus's Solana security API is labeled beta by GoPlus itself and can be slow or briefly unavailable. Try again in a moment, or check this address directly at gopluslabs.io/token-security/solana/${addrRaw}`
         : `Scan timed out after ${timeoutMs/1000} seconds. The security data provider may be temporarily slow. Try again, or verify manually via a block explorer.`;
     } else if(isRateLimited){
       scanErr.textContent = 'Scan failed: this looks like the free security data provider\'s ~30-requests-per-minute limit — but if you\'re seeing this after waiting and retrying alone, it may be something else instead. Raw error: "' + e.message + '". Wait a minute and try again; if the exact same thing happens on a fresh attempt, please report this raw text.';
+    } else if(isCoverageGap){
+      // Says what is missing, and does not offer "try again" for
+      // something retrying cannot fix.
+      scanErr.textContent = 'No screening was performed: ' + e.message + '. Treat this address as UNCHECKED, not as safe — check it against a sanctions or scam database directly before sending anything.';
     } else {
       scanErr.textContent = 'Scan failed: ' + e.message + '. This can happen if the address has no data yet, or if your network/browser blocked the request. Try again, or verify manually via a block explorer.';
     }
