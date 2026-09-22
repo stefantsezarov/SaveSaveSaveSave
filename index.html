@@ -330,23 +330,72 @@
   .cf-spoke{stroke:var(--border); stroke-width:1; transition:stroke 0.35s ease;}
   .cf-node{fill:var(--ink); stroke:var(--border); stroke-width:1.5; transition:stroke 0.35s ease, fill 0.35s ease;}
   .cf-spoke.is-active{stroke:var(--accent-2);}
-  .cf-node.is-active{stroke:var(--accent-2); fill:var(--accent-2);}
+  .cf-node.is-active{stroke:var(--accent-2); fill:var(--accent-2); stroke-width:3;}
   .cf-spoke.is-done{stroke:var(--safe); opacity:0.75;}
   .cf-node.is-done{stroke:var(--safe); fill:var(--safe);}
   .cf-spoke.is-warn{stroke:var(--caution);} .cf-node.is-warn{stroke:var(--caution); fill:var(--caution);}
   .cf-spoke.is-failed{stroke:var(--danger);} .cf-node.is-failed{stroke:var(--danger); fill:var(--danger);}
   .cf-node.is-skipped{stroke:var(--text-muted); fill:var(--ink); stroke-dasharray:2 2;}
 
+  /* ---- the sweep ----
+     The beam is the part that makes this a scan rather than a checklist.
+     It points at whichever area is being worked on and TRAVELS to the
+     next one, so the motion itself carries the information: where the
+     scan is now, and that it moved there in order.
+
+     Two nested groups on purpose. The outer one is aimed from JavaScript
+     and eases into position; the inner one scrubs back and forth on its
+     own while a stage is still running. Putting both on one element
+     would mean the keyframe animation and the inline transform fighting
+     over the same property. */
+  #cfAim{transform-origin:100px 100px; transition:transform 0.55s cubic-bezier(0.22,0.61,0.36,1);}
+  .console.running #cfScrub{animation:cfScrub 2.1s ease-in-out infinite; transform-origin:100px 100px;}
+  @keyframes cfScrub{0%,100%{transform:rotate(-9deg);} 50%{transform:rotate(9deg);}}
+  .cf-beam{fill:url(#cfBeamGrad); opacity:0; transition:opacity 0.4s ease;}
+  .cf-beam-edge{stroke:var(--accent-2); stroke-width:2; opacity:0; transition:opacity 0.4s ease;}
+  .console.running .cf-beam{opacity:0.85;}
+  .console.running .cf-beam-edge{opacity:0.9;}
+
+  /* Sits on the area currently being scanned and keeps expanding while
+     the work is still going. It stops the moment that stage resolves. */
+  .cf-pulse{fill:none; stroke:var(--accent-2); stroke-width:1.5; opacity:0;}
+  .console.running .cf-pulse{opacity:1; animation:cfPing 1.5s ease-out infinite;}
+  @keyframes cfPing{0%{r:5; opacity:0.9;} 100%{r:19; opacity:0;}}
+
+  /* Completed areas: the line to them draws outward from the centre, so
+     a finished area is visibly CONNECTED and an untouched one is not. */
+  .cf-spoke{stroke-dasharray:66; stroke-dashoffset:66; transition:stroke 0.35s ease, stroke-dashoffset 0.5s ease;}
+  .cf-spoke.is-active, .cf-spoke.is-done, .cf-spoke.is-warn, .cf-spoke.is-failed{stroke-dashoffset:0;}
+
+  /* The one honest progress number there is: areas resolved out of areas
+     on the list. Not a percentage of anything invented. */
+  .cf-progress{fill:none; stroke:var(--accent-solid); stroke-width:2.5; stroke-linecap:round;
+    transform:rotate(-90deg); transform-origin:100px 100px;
+    transition:stroke-dashoffset 0.55s cubic-bezier(0.22,0.61,0.36,1);}
+
+
   /* ---- target + stages ---- */
   .console-label{font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); margin-bottom:5px;}
   .console-target{font-family:'IBM Plex Mono', monospace; font-size:0.94rem; color:var(--text); word-break:break-all; line-height:1.4;}
   .console-sub{font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:var(--text-muted); margin-top:4px;}
+  /* Names the area being scanned right now, in one line, large enough to
+     read from across the desk. */
+  .console-current{display:flex; align-items:center; gap:9px; margin-top:12px; min-height:22px;
+    font-size:0.88rem; color:var(--accent-2);}
+  .console-current .co-label{font-family:'IBM Plex Mono', monospace; font-size:0.6rem; letter-spacing:0.18em;
+    text-transform:uppercase; color:var(--text-muted); flex:0 0 auto;}
+  .console-current.done{color:var(--text-muted);}
   .console-stages{list-style:none; margin:16px 0 0; padding:14px 0 0; border-top:1px solid var(--border);}
   .console-stages li{display:flex; align-items:flex-start; gap:10px; padding:4px 0; font-size:0.82rem; color:var(--text-muted); transition:color 0.3s ease;}
   .console-stages li .glyph{flex:0 0 auto; width:14px; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:0.8rem; line-height:1.5; color:var(--border);}
   .console-stages li .stage-text{flex:1 1 auto; min-width:0;}
   .console-stages li .stage-note{display:block; font-family:'IBM Plex Mono', monospace; font-size:0.68rem; color:var(--text-muted); opacity:0.85; margin-top:2px; word-break:break-word;}
-  .console-stages li.is-active{color:var(--text);}
+  .console-stages li.is-active{color:var(--text); position:relative; overflow:hidden;}
+  /* A light passing across the row being worked on right now. */
+  .console.running .console-stages li.is-active::after{content:''; position:absolute; inset:-2px 0;
+    pointer-events:none; background:linear-gradient(90deg, transparent, rgba(0,209,255,0.13) 45%, transparent);
+    transform:translateX(-100%); animation:rowScan 1.7s ease-in-out infinite;}
+  @keyframes rowScan{to{transform:translateX(100%);}}
   .console-stages li.is-active .glyph{color:var(--accent-2);}
   .console.running .console-stages li.is-active .glyph{animation:orbPulse 1.1s ease-in-out infinite;}
   .console-stages li.is-done{color:var(--text);}
@@ -379,8 +428,15 @@
     .console.running .cf-arc-1, .console.running .cf-arc-2, .console.running .cf-arc-3,
     .console.running .cf-core-halo,
     .console.running .console-state .orb,
-    .console.running .console-stages li.is-active .glyph{animation:none;}
+    .console.running .console-stages li.is-active .glyph,
+    .console.running #cfScrub, .console.running .cf-pulse{animation:none;}
     .console.running::before{display:none;}
+    .console.running .console-stages li.is-active::after{display:none;}
+    /* The beam still points at the current area — it just stops easing
+       and stops scrubbing. Position is information; motion is not. */
+    #cfAim{transition:none;}
+    .cf-spoke, .cf-progress{transition:none;}
+    .console.running .cf-pulse{opacity:0;}
   }
 
   /* ---- Composite message scan ------------------------------------- */
@@ -685,6 +741,13 @@
     <div class="console-body">
       <div class="console-figure" aria-hidden="true">
         <svg viewBox="0 0 200 200" role="presentation" focusable="false">
+          <defs>
+            <linearGradient id="cfBeamGrad" x1="100" y1="100" x2="100" y2="14" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00D1FF" stop-opacity="0.46"/>
+              <stop offset="60%" stop-color="#9945FF" stop-opacity="0.26"/>
+              <stop offset="100%" stop-color="#9945FF" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
           <circle class="cf-ring" cx="100" cy="100" r="46"/>
           <circle class="cf-ring" cx="100" cy="100" r="66"/>
           <circle class="cf-ring" cx="100" cy="100" r="86"/>
@@ -693,16 +756,28 @@
           <circle class="cf-arc cf-arc-1" cx="100" cy="100" r="46"  stroke-dasharray="72 217"/>
           <circle class="cf-arc cf-arc-2" cx="100" cy="100" r="66"  stroke-dasharray="58 357"/>
           <circle class="cf-arc cf-arc-3" cx="100" cy="100" r="86"  stroke-dasharray="120 420"/>
+          <!-- Areas resolved out of areas on this scan's list. -->
+          <circle class="cf-progress" id="cfProgress" cx="100" cy="100" r="92"/>
           <g id="cfSpokes"></g>
+          <!-- The sweep. Outer group is aimed from JS and eases across;
+               inner group scrubs on its own while a stage is running. -->
+          <g id="cfAim">
+            <g id="cfScrub">
+              <path class="cf-beam" d="M100,100 L73.5,17.8 A86,86 0 0,1 126.5,17.8 Z"/>
+              <line class="cf-beam-edge" x1="100" y1="100" x2="100" y2="14"/>
+            </g>
+          </g>
           <circle class="cf-core-halo" cx="100" cy="100" r="14"/>
           <circle class="cf-core" cx="100" cy="100" r="6"/>
           <g id="cfNodes"></g>
+          <circle class="cf-pulse" id="cfPulse" cx="100" cy="14" r="5"/>
         </svg>
       </div>
       <div class="console-main">
         <div class="console-label" id="consoleTargetLabel">Target</div>
         <div class="console-target" id="consoleTarget"></div>
         <div class="console-sub" id="consoleSub"></div>
+        <div class="console-current" id="consoleCurrent"><span class="co-label">Now</span><span id="consoleCurrentText"></span></div>
         <ul class="console-stages" id="consoleStages"></ul>
       </div>
     </div>
@@ -3557,10 +3632,24 @@ if (typeof module !== 'undefined' && module.exports) {
 const ScanConsole = (function(){
   const GLYPH = { pending:'○', active:'◉', done:'✓', warn:'!', failed:'×', skipped:'—' };
   const STATE_CLASS = { pending:'', active:'is-active', done:'is-done', warn:'is-warn', failed:'is-failed', skipped:'is-skipped' };
-  const DWELL_MS = 70;
+  // Timing, and what each number is for.
+  //   VISIT_MS  the beam arrives at an area and dwells on it before that
+  //             area resolves. This is what makes the scan legible as a
+  //             sequence rather than a list that turns green at once.
+  //   DWELL_MS  the gap between one area resolving and the next being
+  //             visited.
+  //   MIN_VISIBLE_MS  a floor on how long the console stays up, so a
+  //             scan that finishes in three milliseconds is still
+  //             something a person can watch. The footer always prints
+  //             the real analysis time beside the displayed one, which
+  //             is what keeps this from being a lie.
+  // All three are zero under prefers-reduced-motion.
+  const VISIT_MS = 150;
+  const DWELL_MS = 60;
+  const MIN_VISIBLE_MS = 850;
 
   let seq = 0;
-  let run = null;   // { id, stages: Map<stageId,{li,glyph,note,idx}>, nextAt, started }
+  let run = null;   // { id, stages, angles, order, nextAt, started }
 
   function reduced(){
     try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
@@ -3568,6 +3657,7 @@ const ScanConsole = (function(){
   }
   function el(id){ return document.getElementById(id); }
   function dwell(){ return reduced() ? 0 : DWELL_MS; }
+  function visit(){ return reduced() ? 0 : VISIT_MS; }
   function wait(ms){ return ms > 0 ? new Promise(r => setTimeout(r, ms)) : Promise.resolve(); }
 
   // Polar placement for the satellite nodes. Starts at the top and goes
@@ -3584,6 +3674,9 @@ const ScanConsole = (function(){
     const NS = 'http://www.w3.org/2000/svg';
     stages.forEach((s, i) => {
       const p = nodeXY(i, stages.length);
+      // Where the beam has to point to be aimed at this area. Same
+      // ordering as the list, so the beam and the rows agree.
+      if(run) run.angles.set(s.id, { deg: i * 360 / Math.max(stages.length, 1), x: p.x, y: p.y });
       const line = document.createElementNS(NS, 'line');
       line.setAttribute('x1', '100'); line.setAttribute('y1', '100');
       line.setAttribute('x2', p.x.toFixed(2)); line.setAttribute('y2', p.y.toFixed(2));
@@ -3597,6 +3690,44 @@ const ScanConsole = (function(){
       dot.setAttribute('data-node', s.id);
       nodes.appendChild(dot);
     });
+    const prog = el('cfProgress');
+    if(prog){
+      const circ = 2 * Math.PI * 92;
+      prog.setAttribute('stroke-dasharray', circ.toFixed(1));
+      prog.setAttribute('stroke-dashoffset', circ.toFixed(1));
+    }
+    aim(null);
+  }
+
+  // Points the beam at an area and parks the pulse on it. Passing null
+  // sends it back to the top and takes the pulse off the figure.
+  function aim(stageId){
+    const g = el('cfAim'), pulse = el('cfPulse');
+    const a = (run && stageId) ? run.angles.get(stageId) : null;
+    if(g) g.style.transform = 'rotate(' + (a ? a.deg : 0) + 'deg)';
+    if(pulse){
+      pulse.setAttribute('cx', a ? a.x.toFixed(2) : '100');
+      pulse.setAttribute('cy', a ? a.y.toFixed(2) : '14');
+      pulse.style.display = a ? '' : 'none';
+    }
+  }
+
+  // Areas resolved out of areas listed. The only number here that means
+  // anything, so it is the only one drawn.
+  function updateProgress(){
+    const prog = el('cfProgress');
+    if(!prog || !run) return;
+    let done = 0;
+    run.stages.forEach(r => { if(r.li.className && r.li.className !== 'is-active') done++; });
+    const total = run.stages.size || 1;
+    const circ = 2 * Math.PI * 92;
+    prog.setAttribute('stroke-dashoffset', (circ * (1 - done / total)).toFixed(1));
+  }
+
+  function setCurrent(text, finished){
+    const wrap = el('consoleCurrent'), t = el('consoleCurrentText');
+    if(wrap) wrap.className = 'console-current' + (finished ? ' done' : '');
+    if(t) t.textContent = text || '';
   }
 
   // Every string that reaches the console goes through textContent. The
@@ -3621,7 +3752,7 @@ const ScanConsole = (function(){
     li.appendChild(g); li.appendChild(wrap);
     const cls = STATE_CLASS[stage.state || 'pending'];
     if(cls) li.className = cls;
-    return { li, glyph: g, note };
+    return { li, glyph: g, note, stageLabel: stage.text };
   }
 
   function paintNode(stageId, state){
@@ -3649,7 +3780,8 @@ const ScanConsole = (function(){
     const id = ++seq;
     const box = el('scanConsole');
     if(!box) return id;
-    run = { id, stages: new Map(), nextAt: 0, started: (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now() };
+    run = { id, stages: new Map(), angles: new Map(), nextAt: 0,
+            started: (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now() };
 
     el('consoleTitle').textContent = opts.title || 'Risk pass · live scan';
     el('consoleTargetLabel').textContent = opts.targetLabel || 'Target';
@@ -3658,6 +3790,7 @@ const ScanConsole = (function(){
     el('consoleFootLeft').textContent = opts.foot || '';
     el('consoleFootRight').textContent = '';
     setHeadState('', 'Running');
+    setCurrent('Starting the pass\u2026');
 
     const list = el('consoleStages');
     list.textContent = '';
@@ -3678,12 +3811,24 @@ const ScanConsole = (function(){
   // awaits this, and every caller's result is discarded if the run is no
   // longer current — that is what stops a slow scan from writing over a
   // newer one.
+  // Moves one area to its result — but VISITS it first. The beam swings
+  // over, the area pulses while it is being read, and only then does it
+  // resolve. That visit is what turns a list into a scan you can follow,
+  // and it is the reason the floor and the footer below exist.
   async function step(id, stageId, state, note){
     if(!isCurrent(id)) return;
     const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const gap = run.nextAt - now;
     if(gap > 0) await wait(gap);
     if(!isCurrent(id)) return;
+
+    const r = run.stages.get(stageId);
+    const resolving = state && state !== 'pending';
+    if(r && !r.li.className && resolving && visit() > 0){
+      set(id, stageId, 'active');
+      await wait(visit());
+      if(!isCurrent(id)) return;
+    }
     set(id, stageId, state, note);
     const after = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     run.nextAt = after + dwell();
@@ -3702,6 +3847,27 @@ const ScanConsole = (function(){
       r.note.style.display = note ? '' : 'none';
     }
     paintNode(stageId, state);
+
+    if(state === 'active'){
+      // The beam follows the work, and the line under the target says in
+      // words what the beam is pointing at.
+      aim(stageId);
+      setCurrent(r.stageLabel || '');
+    } else {
+      updateProgress();
+      // Nothing is running: send the beam ahead to the next area that
+      // still has to be looked at, so the movement reads as progress
+      // rather than as the beam being abandoned mid-sweep.
+      let next = null, running = false;
+      run.stages.forEach((rr, sid) => {
+        if(rr.li.className === 'is-active') running = true;
+        else if(!rr.li.className && !next) next = sid;
+      });
+      if(!running){
+        aim(next);
+        if(next) setCurrent(run.stages.get(next).stageLabel || '');
+      }
+    }
   }
 
   function elapsedMs(id){
@@ -3713,16 +3879,27 @@ const ScanConsole = (function(){
   // `realMs` is what the work actually took. `displayed` is the wall time
   // the console was on screen. Printing both is the whole defence against
   // this animation ever being mistaken for evidence of effort.
-  function finish(id, opts){
+  // Returns a promise, because of the floor. A scan that took three
+  // milliseconds would otherwise flash the whole console past in a
+  // single frame and the person would see nothing at all. The floor is
+  // small, it applies only when the work really was that fast, it is
+  // zero under reduced motion, and the footer states both numbers so it
+  // can never be mistaken for time spent working.
+  async function finish(id, opts){
     if(!isCurrent(id)) return;
     const o = opts || {};
+    const floor = reduced() ? 0 : MIN_VISIBLE_MS - elapsedMs(id);
+    if(floor > 0) await wait(floor);
+    if(!isCurrent(id)) return;
     const box = el('scanConsole');
     box.classList.remove('running');
+    aim(null);
     setHeadState(o.state || 'done', o.stateText || 'Complete');
+    setCurrent(o.stateText ? 'Pass complete \u00B7 ' + o.stateText : 'Pass complete', true);
     const right = [];
     if(typeof o.realMs === 'number') right.push('analysis ' + fmtMs(o.realMs));
     right.push('shown ' + fmtMs(elapsedMs(id)));
-    el('consoleFootRight').textContent = right.join(' · ');
+    el('consoleFootRight').textContent = right.join(' \u00B7 ');
     if(o.foot) el('consoleFootLeft').textContent = o.foot;
   }
 
@@ -3730,7 +3907,9 @@ const ScanConsole = (function(){
     if(!isCurrent(id)) return;
     const box = el('scanConsole');
     box.classList.remove('running');
+    aim(null);
     setHeadState('failed', headline || 'Stopped');
+    setCurrent(headline === 'Not screened' ? 'Nothing was screened' : 'Stopped before a verdict', true);
     // Any stage still pending or running when a scan stops did NOT run.
     // Leaving them mid-animation would imply otherwise.
     run.stages.forEach((r, sid) => {
@@ -3990,12 +4169,11 @@ function runPromptScan() {
   };
   return replayMessageScan(runId, result).then(() => {
     if(!ScanConsole.isCurrent(runId)) return;
-    ScanConsole.finish(runId, {
+    return ScanConsole.finish(runId, {
       state: result.verdict === 'fail' ? 'failed' : (result.verdict === 'pass' ? 'done' : 'warn'),
       stateText: result.label,
       realMs: workMs,
-    });
-    reveal();
+    }).then(() => { if(ScanConsole.isCurrent(runId)) reveal(); });
   }, err => {
     // The verdict already exists and is correct. A decoration that threw
     // must never be the reason a user does not get to see it.
@@ -4573,11 +4751,12 @@ async function runScan(){
       risks ? risks + ' risk signal' + (risks === 1 ? '' : 's') + ' found' : 'no risk signal in the answered checks');
     if(!ScanConsole.isCurrent(runId)) return;
 
-    ScanConsole.finish(runId, {
+    await ScanConsole.finish(runId, {
       state: result.verdict === 'fail' ? 'failed' : (result.verdict === 'pass' ? 'done' : 'warn'),
       stateText: result.label,
       realMs: workMs,
     });
+    if(!ScanConsole.isCurrent(runId)) return;
     renderPass(result, out.record, addrRaw, chainId, out.raw, adapter, out.liquiditySummary);
   } catch(e){
     // A run that has been superseded says nothing at all. Its abort is

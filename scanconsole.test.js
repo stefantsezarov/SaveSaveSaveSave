@@ -102,8 +102,13 @@ function freshPage() {
     matchMedia: (q) => ({ matches: reducedMotion && /reduce/.test(q), media: q }),
     performance: { now: () => Date.now() },
     console, Date, Math, JSON, RegExp, String, Number, Array, Object, Set, Map, Promise, Error, TypeError, URL, Buffer, Intl,
-    setTimeout: (fn, ms) => setTimeout(fn, Math.min(ms || 0, 1)),
-    clearTimeout,
+    // REAL timers. An earlier version of this harness clamped every
+    // timeout to a millisecond to keep the suite quick, which was fine
+    // until the pacing became the feature — with the clamp in place the
+    // beam never visibly moved and three assertions below passed for the
+    // wrong reason. The suite takes a few seconds longer and now tests
+    // the thing it claims to.
+    setTimeout, clearTimeout,
     AbortController,
     fetch: async () => { throw new Error('no fetch stub installed for this test'); },
     module: { exports: {} },
@@ -427,6 +432,70 @@ async function afterFirstScan() {
       (mod.match(/textContent\s*=/g) || []).length >= 4, 'every string reaches the DOM as text');
   }
 
+  section('The sweep actually visits each area');
+  {
+    freshPage();
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'Summarise this article in three bullets.';
+    const seenActive = new Set();
+    const seenAims = [];
+    // Watch the console while the scan runs, rather than inspecting the
+    // wreckage afterwards: the whole point of the feature is what
+    // happens DURING, and an end-state assertion cannot see it.
+    const watch = setInterval(() => {
+      stageRows().forEach(r => { if (r.state === 'is-active') seenActive.add(r.text); });
+      const tr = (nodes['cfAim'] && nodes['cfAim'].style.transform) || '';
+      if (tr && seenAims[seenAims.length - 1] !== tr) seenAims.push(tr);
+    }, 12);
+    const p = run('runPromptScan()');
+    return p.then(async () => {
+      await settle();
+      clearInterval(watch);
+      const rows = stageRows();
+      const resolvable = rows.filter(r => r.state !== 'is-skipped').length;
+      check('every area that resolved was visited on the way',
+        seenActive.size >= resolvable - 1,
+        seenActive.size + ' of ' + resolvable + ' areas were seen in the running state');
+      check('the beam moved to more than one position',
+        new Set(seenAims).size >= 3,
+        'aims seen: ' + JSON.stringify([...new Set(seenAims)]).slice(0, 120));
+      check('the beam parks itself when the pass ends',
+        /rotate\(0deg\)/.test(nodes['cfAim'].style.transform || ''),
+        nodes['cfAim'].style.transform);
+      check('the progress ring emptied as areas resolved',
+        Number(nodes['cfProgress'].getAttribute('stroke-dashoffset')) <
+        Number(nodes['cfProgress'].getAttribute('stroke-dasharray')) * 0.5,
+        'offset ' + nodes['cfProgress'].getAttribute('stroke-dashoffset'));
+      check('the "Now" line ends on the outcome, not mid-scan',
+        /Pass complete/.test(nodes['consoleCurrentText']._text),
+        nodes['consoleCurrentText']._text);
+      return afterSweep();
+    });
+  }
+}
+
+async function afterSweep() {
+  section('A scan too fast to see is still shown');
+  {
+    freshPage();
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'hello';
+    const t0 = Date.now();
+    await run('runPromptScan()');
+    await settle();
+    const took = Date.now() - t0;
+    // The engine finishes this in about a millisecond. Without a floor
+    // the console would appear and vanish inside one frame.
+    check('an instant scan keeps the console on screen long enough to read',
+      took >= 600, took + ' ms');
+    check('...and the footer admits how fast the analysis really was',
+      /analysis \d+(\.\d+)? ms/.test(nodes['consoleFootRight']._text),
+      nodes['consoleFootRight']._text);
+    check('...so the displayed time is stated separately',
+      /shown \d+(\.\d+)? (ms|s)/.test(nodes['consoleFootRight']._text),
+      'both numbers, or the floor becomes a claim about effort');
+  }
+
   section('Reduced motion');
   {
     reducedMotion = true;
@@ -441,7 +510,7 @@ async function afterFirstScan() {
     await run('runPromptScan()');
     await settle();
     const took = Date.now() - t0;
-    check('a message scan adds no pacing delay under reduced motion', took < 120, took + ' ms');
+    check('a message scan adds no pacing and no floor under reduced motion', took < 150, took + ' ms');
     check('...and the stages still all resolved',
       stageRows().every(r => r.state !== 'pending'),
       'the console must be fully readable without a single animation');
@@ -476,8 +545,15 @@ async function afterFirstScan() {
     check('no canvas and no animation library',
       !/<canvas|gsap|anime\.js|lottie/i.test(html));
     check('the figure is a fixed small number of SVG nodes',
-      (html.match(/<circle class="cf-/g) || []).length <= 8,
+      (html.match(/<circle class="cf-/g) || []).length <= 12,
       'satellites are added per stage; the static field must stay small');
+    const mod = html.slice(html.indexOf('const ScanConsole = (function'), html.indexOf('function classifyScanRequest'));
+    check('nothing in the console runs per frame',
+      !/requestAnimationFrame|setInterval/.test(mod),
+      'the beam is aimed once per stage and the browser eases it; JS never animates');
+    check('the beam is aimed by a single transform, not by redrawing',
+      (mod.match(/style\.transform\s*=/g) || []).length === 1,
+      'one assignment per aim, composited by the GPU');
   }
 }
 
