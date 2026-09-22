@@ -65,6 +65,12 @@ verify_embedded.js
 build-sitemap.js
 build-suffixes.js
 seo.js
+indexnow.js
+
+# NOT excluded, deliberately: the IndexNow key file at the root. It is
+# the ownership proof, and excluding it would turn every submission
+# into a 403 while everything else still looked fine. A test asserts
+# it stays out of this list.
 make-pdf.js
 shot.js
 icons.py

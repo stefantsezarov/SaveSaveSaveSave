@@ -39,3 +39,11 @@ jobs:
 
       - name: Check what is actually being served
         run: node live.test.js https://savesavesavesave.xyz
+
+      # Only after the checks above have passed, and only on a push:
+      # telling a search engine to come and look at a deploy that is
+      # broken is worse than saying nothing. Google has no equivalent
+      # endpoint, so this is Bing, Yandex, Seznam and Naver only.
+      - name: Tell IndexNow what changed
+        if: github.event_name == 'push'
+        run: node indexnow.js

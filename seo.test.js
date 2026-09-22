@@ -199,6 +199,34 @@ section('The crawl surface is coherent');
   check('no page accidentally carries noindex', noindex.length === 0, noindex.join(', '));
 }
 
+section('IndexNow can actually prove ownership');
+{
+  // The key file IS the ownership proof. If it is missing, or drifts
+  // from the key in the script, every submission comes back 403 — in
+  // CI, silently, forever.
+  const src = read('indexnow.js');
+  const key = (src.match(/const KEY = '([0-9a-f]{8,128})'/) || [])[1];
+  check('indexnow.js declares a key of a legal shape', !!key, 'must be 8–128 hex characters');
+  if (key) {
+    const file = key + '.txt';
+    check('the key file is in the repository', fs.existsSync(path.join(__dirname, file)), file);
+    if (fs.existsSync(path.join(__dirname, file))) {
+      check('the key file contains exactly the key',
+        read(file).trim() === key, JSON.stringify(read(file).slice(0, 40)));
+    }
+    // .assetsignore stops files being published. Excluding this one
+    // would break the proof while leaving everything looking fine.
+    const ignore = fs.existsSync(path.join(__dirname, '.assetsignore')) ? read('.assetsignore') : '';
+    const lines = ignore.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    check('the key file is not excluded from the deploy',
+      !lines.includes(file) && !lines.includes('*.txt'),
+      'an excluded key file is a 403 on every ping');
+  }
+  check('the ping script sends URLs and nothing else',
+    !/scan|prompt|address|finding|verdict/i.test(read('indexnow.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')),
+    'nothing about a visitor or a scan may ride along to a search engine');
+}
+
 section('The generator is idempotent and its output is committed');
 {
   // A build step that changes files every time it runs makes "is the
