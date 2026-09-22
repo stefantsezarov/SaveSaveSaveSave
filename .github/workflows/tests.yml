@@ -50,6 +50,8 @@ jobs:
         run: node guide-examples.test.js
       - name: Red team
         run: node redteam.js
+      - name: Titles, cards, structured data
+        run: node seo.test.js
 
       # Not a test: it rewrites files. Running it here proves the route
       # policy is already applied, because a clean tree means the
@@ -58,3 +60,9 @@ jobs:
         run: |
           node apply-ads.js
           git diff --exit-code || (echo "::error::apply-ads.js changed files — the committed pages do not match AD_POLICY" && exit 1)
+
+      # Same idea: the head blocks in the repository must be the ones
+      # seo.js would write. Structured data that drifts from the page is
+      # worse than none, and it drifts silently.
+      - name: SEO blocks are already applied
+        run: node seo.js --check

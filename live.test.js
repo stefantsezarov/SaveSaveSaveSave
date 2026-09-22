@@ -210,6 +210,23 @@ const MUST_404 = [
   check('reduced motion is honoured on the deploy',
     /prefers-reduced-motion:reduce\)\{[\s\S]{0,800}?animation:none;/.test(idx.body));
 
+  // Structured data and social cards. These live in the <head>, nobody
+  // looks at them, and a deploy that dropped them would show no symptom
+  // at all until months of search traffic had quietly not happened.
+  section('The deploy serves the cards and the schema');
+  for(const p of ['/guides.html', '/disguised-links.html', '/honeypot-tokens.html', '/whitepaper.html']){
+    const r = await get(p);
+    check('has a social card: ' + p,
+      /property="og:title"/.test(r.body) && /name="twitter:card"/.test(r.body),
+      'pasted into X or Telegram this renders as a bare grey link');
+    const ld = (r.body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1];
+    let ok = false, why = 'no JSON-LD block served';
+    if(ld){ try { JSON.parse(ld); ok = true; } catch(e){ why = 'JSON-LD does not parse: ' + e.message; } }
+    check('serves valid structured data: ' + p, ok, why);
+  }
+  check('the card image is actually served', (await get('/og-image.png')).status === 200,
+    'a card pointing at a 404 renders worse than no card');
+
   // The logo is the way home from every page but the scanner, where it
   // would discard a message somebody had just pasted.
   const guide = await get('/disguised-links.html');

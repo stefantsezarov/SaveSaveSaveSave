@@ -64,6 +64,7 @@ embed.js
 verify_embedded.js
 build-sitemap.js
 build-suffixes.js
+seo.js
 make-pdf.js
 shot.js
 icons.py
