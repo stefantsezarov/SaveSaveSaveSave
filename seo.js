@@ -106,9 +106,31 @@ function contentSig(text) {
   return body.replace(/\s+/g, ' ').trim();
 }
 
+// A shallow clone has no history to read. GitHub's checkout action makes
+// one by default (a single commit), and in it every page looks as if it
+// was published and last changed on the day of the newest commit. Those
+// dates would be wrong and written with full confidence, so stop instead
+// and say why. (No git at all is different: gitDates falls back to today.)
+let historyChecked = false;
+function requireFullHistory() {
+  if (historyChecked) return;
+  let shallow = 'false';
+  try {
+    shallow = execSync('git rev-parse --is-shallow-repository',
+      { cwd: __dirname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch (_) { historyChecked = true; return; }
+  if (shallow === 'true') {
+    console.error('seo.js cannot date pages from a shallow clone: the git history is missing. '
+      + 'In GitHub Actions, check out with fetch-depth: 0.');
+    process.exit(2);
+  }
+  historyChecked = true;
+}
+
 const dateCache = new Map();
 function gitDates(f) {
   if (dateCache.has(f)) return dateCache.get(f);
+  requireFullHistory();
   const today = new Date().toISOString().slice(0, 10);
   let out = { published: today, modified: today };
   try {

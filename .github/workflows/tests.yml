@@ -24,7 +24,13 @@ jobs:
   suites:
     runs-on: ubuntu-latest
     steps:
+      # Full history, not the default single commit. seo.js dates every
+      # page from its git history; in a one-commit clone each page looks
+      # published today, and the SEO check below fails on dates that are
+      # right in the repository.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
