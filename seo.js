@@ -55,13 +55,14 @@ const PAGES = {
   'prompt-injection.html':   { type: 'guide',   crumb: 'Prompt injection', section: 'Message risk' },
   'seed-phrase-phishing.html': { type: 'guide', crumb: 'Seed-phrase phishing', section: 'Message risk' },
   'disguised-links.html':    { type: 'guide',   crumb: 'Disguised links', section: 'Link risk' },
+  'sanctioned-addresses.html': { type: 'guide', crumb: 'Sanctioned addresses', section: 'Address risk' },
   'privacy.html':            { type: 'page',    crumb: 'Privacy' },
   'terms.html':              { type: 'page',    crumb: 'Terms' },
 };
 
 const GUIDE_ORDER = [
   'honeypot-tokens.html', 'invisible-characters.html', 'prompt-injection.html',
-  'seed-phrase-phishing.html', 'disguised-links.html',
+  'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html',
 ];
 
 // ---------------------------------------------------------------------

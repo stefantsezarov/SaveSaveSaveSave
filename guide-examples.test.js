@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 11, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 12, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 11 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 12 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -299,7 +299,8 @@ if (fs.existsSync(guidePath)) {
   // The guides that teach people to distrust a message must never be
   // the place we put an unreviewed commercial link.
   for (const sensitive of ['disguised-links.html', 'seed-phrase-phishing.html',
-                           'prompt-injection.html', 'invisible-characters.html']) {
+                           'prompt-injection.html', 'invisible-characters.html',
+                           'sanctioned-addresses.html']) {
     check(`${sensitive} is ad-free by policy`, policy[sensitive] === false,
       'this guide explains a deception; advertising beside it reads as endorsement');
   }
@@ -308,6 +309,47 @@ if (fs.existsSync(guidePath)) {
   const priv = fs.readFileSync(path.join(__dirname, 'privacy.html'), 'utf8');
   check('the privacy policy no longer claims ads run on every page',
     !/It runs on every page/i.test(priv) && /deliberately do not/i.test(priv));
+}
+
+
+// ---- guide 7: what it says the scanner does --------------------------
+// "The Address You Can't Pay" describes the sanctions checks in a table.
+// Every row of that table is a claim about this code. If the code
+// changes, the article has to change with it, and this is what says so.
+{
+  const C = require('./core.js');
+  const g7 = fs.readFileSync(path.join(__dirname, 'sanctioned-addresses.html'), 'utf8');
+  const defs = C.EVM_WALLET_CHECK_DEFS;
+  const mk = over => defs.map(d => C.buildCheck(d, over[d.key] || '0', 'test')).filter(Boolean);
+  const crit = defs.filter(d => d.critical).length;
+  const sanc = defs.find(d => d.key === 'sanctioned');
+  check('guide 7: a sanctions flag is a critical wallet check named "On a sanctions list"',
+    !!sanc && sanc.critical && sanc.label === 'On a sanctions list' && /On a sanctions list/.test(g7));
+  check('guide 7: a listed EVM address comes back FAIL',
+    C.VerdictEngine.evaluate(mk({ sanctioned: '1' }), defs.length, 'EVM', crit).label === 'FAIL');
+  const cp = { id: 'recent_counterparty_sanctioned_0', category: 'exposure', status: 'RISK', critical: false,
+               severityWeight: 3, label: 'x', detail: 'x', source: 'x' };
+  check('guide 7: a sanctioned counterparty is CAUTION, not FAIL',
+    C.VerdictEngine.evaluate(mk({}).concat([cp]), defs.length + 1, 'EVM', crit).label === 'CAUTION');
+  check('guide 7: "eight EVM chains" is still the number with a counterparty check',
+    C.COUNTERPARTY_CHECK_SUPPORTED_CHAINS.size === 8 && /On eight EVM chains/.test(g7));
+  const worker = fs.readFileSync(path.join(__dirname, 'goplus-proxy-worker.js'), 'utf8');
+  const range = Number((worker.match(/const LOG_BLOCK_RANGE = (\d+);/) || [])[1]);
+  // Twelve-second Ethereum blocks: 2,000 of them is 400 minutes.
+  check('guide 7: "a little under seven hours on Ethereum" still matches the look-back window',
+    range === 2000 && /a little under seven hours on Ethereum/.test(g7), 'LOG_BLOCK_RANGE is ' + range);
+  check('guide 7: Solana, Sui and TRON wallets are still not screened',
+    ['solana', 'sui', 'tron'].every(k => C.Adapters[k].capabilities.walletScreening === false)
+      && /Solana, Sui and TRON wallets/.test(g7));
+  check('guide 7: token scans still carry no sanctions check',
+    !C.EVM_TOKEN_CHECK_DEFS.some(d => d.key === 'sanctioned'));
+  const clean = C.VerdictEngine.evaluate(mk({}), defs.length, 'EVM', crit);
+  check('guide 7: a clean result still says "no major risk indicators" and "not a safety guarantee"',
+    /No major risk indicators/.test(clean.sub || '') && /not a safety guarantee/.test(clean.sub || ''),
+    clean.sub);
+  check('guide 7: the real listed address is labelled as one, and is never a link',
+    /Real listed address · do not send anything to it/.test(g7)
+      && !/href="[^"]*0x098B716B8Aaf21512996dC57EB0615e2383E2f96/i.test(g7));
 }
 
 
@@ -324,7 +366,8 @@ if (fs.existsSync(guidePath)) {
 {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
-    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
+    'sanctioned-addresses.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -417,7 +460,8 @@ if (fs.existsSync(guidePath)) {
     // THE SAFE DIRECTION. Anything the pages link to must still be served.
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
-      'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+      'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
+    'sanctioned-addresses.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -475,7 +519,8 @@ if (fs.existsSync(guidePath)) {
 {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
-    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html'];
+    'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
+    'sanctioned-addresses.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);

@@ -77,6 +77,7 @@ const AD_POLICY = {
   'prompt-injection.html':      { enabled: false, reason: 'AI manipulation and unsafe instructions. Sensitive trust page.' },
   'seed-phrase-phishing.html':  { enabled: false, reason: 'The highest-harm guide on the site. Someone may be reading it while being robbed. Nothing commercial belongs on it.' },
   'disguised-links.html':       { enabled: false, reason: 'Phishing and disguised destinations. An unreviewed advertisement beside an article about unsafe links is the exact confusion the article warns about.' },
+  'sanctioned-addresses.html': { enabled: false, reason: 'Read by people whose funds may have just been frozen -- the exact audience that recovery scammers buy ads to reach. Decided by Stefan, 23 September 2026.' },
 };
 
 const PAGES = Object.keys(AD_POLICY);
