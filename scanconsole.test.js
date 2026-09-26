@@ -863,6 +863,40 @@ async function afterSweep() {
       ex.indexOf('WETH · Ethereum') !== -1 && ex.indexOf('WETH · Ethereum') < ex.indexOf('USDC · Ethereum'));
   }
 
+  section('Compare two addresses (address poisoning)');
+  {
+    freshPage();
+    const cmp = (a, b) => JSON.parse(run('JSON.stringify(compareAddresses(' + JSON.stringify(a) + ',' + JSON.stringify(b) + '))'));
+    const MEANT = '0x7a3F000000000000000000000000000000009E2c';   // fictional, by design
+    const TWIN  = '0x7a3F5d1e8B2c4a6f9e0d3C7b1A5f8e2D4c609E2c';   // fictional look-alike
+    check('identical addresses are identical', cmp(MEANT, MEANT).state === 'same');
+    check('an EVM address in different letter case is the same address', cmp(MEANT, MEANT.toLowerCase()).state === 'same-case');
+    const t = cmp(MEANT, TWIN);
+    check('a look-alike is caught: same start and end, different middle',
+      t.state === 'different' && t.lookalike && t.prefix === 4 && t.suffix === 5, JSON.stringify(t));
+    check('...and every differing character is marked', t.diffs.length === 30, t.diffs.length + ' marked');
+    check('different lengths are different addresses', cmp(MEANT, MEANT + 'a').state === 'length');
+    const solA = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    check('non-EVM addresses are compared exactly, case included', cmp(solA, solA.toLowerCase()).state === 'different');
+    check('an empty box compares nothing', cmp(MEANT, '  ').state === 'empty');
+
+    sandbox.document.createTextNode = (x) => { const n = makeEl(null, '#text'); n.textContent = x; return n; };
+    nodes['twinA'] = makeEl('twinA'); nodes['twinA'].value = MEANT;
+    nodes['twinB'] = makeEl('twinB'); nodes['twinB'].value = TWIN;
+    run('renderTwin()');
+    const said = nodes['twinResult']._kids[0];
+    check('the result says so in plain words',
+      said && /first 4 and last 5 characters match/.test(said._text) && /Do not send/.test(said._text), said && said._text);
+    check('...and says what it cannot know', nodes['twinResult']._kids.some(k => /cannot tell you which address is right/.test(k._text)));
+    nodes['twinB'].value = '<img src=x onerror=alert(1)>';
+    run('renderTwin()');
+    const src = html.slice(html.indexOf('function compareAddresses('), html.indexOf('// "Why this matters" after a verdict:'));
+    check('typed text only ever reaches the page as text', src.length > 500 && !/innerHTML/.test(src));
+    freshPage();
+    run("chooseSituation('pay')");
+    check('"I\'m about to pay an address" opens the comparison', nodes['twinCheck'].open === true);
+  }
+
   section('Counting without collecting');
   {
     // One beacon per finished scan, carrying four fixed words and nothing

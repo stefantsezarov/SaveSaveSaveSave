@@ -625,6 +625,23 @@
     .situation-buttons{display:grid; grid-template-columns:1fr 1fr;}
     .situation{text-align:left; line-height:1.3;}
   }
+  /* ---- Compare two addresses (address poisoning) ----------------- */
+  .twin{margin-top:14px; border-top:1px solid var(--border); padding-top:12px;}
+  .twin summary{cursor:pointer; font-size:0.8rem; color:var(--text-muted); list-style:none;}
+  .twin summary::-webkit-details-marker{display:none;}
+  .twin summary::before{content:'+'; display:inline-block; width:14px; font-family:'IBM Plex Mono', monospace; color:var(--accent-2);}
+  .twin[open] summary::before{content:'\2212';}
+  .twin summary:hover{color:var(--accent);}
+  .twin-body{margin-top:12px; display:grid; gap:10px;}
+  .twin-label{display:block; font-size:0.74rem; color:var(--text-muted); margin-bottom:4px;}
+  .twin-input{width:100%; height:44px; min-width:0;}
+  .twin-result{font-size:0.82rem; line-height:1.5;}
+  .twin-verdict{margin:0 0 8px;}
+  .twin-verdict.same{color:var(--safe);} .twin-verdict.differ{color:var(--danger);} .twin-verdict.neutral{color:var(--text-muted);}
+  .twin-rows{font-family:'IBM Plex Mono', monospace; font-size:0.84rem; display:grid; gap:4px; overflow-wrap:anywhere;}
+  .twin-rows .grp{margin-right:0.55em; display:inline-block; white-space:nowrap;}
+  .twin-rows .d{color:var(--danger); background:var(--danger-dim); text-decoration:underline;}
+  .twin-note{margin:8px 0 0; font-size:0.74rem; color:var(--text-muted);}
   .next-step{margin:14px 0 0; font-size:0.85rem;}
   .next-step a{color:var(--accent-2); text-decoration:none; border-bottom:1px solid transparent;}
   .next-step a:hover{border-bottom-color:currentColor;}
@@ -808,6 +825,16 @@
         <span class="example-chip" onclick="fillExample('tron','tron','TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')">USDT · TRON</span>
       </div>
       <div class="inline-error" id="inlineError" style="display:none;"></div>
+      <details class="twin" id="twinCheck">
+        <summary>Compare two addresses</summary>
+        <div class="twin-body">
+          <label><span class="twin-label">The address you meant (from the original, trusted source)</span>
+            <input class="addr-input twin-input" id="twinA" type="text" autocomplete="off" spellcheck="false" oninput="renderTwin()"></label>
+          <label><span class="twin-label">The address you're about to send to</span>
+            <input class="addr-input twin-input" id="twinB" type="text" autocomplete="off" spellcheck="false" oninput="renderTwin()"></label>
+          <div class="twin-result" id="twinResult" aria-live="polite"></div>
+        </div>
+      </details>
       </div><!-- /addressPanel -->
 
       <div class="prompt-panel" id="promptPanel">
@@ -4270,6 +4297,9 @@ function chooseSituation(key){
   // the person has just asked for. Elsewhere, put the cursor where it goes.
   let coarse = false;
   try { coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(_) {}
+  // Paying someone is the moment address poisoning bites, so that
+  // situation also opens the comparison.
+  if(key === 'pay'){ const t = document.getElementById('twinCheck'); if(t) t.open = true; }
   const input = document.getElementById(s.scan === 'prompt' ? 'promptInput' : 'addrInput');
   if(!coarse && input && input.focus) input.focus();
 }
@@ -4280,6 +4310,72 @@ function situationFromHash(){
     const m = /^#check=(message|pay|token|sign)$/.exec(String((window.location || {}).hash || ''));
     if(m) chooseSituation(m[1]);
   } catch(_) {}
+}
+
+// ---- Compare two addresses -------------------------------------------
+// Character by character, in this browser, with no network call. It says
+// whether two strings are the same address; it cannot say which one is
+// right -- only the original source can. EVM hex addresses compare
+// without regard to letter case (the capitals are only a checksum);
+// every other format is compared exactly.
+function compareAddresses(a, b){
+  a = String(a || '').trim(); b = String(b || '').trim();
+  if(!a || !b) return { state: 'empty' };
+  const hex = /^0x[0-9a-fA-F]{40}$/;
+  const fold = hex.test(a) && hex.test(b);
+  const x = fold ? a.toLowerCase() : a, y = fold ? b.toLowerCase() : b;
+  if(x === y) return { state: a === b ? 'same' : 'same-case', length: a.length };
+  if(x.length !== y.length) return { state: 'length' };
+  const start = fold ? 2 : 0;
+  const diffs = [];
+  for(let i = 0; i < x.length; i++) if(x[i] !== y[i]) diffs.push(i);
+  let prefix = 0; while(start + prefix < x.length && x[start + prefix] === y[start + prefix]) prefix++;
+  let suffix = 0; while(suffix < x.length && x[x.length - 1 - suffix] === y[y.length - 1 - suffix]) suffix++;
+  return { state: 'different', diffs, prefix, suffix, length: x.length, lookalike: prefix >= 3 && suffix >= 3 };
+}
+// Groups of four for reading aloud; an EVM "0x" stands on its own so the
+// groups line up with the characters people actually compare.
+function twinRow(text, diffs){
+  const row = document.createElement('div');
+  const lead = /^0x/i.test(text) ? 2 : 0;
+  const starts = lead ? [0] : [];
+  for(let g = lead; g < text.length; g += 4) starts.push(g);
+  for(let k = 0; k < starts.length; k++){
+    const g = starts[k], end = k + 1 < starts.length ? starts[k + 1] : text.length;
+    const grp = document.createElement('span');
+    grp.className = 'grp';
+    for(let i = g; i < end; i++){
+      if(diffs && diffs.indexOf(i) !== -1){
+        const d = document.createElement('span'); d.className = 'd'; d.textContent = text[i]; grp.appendChild(d);
+      } else {
+        grp.appendChild(document.createTextNode(text[i]));
+      }
+    }
+    row.appendChild(grp);
+  }
+  return row;
+}
+function renderTwin(){
+  const out = document.getElementById('twinResult');
+  if(!out) return;
+  const a = document.getElementById('twinA').value, b = document.getElementById('twinB').value;
+  const r = compareAddresses(a, b);
+  out.textContent = '';
+  if(r.state === 'empty') return;
+  const say = (cls, text) => { const p = document.createElement('p'); p.className = 'twin-verdict ' + cls; p.textContent = text; out.appendChild(p); };
+  if(r.state === 'same') say('same', 'Identical: all ' + r.length + ' characters match.');
+  else if(r.state === 'same-case') say('same', 'Same address. Only the capital letters differ, which does not matter for this kind of address.');
+  else if(r.state === 'length') say('differ', 'Different addresses: they are not even the same length. Do not send.');
+  else if(r.lookalike) say('differ', 'Different, but the first ' + r.prefix + ' and last ' + r.suffix + ' characters match. This is exactly how address poisoning looks. Do not send.');
+  else say('differ', 'Different addresses: ' + r.diffs.length + ' of ' + r.length + ' characters do not match. Do not send.');
+  if(r.state === 'different'){
+    const rows = document.createElement('div'); rows.className = 'twin-rows';
+    rows.appendChild(twinRow(a.trim(), r.diffs)); rows.appendChild(twinRow(b.trim(), r.diffs));
+    out.appendChild(rows);
+  }
+  const note = document.createElement('p'); note.className = 'twin-note';
+  note.textContent = 'This compares characters, not owners. It cannot tell you which address is right: only the original source can.';
+  out.appendChild(note);
 }
 
 // "Why this matters" after a verdict: one link to the guide that explains
