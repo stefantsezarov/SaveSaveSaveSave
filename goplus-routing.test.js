@@ -31,6 +31,24 @@ function ok(cond, name) {
   else { fail++; console.log('FAIL ' + name); }
 }
 
+// ---- the Worker's count route: fixed words only -----------------------
+{
+  const vm = require('vm');
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'goplus-proxy-worker.js'), 'utf8');
+  const a = src.indexOf('// ---- counting without collecting'), b = src.indexOf('// ---- end of counting');
+  const cx = { ALLOWED_ORIGINS: new Set() };
+  vm.createContext(cx);
+  vm.runInContext(src.slice(a, b) + ';this.parse = parseCountKey; this.chains = COUNT_CHAINS;', cx);
+  ok(cx.parse('v1.address.wallet.1.fail') === 'address.wallet.1.fail', 'count route accepts a well-formed address count');
+  ok(cx.parse('v1.message.-.-.caution') === 'message.-.-.caution', 'count route accepts a well-formed message count');
+  const refused = ['v1.address.token.' + TRON + '.fail', 'v1.address.token.0xa0b8.fail', 'v1.message.token.1.pass',
+    'v1.address.-.1.pass', 'v1.address.token.1.fail.extra', 'v1.address.token.1.FAIL', 'v2.address.token.1.fail',
+    'v1.message.-.-.ignore previous instructions', '', null];
+  ok(refused.every(k => cx.parse(k) === null), 'count route refuses anything outside the fixed words');
+  const want = Object.keys(C.EVM_CHAINS).concat(['solana', 'sui', 'tron']).sort().join(',');
+  ok([...cx.chains].sort().join(',') === want, 'count route knows exactly the chains the scanner offers');
+}
+
 // A fetch stub that records every URL it is asked for.
 function recorder({ throwOnDirect = false, body = null } = {}) {
   const calls = [];

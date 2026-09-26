@@ -59,6 +59,14 @@
  *    checked RPC endpoint for that chain.
  * 3. Paste this whole file into the Cloudflare Worker "Edit code" editor.
  * 4. Click Save and Deploy.
+ *
+ * SCAN COUNTS (optional; the Worker runs without it):
+ * a. Create a D1 database (any name) and run, once, in its Console:
+ *      CREATE TABLE IF NOT EXISTS counts (day TEXT NOT NULL, k TEXT NOT NULL,
+ *        n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, k));
+ * b. Worker -> Settings -> Bindings -> add a D1 binding named COUNTS.
+ * c. To read the totals, in the D1 Console:
+ *      SELECT day, k, n FROM counts ORDER BY day DESC, n DESC;
  * 5. Copy the resulting https://<name>.<subdomain>.workers.dev URL.
  */
 
@@ -488,9 +496,46 @@ async function checkRecentCounterparties(address, chainId) {
   };
 }
 
-async function handleRequest(request) {
+// ---- counting without collecting ------------------------------------
+// POST ?count=v1.<kind>.<mode>.<chain>.<verdict>
+// One request per finished scan, sent by the page with sendBeacon. Every
+// field must be one word from a fixed set; anything else is refused before
+// it gets near storage, so this route cannot carry an address, a message,
+// or anything else a visitor typed. What is stored is a daily total per key
+// in D1 (binding COUNTS): no IP, no time of day, no identifier.
+// Keep COUNT_CHAINS in step with EVM_CHAINS in core.js (a test checks).
+const COUNT_CHAINS = new Set(['1','56','137','42161','10','8453','43114','250','324','59144','534352','81457','5000','100','solana','sui','tron']);
+const COUNT_RE = /^v1\.(address|message)\.(token|wallet|-)\.([a-z0-9]{1,8}|-)\.(pass|caution|fail|insufficient|stopped)$/;
+function parseCountKey(raw) {
+  const m = COUNT_RE.exec(String(raw || ''));
+  if (!m) return null;
+  const kind = m[1], mode = m[2], chain = m[3];
+  if (kind === 'message' && (mode !== '-' || chain !== '-')) return null;
+  if (kind === 'address' && (mode === '-' || !COUNT_CHAINS.has(chain))) return null;
+  return m[0].slice(3);
+}
+function handleCount(request, env, ctx) {
+  const origin = request.headers.get('Origin');
+  const key = parseCountKey(new URL(request.url).searchParams.get('count'));
+  if (!origin || !ALLOWED_ORIGINS.has(origin) || !key) {
+    return new Response(null, { status: 400, headers: corsHeaders() });
+  }
+  if (env && env.COUNTS && ctx) {
+    const day = new Date().toISOString().slice(0, 10);
+    ctx.waitUntil(env.COUNTS
+      .prepare('INSERT INTO counts (day, k, n) VALUES (?1, ?2, 1) ON CONFLICT(day, k) DO UPDATE SET n = n + 1')
+      .bind(day, key).run().catch(() => {}));
+  }
+  return new Response(null, { status: 204, headers: corsHeaders() });
+}
+// ---- end of counting ----------------------------------------------------
+
+async function handleRequest(request, env, ctx) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders() });
+  }
+  if (request.method === 'POST' && new URL(request.url).searchParams.has('count')) {
+    return handleCount(request, env, ctx);
   }
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Only GET is supported' }, 405);
@@ -560,9 +605,9 @@ return jsonResponse({ error: 'Provide one of contract_addresses, wallet_address,
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const origin = resolveOrigin(request);
-    const response = await handleRequest(request);
+    const response = await handleRequest(request, env, ctx);
 
     // Stamp the resolved origin on the way out. Every response -- cached,
     // proxied, validation error, timeout -- passes through here, so there is

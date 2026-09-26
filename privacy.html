@@ -39,7 +39,7 @@
       "url": "https://savesavesavesave.xyz/privacy",
       "inLanguage": "en",
       "datePublished": "2026-09-17",
-      "dateModified": "2026-09-23",
+      "dateModified": "2026-09-26",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -120,7 +120,7 @@
     <table class="chains">
       <tr><th>Service</th><th>When it is contacted</th><th>What it receives</th></tr>
       <tr><td><strong>GoPlus Labs</strong><br><code>api.gopluslabs.io</code></td><td>When you check an address or token</td><td>The address and chain id, plus your IP and user-agent</td></tr>
-      <tr><td><strong>Our own Cloudflare Worker</strong><br><code>*.workers.dev</code></td><td>For chains where a direct call is blocked, and for sanctions checks</td><td>The address and chain id, plus your IP and user-agent</td></tr>
+      <tr><td><strong>Our own Cloudflare Worker</strong><br><code>*.workers.dev</code></td><td>For chains where a direct call is blocked, for sanctions checks, and once when a scan finishes, to count it (section 5)</td><td>For the checks: the address and chain id. For the count: only the kind of scan, the chain and the verdict. Plus your IP and user-agent, as with any request; we do not store them</td></tr>
       <tr><td><strong>Google Fonts</strong><br><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code></td><td>On every page load, to load the typefaces</td><td>Your IP and user-agent. No scan data ever reaches it.</td></tr>
       <tr><td><strong>Cloudflare</strong></td><td>On every page load — Cloudflare serves this site</td><td>Standard web-server request data</td></tr>
       <tr><td><strong>Cloudflare Web Analytics</strong><br><code>static.cloudflareinsights.com</code>, <code>cloudflareinsights.com</code></td><td>On every page load, to count the visit</td><td>Page URL, referrer, approximate country, browser and device type, page-load timing. No cookie. No scan content — see section 5.</td></tr>
@@ -131,7 +131,8 @@
 
     <h2>5. Analytics</h2>
     <p>This site uses Cloudflare Web Analytics to count page views. It is privacy-preserving by design: <strong>it sets no cookies, uses no fingerprinting, and does not track you across other websites.</strong> It records page URL, referrer, approximate country, browser and device type, and page-load timing.</p>
-    <p>It never receives the content of a scan. Not the message, not the prompt, not the address, not the verdict, not any finding. Those never leave the part of the page that computes them.</p>
+    <p>It never receives the content of a scan. Not the message, not the prompt, not the address, not the verdict, not any finding.</p>
+    <p><strong>Scan counts.</strong> When a scan finishes, the page sends one small message to our own Cloudflare Worker: the kind of scan (address or message; for addresses, token or wallet and the chain) and the verdict it reached. The Worker adds one to a daily total and keeps nothing else. The message never contains the address or text you scanned, or any part of it, and nothing that identifies you: no cookie, no ID and no IP address is stored, and nothing is saved in your browser. If your browser sends a Global Privacy Control signal, nothing is counted. We use these totals to learn which checks people rely on and where scans fail, not to follow anyone.</p>
 
     <h2>6. Cookies and browser storage</h2>
     <p><strong>This site's own code sets no cookies</strong> and writes nothing to <code>localStorage</code>, <code>sessionStorage</code> or IndexedDB. Nothing you scan is stored anywhere, in your browser or ours.</p>
@@ -169,7 +170,7 @@
     </div>
 
     <h2>8. What is stored, and for how long</h2>
-    <p>This project stores nothing about you. There is no database of scans, no account system, no scan history, no email list. Server logs handled by Cloudflare as part of serving the site are subject to Cloudflare's own retention.</p>
+    <p>This project stores nothing about you. There is no account system, no scan history, no email list, and no database of scans: only the anonymous daily totals described in section 5, which contain no scan content and nothing about you. Server logs handled by Cloudflare as part of serving the site are subject to Cloudflare's own retention.</p>
 
     <h2>9. Your rights</h2>
     <p>Rights such as access, correction, erasure and objection apply to personal data that an operator holds. This project holds none, so in practice there is nothing to export or delete. If you believe that is wrong in your case, get in touch and it will be looked at properly.</p>

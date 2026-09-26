@@ -4358,6 +4358,24 @@ async function replayMessageScan(runId, r){
     (r.findings || []).length + ' finding' + ((r.findings || []).length === 1 ? '' : 's') + ' weighed');
 }
 
+// ---- counting without collecting -------------------------------------
+// One beacon per finished scan, adding one to a daily total on our own
+// Worker. What it can carry is fixed here: the kind of scan, token or
+// wallet, the chain, and the verdict. Nothing the visitor typed can reach
+// it, nothing is stored in the browser, and a browser that sends Global
+// Privacy Control is not counted at all. Privacy policy, section 5.
+const COUNT_VERDICTS = { pass:'pass', caution:'caution', fail:'fail', unknown:'insufficient', insufficient:'insufficient', stopped:'stopped' };
+function countScan(kind, mode, chain, verdict){
+  try {
+    const nav = (typeof navigator !== 'undefined') ? navigator : null;
+    if(!nav || typeof nav.sendBeacon !== 'function' || nav.globalPrivacyControl === true) return;
+    const key = ['v1', kind, kind === 'address' ? mode : '-', kind === 'address' ? String(chain) : '-',
+                 COUNT_VERDICTS[verdict] || 'insufficient'].join('.');
+    if(!/^v1\.(address|message)\.(token|wallet|-)\.([a-z0-9]{1,8}|-)\.(pass|caution|fail|insufficient|stopped)$/.test(key)) return;
+    nav.sendBeacon(SOLANA_PROXY_URL + '?count=' + key);
+  } catch(_) { /* counting must never be the reason a scan misbehaves */ }
+}
+
 function runPromptScan() {
   const text = document.getElementById('promptInput').value;
   const err = document.getElementById('promptError');
@@ -4378,8 +4396,10 @@ function runPromptScan() {
       + '. Treat this as INSUFFICIENT DATA, not as a pass.';
     err.style.display = 'block';
     ScanConsole.hide();
+    countScan('message', null, null, 'stopped');
     return;
   }
+  countScan('message', null, null, result.verdict);
   const workMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
 
   const runId = ScanConsole.begin({
@@ -5000,10 +5020,12 @@ async function runScan(){
     });
     if(!ScanConsole.isCurrent(runId)) return;
     renderPass(result, out.record, addrRaw, chainId, out.raw, adapter, out.liquiditySummary);
+    countScan('address', mode, chainId, result.verdict);
   } catch(e){
     // A run that has been superseded says nothing at all. Its abort is
     // not an error the user needs to hear about.
     if(!ScanConsole.isCurrent(runId)) return;
+    countScan('address', mode, chainId, 'stopped');
     const isRateLimited = /too many requests|rate limit/i.test(e.message || '');
     // A provider that cannot answer for this chain is a different thing
     // from a request that never arrived, and the two must not share a
