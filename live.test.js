@@ -83,7 +83,7 @@ const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice
 // this file checks the DEPLOY, so reading the policy from the repository
 // would let a page and its policy be wrong together and still agree.
 const ADS_ON  = ['/index.html', '/guides.html', '/whitepaper.html',
-                 '/technical-appendix.html', '/honeypot-tokens.html'];
+                 '/technical-appendix.html', '/honeypot-tokens.html', '/address-poisoning.html'];
 const ADS_OFF = ['/privacy.html', '/terms.html', '/invisible-characters.html',
                  '/prompt-injection.html', '/seed-phrase-phishing.html',
                  '/disguised-links.html', '/sanctioned-addresses.html'];

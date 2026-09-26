@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 12, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 13, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 12 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 13 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -353,6 +353,24 @@ if (fs.existsSync(guidePath)) {
 }
 
 
+// ---- guide 8: its example pair really is caught ------------------------
+{
+  const vm = require('vm');
+  const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const a = idx.indexOf('function compareAddresses('), b = idx.indexOf('function twinRow(');
+  const cx = {}; vm.createContext(cx);
+  vm.runInContext(idx.slice(a, b) + ';this.cmp = compareAddresses;', cx);
+  const g8 = fs.readFileSync(path.join(__dirname, 'address-poisoning.html'), 'utf8');
+  const pair = [...g8.matchAll(/<div class="msg"[^>]*>(0x[0-9a-fA-F]{40})<\/div>/g)].map(m => m[1]);
+  const r = pair.length === 2 ? cx.cmp(pair[0], pair[1]) : null;
+  check('guide 8: its two example addresses are flagged as a look-alike by the comparison tool',
+    !!r && r.state === 'different' && r.lookalike, JSON.stringify(r));
+  const short = x => x.slice(0, 6) + '…' + x.slice(-4);
+  check('guide 8: both examples really do shorten to the "0x7a3F…9E2c" the guide shows',
+    pair.length === 2 && short(pair[0]) === '0x7a3F…9E2c' && short(pair[1]) === '0x7a3F…9E2c');
+}
+
+
 // ---- the wordmark is the way home -------------------------------------
 // Every page except the scanner must let a visitor get back with one
 // click on the logo. It has to be a real <a href> rather than a click
@@ -367,7 +385,7 @@ if (fs.existsSync(guidePath)) {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -461,7 +479,7 @@ if (fs.existsSync(guidePath)) {
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -520,7 +538,7 @@ if (fs.existsSync(guidePath)) {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);

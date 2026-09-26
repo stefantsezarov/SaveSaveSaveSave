@@ -852,7 +852,8 @@ async function afterSweep() {
     check('...and the result area itself still holds no live link', !/<a\s/i.test(nodes['results'].innerHTML));
 
     const guideLinks = { 'disguised-links.html': 'message', 'honeypot-tokens.html': 'token', 'invisible-characters.html': 'message',
-      'prompt-injection.html': 'message', 'sanctioned-addresses.html': 'pay', 'seed-phrase-phishing.html': 'message' };
+      'prompt-injection.html': 'message', 'sanctioned-addresses.html': 'pay', 'seed-phrase-phishing.html': 'message',
+      'address-poisoning.html': 'pay' };
     for (const [f, sit] of Object.entries(guideLinks)) {
       const g = fs.readFileSync(path.join(__dirname, f), 'utf8');
       check(f + ': its closing button opens the scanner at #check=' + sit,

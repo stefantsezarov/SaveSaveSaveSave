@@ -46,6 +46,7 @@ const PAGES = [
   { file: 'seed-phrase-phishing.html', loc: '/seed-phrase-phishing', changefreq: 'monthly', priority: '0.7' },
   { file: 'disguised-links.html', loc: '/disguised-links', changefreq: 'monthly', priority: '0.7' },
   { file: 'sanctioned-addresses.html', loc: '/sanctioned-addresses', changefreq: 'monthly', priority: '0.7' },
+  { file: 'address-poisoning.html', loc: '/address-poisoning', changefreq: 'monthly', priority: '0.7' },
   { file: 'privacy.html',    loc: '/privacy',    changefreq: 'monthly', priority: '0.3' },
   { file: 'terms.html',      loc: '/terms',      changefreq: 'monthly', priority: '0.3' },
 ];
