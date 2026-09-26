@@ -47,6 +47,17 @@ function ok(cond, name) {
   ok(refused.every(k => cx.parse(k) === null), 'count route refuses anything outside the fixed words');
   const want = Object.keys(C.EVM_CHAINS).concat(['solana', 'sui', 'tron']).sort().join(',');
   ok([...cx.chains].sort().join(',') === want, 'count route knows exactly the chains the scanner offers');
+  vm.runInContext('this.sum = summariseCounts;', cx);
+  const sum = cx.sum([
+    { k: 'address.token.1.fail', n: 3 }, { k: 'address.wallet.solana.stopped', n: 2 },
+    { k: 'message.-.-.pass', n: 5 }, { k: 'message.-.-.caution', n: 1 },
+    { k: 'garbage', n: 99 }, { k: 'address.token.1.unknownverdict', n: 7 }, { k: 'x.y.z.pass', n: 4 },
+  ]);
+  ok(sum.total === 11 && sum.address === 5 && sum.message === 6, 'public stats add up the real keys only');
+  ok(sum.verdicts.fail === 3 && sum.verdicts.stopped === 2 && sum.verdicts.pass === 5 && sum.verdicts.caution === 1,
+    'public stats split by verdict');
+  ok(JSON.stringify(Object.keys(sum).sort()) === JSON.stringify(['address', 'message', 'total', 'verdicts']),
+    'public stats publish nothing beyond kind and verdict totals');
 }
 
 // A fetch stub that records every URL it is asked for.

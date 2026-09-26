@@ -65,7 +65,8 @@
  *      CREATE TABLE IF NOT EXISTS counts (day TEXT NOT NULL, k TEXT NOT NULL,
  *        n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, k));
  * b. Worker -> Settings -> Bindings -> add a D1 binding named COUNTS.
- * c. To read the totals, in the D1 Console:
+ * c. The public weekly summary is served at ?stats=week (the homepage shows it).
+ * d. To read the raw totals, in the D1 Console:
  *      SELECT day, k, n FROM counts ORDER BY day DESC, n DESC;
  * 5. Copy the resulting https://<name>.<subdomain>.workers.dev URL.
  */
@@ -528,6 +529,39 @@ function handleCount(request, env, ctx) {
   }
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
+// GET ?stats=week -- the public side of the same totals: scans in the last
+// seven days (today included), by kind and by verdict. Nothing else is
+// stored, so nothing else can be published.
+function summariseCounts(rows) {
+  const out = { total: 0, address: 0, message: 0,
+                verdicts: { pass: 0, caution: 0, fail: 0, insufficient: 0, stopped: 0 } };
+  for (const r of rows || []) {
+    const n = Number(r && r.n) || 0;
+    const parts = String((r && r.k) || '').split('.');
+    if (n <= 0 || parts.length !== 4 || !Object.prototype.hasOwnProperty.call(out.verdicts, parts[3])) continue;
+    if (parts[0] !== 'address' && parts[0] !== 'message') continue;
+    out.total += n;
+    out[parts[0]] += n;
+    out.verdicts[parts[3]] += n;
+  }
+  return out;
+}
+async function handleStats(env) {
+  const since = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  let body = { available: false, days: 7, since };
+  if (env && env.COUNTS) {
+    try {
+      const res = await env.COUNTS
+        .prepare('SELECT k, SUM(n) AS n FROM counts WHERE day >= ?1 GROUP BY k')
+        .bind(since).all();
+      body = Object.assign({ available: true, days: 7, since }, summariseCounts(res.results));
+    } catch (_) { /* unavailable is an honest answer; a guess is not */ }
+  }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders(), 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
+  });
+}
 // ---- end of counting ----------------------------------------------------
 
 async function handleRequest(request, env, ctx) {
@@ -539,6 +573,9 @@ async function handleRequest(request, env, ctx) {
   }
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Only GET is supported' }, 405);
+  }
+  if (new URL(request.url).searchParams.get('stats') === 'week') {
+    return handleStats(env);
   }
 
   const url = new URL(request.url);

@@ -98,6 +98,7 @@ function freshPage() {
       getElementById: (id) => nodes[id] || (nodes[id] = makeEl(id)),
       createElement: (tag) => makeEl(null, tag),
       createElementNS: (_ns, tag) => makeEl(null, tag),
+      createTextNode: (t) => { const n = makeEl(null, '#text'); n.textContent = t; return n; },
     },
     matchMedia: (q) => ({ matches: reducedMotion && /reduce/.test(q), media: q }),
     performance: { now: () => Date.now() },
@@ -896,6 +897,31 @@ async function afterSweep() {
     freshPage();
     run("chooseSituation('pay')");
     check('"I\'m about to pay an address" opens the comparison', nodes['twinCheck'].open === true);
+  }
+
+  section('The public weekly total');
+  {
+    const settleLong = () => new Promise(r => setTimeout(r, 60));
+    freshPage();
+    let asked = '';
+    sandbox.fetch = async (u) => { asked = String(u); return { ok: true, json: async () => ({ available: true, total: 1234, days: 7 }) }; };
+    run('loadScanCount()'); await settleLong();
+    const el = nodes['scanCount'];
+    check('the homepage asks the Worker for the weekly summary', /\?stats=week$/.test(asked), asked);
+    check('...and shows the real number', el && el.style.display === 'block' && el._kids[0]._text === '1,234 scans', el && JSON.stringify(el._kids.map(k => k._text)));
+    check('...with the raw numbers one click away', el && el._kids.some(k => k.href && /\?stats=week$/.test(k.href)));
+    check('...and how it is counted', el && el._kids.some(k => k.href === 'privacy.html#scan-counts'));
+    for (const [why, reply] of [['zero scans', { available: true, total: 0 }], ['no database', { available: false }],
+                                ['a non-number', { available: true, total: '<img src=x>' }]]) {
+      freshPage();
+      sandbox.fetch = async () => ({ ok: true, json: async () => reply });
+      run('loadScanCount()'); await settleLong();
+      check('nothing is shown for ' + why, !nodes['scanCount'] || nodes['scanCount'].style.display !== 'block');
+    }
+    freshPage();
+    sandbox.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    run('loadScanCount()'); await settleLong();
+    check('a failed request leaves the line hidden', !nodes['scanCount'] || nodes['scanCount'].style.display !== 'block');
   }
 
   section('Counting without collecting');
