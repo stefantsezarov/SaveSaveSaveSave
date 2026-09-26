@@ -58,6 +58,7 @@ const PAGES = {
   'sanctioned-addresses.html': { type: 'guide', crumb: 'Sanctioned addresses', section: 'Address risk' },
   'address-poisoning.html':  { type: 'guide',   crumb: 'Address poisoning', section: 'Address risk' },
   'privacy.html':            { type: 'page',    crumb: 'Privacy' },
+  'support.html':            { type: 'page',    crumb: 'Support' },
   'terms.html':              { type: 'page',    crumb: 'Terms' },
 };
 

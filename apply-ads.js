@@ -73,6 +73,7 @@ const AD_POLICY = {
 
   'privacy.html':               { enabled: false, reason: 'A policy document should read as a policy document. Advertising beside the page that describes our advertising undermines both.' },
   'terms.html':                 { enabled: false, reason: 'Same as privacy: the terms are a commitment, not a surface.' },
+  'support.html':               { enabled: false, reason: 'The page that asks for money must not also sell attention. Decided 26 September 2026.' },
 
   'invisible-characters.html':  { enabled: false, reason: 'Message-deception content. The reader is being taught to distrust what a message shows them; a commercial unit on the same screen works against that.' },
   'prompt-injection.html':      { enabled: false, reason: 'AI manipulation and unsafe instructions. Sensitive trust page.' },

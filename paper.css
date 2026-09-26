@@ -338,6 +338,9 @@
   .bottom-cta{text-align:center; margin-top:40px; padding-top:32px; border-top:1px solid var(--paper-border);}
 
   footer.site-footer{max-width:820px; margin:40px auto 60px; padding:0 20px; text-align:center; color:var(--text-muted); font-size:0.8rem;}
+  /* The global p rule is for the white paper; on the dark page it made the footer text near-invisible. */
+  footer.site-footer p{color:inherit; font-size:inherit; line-height:1.9; margin:0;}
+  footer.site-footer a{white-space:nowrap;}
 
   /* ---- Advertising rails -------------------------------------------
      Fixed in the page gutters, so they never enter the document flow.

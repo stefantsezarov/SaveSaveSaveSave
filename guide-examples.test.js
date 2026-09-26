@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 13, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 14, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 13 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 14 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -371,6 +371,22 @@ if (fs.existsSync(guidePath)) {
 }
 
 
+// ---- the donation address is the one we published ----------------------
+{
+  const page = fs.readFileSync(path.join(__dirname, 'support.html'), 'utf8');
+  const md = fs.readFileSync(path.join(__dirname, 'SUPPORT.md'), 'utf8');
+  const inPage = [...page.matchAll(/0x[0-9a-fA-F]{40}/g)].map(m => m[0]);
+  const inMd = [...md.matchAll(/0x[0-9a-fA-F]{40}/g)].map(m => m[0]);
+  check('support: the page shows exactly one address, the one in SUPPORT.md',
+    inPage.length === 1 && inMd.length === 1 && inPage[0] === inMd[0], JSON.stringify({ inPage, inMd }));
+  check('support: the address is shown as text, never as a link', !/href="[^"]*0x[0-9a-fA-F]{40}/.test(page));
+  check('support: the page says we never ask for crypto by message', /We will never message you asking for crypto/.test(page));
+  check('support: the code licence is AGPL-3.0 and the notice says what it does not cover',
+    /GNU AFFERO GENERAL PUBLIC LICENSE/.test(fs.readFileSync(path.join(__dirname, 'LICENSE'), 'utf8'))
+      && /AGPL-3\.0-only/.test(fs.readFileSync(path.join(__dirname, 'LICENSE.md'), 'utf8')));
+}
+
+
 // ---- the wordmark is the way home -------------------------------------
 // Every page except the scanner must let a visitor get back with one
 // click on the logo. It has to be a real <a href> rather than a click
@@ -385,7 +401,7 @@ if (fs.existsSync(guidePath)) {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -479,7 +495,7 @@ if (fs.existsSync(guidePath)) {
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -538,7 +554,7 @@ if (fs.existsSync(guidePath)) {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);
