@@ -607,6 +607,27 @@
   /* Visually hidden but still read by screen readers. The label markup
      already existed; without this rule it simply rendered on the page. */
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+  /* ---- "What just happened?" ------------------------------------
+     Four ways in, named after the moment rather than the tool. Same chip
+     language as the examples below, one step larger, so it reads as a
+     shortcut and not as a warning. The tip is advice, set in the quiet
+     mono style of the privacy line -- never in the danger colours. */
+  .situations{margin-bottom:14px;}
+  .situations-label{display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;}
+  .situation-buttons{display:flex; flex-wrap:wrap; gap:8px;}
+  .situation{font-family:'IBM Plex Sans', sans-serif; font-size:0.8rem; background:var(--surface-2); border:1px solid var(--border);
+    color:var(--text); padding:6px 12px; border-radius:var(--radius-control); cursor:pointer; transition:border-color 0.15s ease, color 0.15s ease;}
+  .situation:hover{border-color:var(--accent); color:var(--accent);}
+  .situation[aria-pressed="true"]{border-color:var(--accent-2); color:var(--accent-2);}
+  .situation-tip{margin:-4px 0 14px; font-size:0.78rem; line-height:1.5; color:var(--text-muted); font-family:'IBM Plex Mono', monospace;}
+  .situation-tip .tip-label{color:var(--accent-2); margin-right:6px;}
+  @media(max-width:560px){
+    .situation-buttons{display:grid; grid-template-columns:1fr 1fr;}
+    .situation{text-align:left; line-height:1.3;}
+  }
+  .next-step{margin:14px 0 0; font-size:0.85rem;}
+  .next-step a{color:var(--accent-2); text-decoration:none; border-bottom:1px solid transparent;}
+  .next-step a:hover{border-bottom-color:currentColor;}
   .mode-switch{display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:var(--radius-control); margin-bottom:14px; width:fit-content;}
   .mode-switch .tab[aria-selected="true"]{background:var(--accent-solid); color:var(--on-accent);}
   .prompt-panel{display:none;}
@@ -741,6 +762,16 @@
     <p class="four-saves">Save your funds. Save your time. Save your trust. Save the regret.</p>
 
     <div class="scanner">
+      <div class="situations" role="group" aria-label="What just happened?">
+        <span class="situations-label">What just happened?</span>
+        <div class="situation-buttons">
+        <button type="button" class="situation" id="sit-message" aria-pressed="false" onclick="chooseSituation('message')">Someone sent me a message</button>
+        <button type="button" class="situation" id="sit-pay" aria-pressed="false" onclick="chooseSituation('pay')">I'm about to pay an address</button>
+        <button type="button" class="situation" id="sit-token" aria-pressed="false" onclick="chooseSituation('token')">A token appeared in my wallet</button>
+        <button type="button" class="situation" id="sit-sign" aria-pressed="false" onclick="chooseSituation('sign')">A site wants me to sign</button>
+        </div>
+      </div>
+      <p class="situation-tip" id="situationTip" aria-live="polite" style="display:none;"><span class="tip-label">Tip</span><span id="situationTipText"></span></p>
       <div class="mode-switch" role="tablist" aria-label="What to scan">
         <button class="tab" role="tab" aria-selected="true" id="smode-address" onclick="setScanMode('address')">Scan an address</button>
         <button class="tab" role="tab" aria-selected="false" id="smode-prompt" onclick="setScanMode('prompt')">Scan a prompt</button>
@@ -770,8 +801,8 @@
 
       <div class="examples" id="examplesRow">
         Try an example:
-        <span class="example-chip" onclick="fillExample('evm','1','0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')">USDC · Ethereum</span>
         <span class="example-chip" onclick="fillExample('evm','1','0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')">WETH · Ethereum</span>
+        <span class="example-chip" onclick="fillExample('evm','1','0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')">USDC · Ethereum</span>
         <span class="example-chip" onclick="fillExample('solana','solana','EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')">USDC · Solana</span>
         <span class="example-chip" onclick="fillExample('sui','sui','0xbc732bc5f1e9a9f4bdf4c0672ee538dbf56c161afe04ff1de2176efabdf41f92::suai::SUAI')">SUAI · Sui</span>
         <span class="example-chip" onclick="fillExample('tron','tron','TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')">USDT · TRON</span>
@@ -905,6 +936,7 @@
   <div class="scan-error" id="scanError"></div>
 
   <section id="results"></section>
+  <p class="next-step" id="nextStep" style="display:none;"></p>
 
   <section class="how">
     <h2>How the pass is built</h2>
@@ -4214,6 +4246,86 @@ const PROMPT_EXAMPLES = {
   article: "I'm writing a training module on prompt injection. Explain how an attacker may hide the phrase \"ignore all previous instructions\" inside a document, why assistants sometimes obey it, and what red flags a reviewer should watch out for."
 };
 
+// ---- "What just happened?" -------------------------------------------
+// Each situation opens the scan that fits it and shows one short tip.
+// The wording is Stefan's, approved 26 September 2026; a test holds it.
+const SITUATIONS = {
+  message: { scan: 'prompt', tip: 'Paste the whole message, including any links. If it asks for your recovery phrase or private key, stop. Legitimate services never need them.' },
+  pay:     { scan: 'address', mode: 'wallet', tip: 'Get the address from the original trusted source, not your transaction history. Compare the full address before sending \u2014 a few matching characters are not enough.' },
+  token:   { scan: 'address', mode: 'token', tip: "Don't sell it, swap it, or visit any site it mentions until you've checked it. Unexpected tokens can be bait." },
+  sign:    { scan: 'prompt', tip: "If you don't understand what you're signing, don't sign it. For now, paste the site's message here; a full signature decoder is coming." },
+};
+function chooseSituation(key){
+  const s = SITUATIONS[key];
+  if(!s) return;
+  setScanMode(s.scan);
+  if(s.mode) setMode(s.mode);
+  Object.keys(SITUATIONS).forEach(k => {
+    const b = document.getElementById('sit-' + k);
+    if(b) b.setAttribute('aria-pressed', String(k === key));
+  });
+  document.getElementById('situationTipText').textContent = s.tip;
+  document.getElementById('situationTip').style.display = 'block';
+  // On a touch screen, focusing the box opens the keyboard over the tip
+  // the person has just asked for. Elsewhere, put the cursor where it goes.
+  let coarse = false;
+  try { coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(_) {}
+  const input = document.getElementById(s.scan === 'prompt' ? 'promptInput' : 'addrInput');
+  if(!coarse && input && input.focus) input.focus();
+}
+// Guides link here as index.html#check=<situation>. The part after # is
+// never sent to the server.
+function situationFromHash(){
+  try {
+    const m = /^#check=(message|pay|token|sign)$/.exec(String((window.location || {}).hash || ''));
+    if(m) chooseSituation(m[1]);
+  } catch(_) {}
+}
+
+// "Why this matters" after a verdict: one link to the guide that explains
+// what the scan was looking at. Static targets only; nothing from the scan
+// is written into the link.
+const NEXT_STEP = {
+  seed:      { href: 'seed-phrase-phishing.html', text: 'Nobody legitimate asks for your recovery phrase' },
+  links:     { href: 'disguised-links.html',      text: 'How a link hides where it really goes' },
+  invisible: { href: 'invisible-characters.html', text: 'The text you can\u2019t see' },
+  injection: { href: 'prompt-injection.html',     text: 'The instruction you didn\u2019t write' },
+  token:     { href: 'honeypot-tokens.html',      text: 'How token traps work' },
+  wallet:    { href: 'sanctioned-addresses.html', text: 'What a flagged or sanctioned address means' },
+};
+function nextStepFor(kind, categories){
+  let key = null;
+  if(kind === 'token') key = 'token';
+  else if(kind === 'wallet') key = 'wallet';
+  else {
+    const has = c => categories.indexOf(c) !== -1;
+    if(['CRYPTO_SECRET_REQUEST', 'CREDENTIAL_HARVESTING', 'SENSITIVE_DATA_REQUEST'].some(has)) key = 'seed';
+    else if(['SUSPICIOUS_URL', 'PHISHING_INDICATOR', 'BRAND_IMPERSONATION'].some(has)) key = 'links';
+    else if(['UNICODE_OBFUSCATION', 'HIDDEN_MARKUP'].some(has)) key = 'invisible';
+    else if(['PROMPT_INJECTION', 'INDIRECT_INJECTION', 'SYSTEM_PROMPT_EXTRACTION', 'TOOL_ABUSE', 'DATA_EXFILTRATION'].some(has)) key = 'injection';
+  }
+  return (key && NEXT_STEP[key]) || null;
+}
+// Lives OUTSIDE #results on purpose: the result area never contains a live
+// link (a scanned message can carry a phishing URL, and the XSS tests hold
+// that line), so the one link we add sits beside it, built with DOM calls.
+function showNextStep(kind, categories){
+  const box = document.getElementById('nextStep');
+  if(!box) return;
+  box.textContent = '';
+  const n = nextStepFor(kind, categories || []);
+  if(!n){ box.style.display = 'none'; return; }
+  const a = document.createElement('a');
+  a.href = n.href;
+  a.textContent = 'Why this matters: ' + n.text + ' \u2192';
+  box.appendChild(a);
+  box.style.display = 'block';
+}
+function hideNextStep(){
+  const box = document.getElementById('nextStep');
+  if(box){ box.style.display = 'none'; box.textContent = ''; }
+}
+
 function setScanMode(m) {
   const addr = document.getElementById('addressPanel');
   const prompt = document.getElementById('promptPanel');
@@ -4226,6 +4338,7 @@ function setScanMode(m) {
   bPrompt.setAttribute('aria-selected', String(isPrompt));
   document.getElementById('results').style.display = 'none';
   document.getElementById('scanError').style.display = 'none';
+  hideNextStep();
   // Switching modes discards the console too. A scan panel left standing
   // over a different input is the same class of error as a stale result.
   ScanConsole.hide();
@@ -4381,6 +4494,7 @@ function runPromptScan() {
   const err = document.getElementById('promptError');
   const results = document.getElementById('results');
   err.style.display = 'none';
+  hideNextStep();
   if (!text.trim()) {
     err.textContent = 'Paste a message or prompt first.';
     err.style.display = 'block';
@@ -4418,6 +4532,7 @@ function runPromptScan() {
 
   const reveal = () => {
     results.style.display = 'block';
+    showNextStep('message', (result.findings || []).map(f => f.category));
     if(results.scrollIntoView) results.scrollIntoView(ScanConsole.scrollOpts());
   };
   return replayMessageScan(runId, result).then(() => {
@@ -4902,6 +5017,7 @@ async function runScan(){
   scanErr.style.display = 'none';
   results.style.display = 'none';
   results.innerHTML = '';
+  hideNextStep();
 
   // Belt-and-suspenders: the live 'input' listener below should already
   // have switched ecosystems as this was typed or pasted, but correct
@@ -5138,6 +5254,7 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
   const results = document.getElementById('results');
   results.innerHTML = html;
   results.style.display = 'block';
+  showNextStep(mode === 'wallet' ? 'wallet' : 'token');
   results.scrollIntoView(ScanConsole.scrollOpts());
 }
 
@@ -5239,6 +5356,8 @@ document.getElementById('addrInput').addEventListener('input', e => {
 // initial UI state
 populateChainSelect();
 renderCapabilityNote();
+situationFromHash();
+window.addEventListener('hashchange', situationFromHash);
 </script>
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
      Installed manually rather than auto-injected: this site is served by a

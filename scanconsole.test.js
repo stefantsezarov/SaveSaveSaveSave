@@ -797,6 +797,72 @@ async function afterSweep() {
       'every scroll goes through ScanConsole.scrollOpts()');
   }
 
+  section('What just happened? (the four situations)');
+  {
+    // The tip wording is Stefan's, approved 26 September 2026. Changing it
+    // is an editorial decision, not a code change, so it is pinned here.
+    const APPROVED = {
+      message: 'Paste the whole message, including any links. If it asks for your recovery phrase or private key, stop. Legitimate services never need them.',
+      pay: 'Get the address from the original trusted source, not your transaction history. Compare the full address before sending — a few matching characters are not enough.',
+      token: "Don't sell it, swap it, or visit any site it mentions until you've checked it. Unexpected tokens can be bait.",
+      sign: "If you don't understand what you're signing, don't sign it. For now, paste the site's message here; a full signature decoder is coming.",
+    };
+    const promptOpen = () => nodes['promptPanel'].classList.contains('active');
+    for (const [key, tip] of Object.entries(APPROVED)) {
+      freshPage();
+      run("chooseSituation('" + key + "')");
+      check(key + ': shows the approved tip, word for word', nodes['situationTipText']._text === tip, nodes['situationTipText']._text);
+      check(key + ': the tip is visible', nodes['situationTip'].style.display === 'block');
+      check(key + ': only this situation is marked as chosen',
+        Object.keys(APPROVED).every(k => nodes['sit-' + k].getAttribute('aria-pressed') === String(k === key)));
+      const wantPrompt = key === 'message' || key === 'sign';
+      check(key + ': opens the ' + (wantPrompt ? 'message' : 'address') + ' scanner', promptOpen() === wantPrompt);
+      if (key === 'pay') check('pay: switches to wallet screening', nodes['tab-wallet'].getAttribute('aria-selected') === 'true');
+      if (key === 'token') check('token: switches to token checks', nodes['tab-token'].getAttribute('aria-selected') === 'true');
+    }
+
+    freshPage();
+    sandbox.location = { hash: '#check=token' };
+    run('situationFromHash()');
+    check('a guide link (#check=token) opens the right situation', nodes['situationTipText']._text === APPROVED.token);
+    freshPage();
+    sandbox.location = { hash: '#check=<img src=x>' };
+    run('situationFromHash()');
+    check('anything else after # is ignored', !(nodes['situationTipText'] && nodes['situationTipText']._text));
+    sandbox.location = undefined;
+
+    freshPage();
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'Support here. To verify your wallet, reply with your 12-word recovery phrase.';
+    await run('runPromptScan()'); await settle();
+    check('a message asking for a recovery phrase links to that guide',
+      nodes['nextStep'].style.display === 'block' && (nodes['nextStep']._kids[0] || {}).href === 'seed-phrase-phishing.html');
+    freshPage();
+    nodes['promptInput'] = makeEl('promptInput');
+    nodes['promptInput'].value = 'Summarise this article in three bullets.';
+    await run('runPromptScan()'); await settle();
+    check('a clean message gets no guide link (nothing to explain)', !nodes['nextStep'] || nodes['nextStep'].style.display !== 'block');
+
+    freshPage();
+    sandbox.fetch = async () => ({ ok: true, status: 200, json: async () => ({ code: 1, result: { '0xa': { is_honeypot: '0', is_open_source: '1' } } }) });
+    nodes['addrInput'] = makeEl('addrInput'); nodes['addrInput'].value = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+    nodes['chainSelect'] = makeEl('chainSelect'); nodes['chainSelect'].value = '1';
+    await run('runScan()'); await settle();
+    check('a token result links to the token guide', (nodes['nextStep']._kids[0] || {}).href === 'honeypot-tokens.html');
+    check('...and the result area itself still holds no live link', !/<a\s/i.test(nodes['results'].innerHTML));
+
+    const guideLinks = { 'disguised-links.html': 'message', 'honeypot-tokens.html': 'token', 'invisible-characters.html': 'message',
+      'prompt-injection.html': 'message', 'sanctioned-addresses.html': 'pay', 'seed-phrase-phishing.html': 'message' };
+    for (const [f, sit] of Object.entries(guideLinks)) {
+      const g = fs.readFileSync(path.join(__dirname, f), 'utf8');
+      check(f + ': its closing button opens the scanner at #check=' + sit,
+        new RegExp('<a class="dl-btn" href="index\\.html#check=' + sit + '">').test(g));
+    }
+    const ex = html.slice(html.indexOf('id="examplesRow"'), html.indexOf('id="inlineError"'));
+    check('WETH is the first example (USDC is returning partial data, 26 Sep 2026)',
+      ex.indexOf('WETH · Ethereum') !== -1 && ex.indexOf('WETH · Ethereum') < ex.indexOf('USDC · Ethereum'));
+  }
+
   section('Counting without collecting');
   {
     // One beacon per finished scan, carrying four fixed words and nothing
