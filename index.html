@@ -640,6 +640,7 @@
   .twin-label{display:block; font-size:0.74rem; color:var(--text-muted); margin-bottom:4px;}
   .twin-input{width:100%; height:44px; min-width:0;}
   .twin-result{font-size:0.82rem; line-height:1.5;}
+  .twin-guide{margin:12px 0 0; font-size:0.78rem; color:var(--text-muted);}
   .twin-verdict{margin:0 0 8px;}
   .twin-verdict.same{color:var(--safe);} .twin-verdict.differ{color:var(--danger);} .twin-verdict.neutral{color:var(--text-muted);}
   .twin-rows{font-family:'IBM Plex Mono', monospace; font-size:0.84rem; display:grid; gap:4px; overflow-wrap:anywhere;}
@@ -838,6 +839,7 @@
           <label><span class="twin-label">The address you're about to send to</span>
             <input class="addr-input twin-input" id="twinB" type="text" autocomplete="off" spellcheck="false" oninput="renderTwin()"></label>
           <div class="twin-result" id="twinResult" aria-live="polite"></div>
+          <p class="twin-guide">How the look-alike trick works: <a class="nav-link" href="address-poisoning.html">The Address That Looks Like Yours</a></p>
         </div>
       </details>
       </div><!-- /addressPanel -->

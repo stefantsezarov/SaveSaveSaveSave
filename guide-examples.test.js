@@ -371,6 +371,16 @@ if (fs.existsSync(guidePath)) {
 }
 
 
+// ---- guide 8 is reachable from the tool it pairs with --------------------
+{
+  const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const twin = (idx.match(/<details class="twin" id="twinCheck">[\s\S]*?<\/details>/) || [''])[0];
+  check('compare tool: links to the address-poisoning guide',
+    /<a [^>]*href="address-poisoning\.html"/.test(twin));
+  check('compare tool: the guide link sits outside the live result area',
+    !/id="twinResult"[^>]*>[^<]*<a /.test(twin));
+}
+
 // ---- the donation address is the one we published ----------------------
 {
   const page = fs.readFileSync(path.join(__dirname, 'support.html'), 'utf8');
