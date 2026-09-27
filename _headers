@@ -68,3 +68,11 @@
 
 /robots.txt
   Cache-Control: public, max-age=3600
+
+# The PDF is whitepaper.html printed (make-pdf.js). Without this, Google
+# treats it as a second copy of the whitepaper and splits the page's
+# standing between two URLs; it had already crawled the PDF from three
+# addresses without indexing any of them. A canonical Link header is the
+# PDF equivalent of the <link rel="canonical"> in an HTML page.
+/SaveSaveSaveSave-Whitepaper.pdf
+  Link: <https://savesavesavesave.xyz/whitepaper>; rel="canonical"

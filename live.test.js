@@ -226,6 +226,13 @@ const MUST_404 = [
   }
   check('the card image is actually served', (await get('/og-image.png')).status === 200,
     'a card pointing at a 404 renders worse than no card');
+  {
+    const pdf = await get('/SaveSaveSaveSave-Whitepaper.pdf');
+    const link = String((pdf.headers || {}).link || '');
+    check('the whitepaper PDF names the HTML page as canonical',
+      pdf.status === 200 && link.includes('<https://savesavesavesave.xyz/whitepaper>') && /rel="?canonical/.test(link),
+      'Link header: ' + (link || 'missing'));
+  }
 
   // The IndexNow key file is the ownership proof. Checking it HERE, in
   // the run that is about to submit URLs, turns an unexplained 403 from
