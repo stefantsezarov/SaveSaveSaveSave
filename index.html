@@ -654,6 +654,13 @@
   .share-btn{font:600 0.85rem 'IBM Plex Sans', system-ui, sans-serif; color:var(--text); background:var(--accent-dim); border:1px solid var(--accent-solid); border-radius:6px; padding:9px 14px; cursor:pointer;}
   .share-btn:hover{background:rgba(153,69,255,0.28);}
   .share-note{font-size:0.78rem; color:var(--text-muted);}
+  .learn-sub{color:var(--text-muted); margin:-6px 0 14px; font-size:0.9rem;}
+  .learn-list{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px 20px;}
+  .learn-list a{display:block; padding:10px 12px; border:1px solid var(--border); border-radius:8px; color:var(--text); text-decoration:none; font-size:0.9rem; line-height:1.4;}
+  .learn-list a:hover{border-color:var(--accent-solid);}
+  .learn-list strong{color:var(--accent);}
+  .learn-all{margin:14px 0 0; font-size:0.88rem;}
+  .learn-all a{color:var(--accent-2); text-decoration:none;}
   .mode-switch{display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:var(--radius-control); margin-bottom:14px; width:fit-content;}
   .mode-switch .tab[aria-selected="true"]{background:var(--accent-solid); color:var(--on-accent);}
   .prompt-panel{display:none;}
@@ -999,6 +1006,20 @@
         <p>A single confirmed severe finding always means FAIL. Missing or unreadable data never quietly becomes a clean PASS — it's reported as insufficient data instead.</p>
       </div>
     </div>
+  </section>
+  <section class="how learn" aria-labelledby="learnHead">
+    <h2 id="learnHead">How the tricks work</h2>
+    <p class="learn-sub">Plain-language guides to the scams this scanner checks for.</p>
+    <ul class="learn-list">
+      <li><a href="address-poisoning.html"><strong>Address poisoning:</strong> The Address That Looks Like Yours</a></li>
+      <li><a href="seed-phrase-phishing.html"><strong>Seed-phrase phishing:</strong> The Twelve Words</a></li>
+      <li><a href="honeypot-tokens.html"><strong>Honeypot tokens:</strong> Why you can buy but can't sell</a></li>
+      <li><a href="disguised-links.html"><strong>Disguised links:</strong> Read It From the Right</a></li>
+      <li><a href="sanctioned-addresses.html"><strong>Sanctioned addresses:</strong> The Address You Can't Pay</a></li>
+      <li><a href="invisible-characters.html"><strong>Invisible characters:</strong> The Text You Can't See</a></li>
+      <li><a href="prompt-injection.html"><strong>Prompt injection:</strong> The Instruction You Didn't Write</a></li>
+    </ul>
+    <p class="learn-all"><a href="guides.html">All guides &rarr;</a></p>
   </section>
 </div>
 

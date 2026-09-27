@@ -415,6 +415,23 @@ if (fs.existsSync(guidePath)) {
     idx.indexOf('id="shareCard"') > idx.indexOf('<section id="results"></section>'));
 }
 
+// ---- every guide is linked from the homepage and from other guides ------
+{
+  const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const gi = fs.readFileSync(path.join(__dirname, 'guides.html'), 'utf8');
+  const live = [...gi.matchAll(/<a class="guide-card" href="([a-z-]+\.html)"/g)].map(m => m[1]);
+  const learn = (idx.match(/<section class="how learn"[\s\S]*?<\/section>/) || [''])[0];
+  const missing = live.filter(h => !learn.includes('href="' + h + '"'));
+  check('homepage: links every published guide', live.length >= 7 && missing.length === 0, missing.join(', '));
+  for (const g of live) {
+    const page = fs.readFileSync(path.join(__dirname, g), 'utf8');
+    const nav = (page.match(/<nav class="keep-reading"[\s\S]*?<\/nav>/) || [''])[0];
+    const links = [...nav.matchAll(/href="([^"]+)"/g)].map(m => m[1]);
+    check(g + ': links three other published guides',
+      links.length === 3 && links.every(h => h !== g && live.includes(h)), links.join(', '));
+  }
+}
+
 // ---- guide 8 is reachable from the tool it pairs with --------------------
 {
   const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
