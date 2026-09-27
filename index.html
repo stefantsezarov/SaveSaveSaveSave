@@ -650,6 +650,10 @@
   .next-step{margin:14px 0 0; font-size:0.85rem;}
   .next-step a{color:var(--accent-2); text-decoration:none; border-bottom:1px solid transparent;}
   .next-step a:hover{border-bottom-color:currentColor;}
+  .share-card{margin:14px 0 0; align-items:center; gap:12px; flex-wrap:wrap;}
+  .share-btn{font:600 0.85rem 'IBM Plex Sans', system-ui, sans-serif; color:var(--text); background:var(--accent-dim); border:1px solid var(--accent-solid); border-radius:6px; padding:9px 14px; cursor:pointer;}
+  .share-btn:hover{background:rgba(153,69,255,0.28);}
+  .share-note{font-size:0.78rem; color:var(--text-muted);}
   .mode-switch{display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:var(--radius-control); margin-bottom:14px; width:fit-content;}
   .mode-switch .tab[aria-selected="true"]{background:var(--accent-solid); color:var(--on-accent);}
   .prompt-panel{display:none;}
@@ -971,6 +975,10 @@
 
   <section id="results"></section>
   <p class="next-step" id="nextStep" style="display:none;"></p>
+  <div class="share-card" id="shareCard" style="display:none;">
+    <button type="button" class="share-btn" onclick="shareVerdictCard()">Share this warning</button>
+    <span class="share-note" id="shareCardNote">Makes an image on your device. Nothing is uploaded.</span>
+  </div>
 
   <section class="how">
     <h2>How the pass is built</h2>
@@ -4427,6 +4435,222 @@ function showNextStep(kind, categories){
 function hideNextStep(){
   const box = document.getElementById('nextStep');
   if(box){ box.style.display = 'none'; box.textContent = ''; }
+  hideShareCard();
+}
+
+// ---- Verdict cards ----------------------------------------------------
+// "Share this warning": an image drawn on this device from the verdict
+// the page already reached. Warnings only (FAIL, CAUTION): a shareable
+// PASS would work as a "verified" badge for whoever wanted one. The card
+// never carries message text or a token's self-chosen name, only fixed
+// wording from this file, the address, and the date. Nothing is uploaded;
+// where the image goes is up to the person holding it.
+const CARD_CATEGORY = {
+  PROMPT_INJECTION: 'Hidden instructions aimed at an AI',
+  INDIRECT_INJECTION: 'Instructions planted for an AI to find',
+  SYSTEM_PROMPT_EXTRACTION: 'Tries to extract an AI’s instructions',
+  DATA_EXFILTRATION: 'Tries to send data somewhere else',
+  EXTERNAL_TRANSMISSION: 'Sends content to an outside address',
+  TOOL_ABUSE: 'Tries to misuse an AI’s tools',
+  CODE_EXECUTION: 'Asks for code to be run',
+  DANGEROUS_COMMAND: 'Contains a dangerous command',
+  FILE_ACCESS: 'Asks for private files',
+  CRYPTO_SECRET_REQUEST: 'Asks for a recovery phrase or private key',
+  CREDENTIAL_HARVESTING: 'Asks for login details',
+  SENSITIVE_DATA_REQUEST: 'Asks for sensitive personal data',
+  SUSPICIOUS_URL: 'Suspicious link',
+  PHISHING_INDICATOR: 'Phishing pattern',
+  BRAND_IMPERSONATION: 'Impersonates a known brand',
+  UNICODE_OBFUSCATION: 'Invisible or look-alike characters',
+  HIDDEN_MARKUP: 'Hidden text or markup',
+  ENCODED_PAYLOAD: 'Encoded hidden content',
+  SOCIAL_ENGINEERING: 'Pressure or manipulation tactics',
+  WALLET_ACTION: 'Asks for a wallet action',
+};
+const CARD_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function cardStamp(when){
+  const d = (when && typeof when.getUTCDate === 'function') ? when : new Date();
+  const p = n => String(n).padStart(2, '0');
+  return 'Checked ' + d.getUTCDate() + ' ' + CARD_MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear()
+    + ', ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ' UTC · Not a guarantee';
+}
+function cardAddressGroups(addr){
+  const a = String(addr || '');
+  const head = /^0x/i.test(a) ? a.slice(0, 2) : '';
+  const rest = a.slice(head.length);
+  const g = [];
+  if(head) g.push(head);
+  for(let i = 0; i < rest.length; i += 4) g.push(rest.slice(i, i + 4));
+  return g;
+}
+function uniq(list){ return list.filter((v, i) => v && list.indexOf(v) === i); }
+
+// Pure: turns what the page already decided into the card's lines.
+// Returns null for anything that is not a warning.
+function verdictCardModel(o){
+  if(!o || (o.verdict !== 'fail' && o.verdict !== 'caution')) return null;
+  const m = {
+    verdict: o.verdict,
+    label: o.verdict === 'fail' ? 'FAIL' : 'CAUTION',
+    header: 'SAVESAVESAVESAVE · Automated risk assessment',
+    found: uniq(o.found || []),
+    notChecked: uniq(o.notChecked || []),
+    stamp: cardStamp(o.when),
+    site: 'Check it yourself: savesavesavesave.xyz',
+  };
+  if(o.kind === 'address'){
+    m.groups = cardAddressGroups(o.address);
+    m.target = [o.chainLabel, o.scanType].filter(Boolean).join(' · ');
+  } else {
+    m.groups = null;
+    m.target = 'Message scan · ' + Number(o.characters || 0).toLocaleString('en-US')
+      + ' characters · the text itself is not on this card';
+  }
+  return m;
+}
+
+function addressCardInput(result, addr, chainId, adapter, scanMode){
+  const caps = (adapter && adapter.capabilities) || {};
+  const nc = [];
+  if(result.checksUnknown > 0) nc.push(result.checksUnknown + ' of ' + result.checksExpected + ' checks unreadable');
+  if(!caps.txSimulation) nc.push('No trade was simulated');
+  if(!caps.liquidityAnalysis) nc.push('Liquidity not examined');
+  if(!caps.contractAnalysis) nc.push('Contract source not analysed');
+  if(scanMode !== 'token' && !caps.walletScreening) nc.push('Not screened against known-malicious lists');
+  return {
+    kind: 'address', verdict: result.verdict, address: addr,
+    chainLabel: (typeof CHAIN_LABEL !== 'undefined' && CHAIN_LABEL[chainId]) || String(chainId),
+    scanType: scanMode === 'token' ? 'Token scan' : 'Wallet scan',
+    found: (result.checks || []).filter(c => c.status === 'RISK').map(c => c.label),
+    notChecked: nc, when: new Date(),
+  };
+}
+
+function messageCardInput(composite, promptResult, msg){
+  const fs = (promptResult.findings || []).filter(f => f.category !== 'BENIGN_INFORMATIONAL' && f.severity !== 'INFO');
+  const found = fs.map(f => CARD_CATEGORY[f.category] || 'Other risk pattern');
+  const addrs = (msg && msg.addresses) || [];
+  const flagged = addrs.filter(a => a.scan && (a.scan.verdict === 'fail' || a.scan.verdict === 'caution')).length;
+  if(flagged) found.push(flagged + ' address' + (flagged === 1 ? '' : 'es') + ' in it flagged');
+  const nc = ['Links were not opened', 'Judged by known patterns, not by a person'];
+  const unscanned = addrs.filter(a => !a.scan).length;
+  if(unscanned) nc.push(unscanned + ' address' + (unscanned === 1 ? '' : 'es') + ' in it not checked');
+  return {
+    kind: 'message', verdict: composite.verdict, characters: promptResult.input ? promptResult.input.characters : 0,
+    found, notChecked: nc, when: new Date(),
+  };
+}
+
+let SHARE_MODEL = null;
+function offerShareCard(model){
+  SHARE_MODEL = model || null;
+  const box = document.getElementById('shareCard');
+  if(!box) return;
+  box.style.display = SHARE_MODEL ? 'flex' : 'none';
+}
+function hideShareCard(){ offerShareCard(null); }
+function shareCardVisible(){
+  const box = document.getElementById('shareCard');
+  return !!(box && box.style.display !== 'none');
+}
+
+function drawVerdictCard(m){
+  const W = 1200, H = 630, X = 64;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const col = m.verdict === 'fail' ? '#FF6B81' : '#FFB020';
+  const mono = '"IBM Plex Mono", ui-monospace, monospace';
+  const sans = '"IBM Plex Sans", system-ui, sans-serif';
+  const head = '"Space Grotesk", "IBM Plex Sans", system-ui, sans-serif';
+  g.fillStyle = '#08080C'; g.fillRect(0, 0, W, H);
+  g.fillStyle = col; g.fillRect(0, 0, W, 8);
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#B98CFF'; g.font = '600 24px ' + mono;
+  g.fillText(m.header, X, 64);
+  g.fillStyle = col; g.font = '700 96px ' + head;
+  g.fillText(m.label, X, 170);
+  let y = 222;
+  if(m.groups){
+    g.fillStyle = '#ECECF2'; g.font = '500 32px ' + mono;
+    let line = '';
+    for(const part of m.groups){
+      const next = line ? line + ' ' + part : part;
+      if(g.measureText(next).width > W - 2 * X && line){ g.fillText(line, X, y); y += 42; line = part; }
+      else line = next;
+    }
+    if(line){ g.fillText(line, X, y); y += 40; }
+  }
+  g.fillStyle = '#9B9BAB'; g.font = '400 24px ' + sans;
+  g.fillText(m.target, X, y); y += 52;
+  const list = (title, items, max) => {
+    if(!items.length) return;
+    const shown = items.slice(0, max);
+    const more = items.length - shown.length;
+    let text = shown.join(' · ') + (more > 0 ? ' · +' + more + ' more' : '');
+    g.font = '600 24px ' + sans; g.fillStyle = '#ECECF2';
+    g.fillText(title, X, y);
+    const tx = X + g.measureText(title + '  ').width;
+    g.font = '400 24px ' + sans; g.fillStyle = '#ECECF2';
+    const words = text.split(' '); let line = '', lx = tx, rows = 0;
+    for(const w of words){
+      const next = line ? line + ' ' + w : w;
+      if(g.measureText(next).width > W - X - lx && line){
+        g.fillText(line, lx, y); y += 34; rows++; line = w; lx = X;
+        if(rows >= 2){ line += ' …'; break; }
+      } else line = next;
+    }
+    if(line){ g.fillText(line, lx, y); }
+    y += 46;
+  };
+  list('Found:', m.found, 4);
+  g.globalAlpha = 0.85; list('Not checked:', m.notChecked, 3); g.globalAlpha = 1;
+  g.fillStyle = '#2A2A35'; g.fillRect(X, H - 118, W - 2 * X, 2);
+  g.fillStyle = '#9B9BAB'; g.font = '400 24px ' + mono;
+  g.fillText(m.stamp, X, H - 72);
+  g.fillStyle = '#00D1FF'; g.font = '600 26px ' + sans;
+  g.fillText(m.site, X, H - 34);
+  return cv;
+}
+
+async function shareVerdictCard(){
+  const m = SHARE_MODEL;
+  const note = document.getElementById('shareCardNote');
+  if(!m) return;
+  // Canvas only uses a web font that has already been fetched, and the
+  // page never fetches some of these weights on its own. Ask for them,
+  // but never wait more than two seconds: a plain font beats no card.
+  try {
+    if(document.fonts && document.fonts.load){
+      await Promise.race([
+        Promise.all(['700 96px "Space Grotesk"', '600 24px "IBM Plex Mono"', '500 32px "IBM Plex Mono"',
+          '400 24px "IBM Plex Mono"', '400 24px "IBM Plex Sans"', '600 24px "IBM Plex Sans"'].map(f => document.fonts.load(f))),
+        new Promise(r => setTimeout(r, 2000)),
+      ]);
+    }
+  } catch(e) {}
+  const cv = drawVerdictCard(m);
+  const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+  if(!blob){ if(note) note.textContent = 'The image could not be made in this browser.'; return; }
+  const name = 'savesavesavesave-' + m.label.toLowerCase() + '.png';
+  const text = 'SaveSaveSaveSave: ' + m.label + ' (automated check, not a guarantee). Check it yourself: https://savesavesavesave.xyz';
+  let file = null;
+  try { file = new File([blob], name, { type: 'image/png' }); } catch(e) {}
+  if(file && navigator.canShare && navigator.canShare({ files: [file] })){
+    try { await navigator.share({ files: [file], text }); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  if(note) note.textContent = 'Saved as ' + name + '. Drawn on this device; nothing was uploaded.';
+}
+
+function currentMessageCard(){
+  const c = buildComposite();
+  return c ? verdictCardModel(messageCardInput(c, MSG.promptScan, MSG)) : null;
 }
 
 function setScanMode(m) {
@@ -4662,10 +4886,12 @@ function runPromptScan() {
   // recalculated on reveal: the verdict below is the one produced above.
   startMessageScan(result, text, false);
   results.style.display = 'none';
+  hideShareCard();
 
   const reveal = () => {
     results.style.display = 'block';
     showNextStep('message', (result.findings || []).map(f => f.category));
+    offerShareCard(currentMessageCard());
     if(results.scrollIntoView) results.scrollIntoView(ScanConsole.scrollOpts());
   };
   return replayMessageScan(runId, result).then(() => {
@@ -5036,6 +5262,7 @@ function renderComposite(scroll) {
   const results = document.getElementById('results');
   results.innerHTML = html;
   results.style.display = 'block';
+  offerShareCard(currentMessageCard());
   // Only on the first render. Re-scrolling on every address check would
   // yank the page out from under whoever just pressed the button.
   if (scroll) results.scrollIntoView(ScanConsole.scrollOpts());
@@ -5388,6 +5615,7 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
   results.innerHTML = html;
   results.style.display = 'block';
   showNextStep(mode === 'wallet' ? 'wallet' : 'token');
+  offerShareCard(verdictCardModel(addressCardInput(result, addr, chainId, adapter, mode)));
   results.scrollIntoView(ScanConsole.scrollOpts());
 }
 

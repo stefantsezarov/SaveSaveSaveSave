@@ -371,6 +371,50 @@ if (fs.existsSync(guidePath)) {
 }
 
 
+// ---- verdict cards: warnings only, fixed wording, no message text -------
+{
+  const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const a = idx.indexOf('const CARD_CATEGORY'), b = idx.indexOf('let SHARE_MODEL');
+  const vm = require('vm');
+  const cx = vm.createContext({ CHAIN_LABEL: { '1': 'Ethereum' } });
+  vm.runInContext(idx.slice(a, b) + ';this.api = { verdictCardModel, addressCardInput, messageCardInput, cardStamp, CARD_CATEGORY };', cx);
+  const api = cx.api;
+  const addr = '0x1234567890abcdef1234567890abcdef12345678';
+  const res = v => ({ verdict: v, checksUnknown: 1, checksExpected: 14,
+    checks: [{ status: 'RISK', label: 'Honeypot pattern' }, { status: 'PASS', label: 'Open source' }] });
+  const caps = { name: 'x', capabilities: { txSimulation: true, liquidityAnalysis: true, contractAnalysis: true, walletScreening: true } };
+  check('card: no card for PASS', api.verdictCardModel(api.addressCardInput(res('pass'), addr, '1', caps, 'token')) === null);
+  check('card: no card for INSUFFICIENT DATA', api.verdictCardModel(api.addressCardInput(res('unknown'), addr, '1', caps, 'token')) === null);
+  const m = api.verdictCardModel(api.addressCardInput(res('fail'), addr, '1', caps, 'token'));
+  check('card: FAIL gets a card with the approved header and link',
+    m && m.label === 'FAIL' && m.header === 'SAVESAVESAVESAVE · Automated risk assessment'
+      && m.site === 'Check it yourself: savesavesavesave.xyz');
+  check('card: the full address is on it, never shortened', m && m.groups.join('') === addr);
+  check('card: says what was found and what was not checked',
+    m && m.found.join('|') === 'Honeypot pattern' && m.notChecked.join('|') === '1 of 14 checks unreadable'
+      && m.target === 'Ethereum · Token scan');
+  check('card: the time is stated in UTC and says it is not a guarantee',
+    api.cardStamp(new Date(Date.UTC(2026, 8, 27, 14, 5))) === 'Checked 27 Sep 2026, 14:05 UTC · Not a guarantee');
+  const planted = 'PLANTED-SECRET-7731', plantedAddr = '0xfeedfacefeedfacefeedfacefeedfacefeedface';
+  const pr = { input: { characters: 120 }, findings: [
+    { category: 'CRYPTO_SECRET_REQUEST', severity: 'CRITICAL', title: 'asks for ' + planted, evidence: { excerpt: planted } },
+    { category: 'NOT_A_REAL_CATEGORY', severity: 'HIGH', title: planted },
+    { category: 'BENIGN_INFORMATIONAL', severity: 'INFO', title: planted } ] };
+  const msg = { text: planted, addresses: [{ address: plantedAddr, scan: null }] };
+  const mm = api.verdictCardModel(api.messageCardInput({ verdict: 'caution' }, pr, msg));
+  const blob = JSON.stringify(mm);
+  check('card: a message card never carries the message text or an address from it',
+    mm && !blob.includes(planted) && !blob.includes(plantedAddr));
+  check('card: message findings use fixed wording only',
+    mm && mm.found.join('|') === 'Asks for a recovery phrase or private key|Other risk pattern'
+      && mm.notChecked.includes('1 address in it not checked'));
+  const cats = [...new Set([...idx.matchAll(/category: '([A-Z_]+)'/g)].map(x => x[1]))].filter(c => c !== 'BENIGN_INFORMATIONAL');
+  const missing = cats.filter(c => !api.CARD_CATEGORY[c]);
+  check('card: every category the engine can report has card wording', missing.length === 0, missing.join(', '));
+  check('card: the share control sits outside the results area',
+    idx.indexOf('id="shareCard"') > idx.indexOf('<section id="results"></section>'));
+}
+
 // ---- guide 8 is reachable from the tool it pairs with --------------------
 {
   const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
