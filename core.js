@@ -8,17 +8,21 @@
    ===================================================================== */
 
 // ---------- Sanitization ----------
+// One implementation everywhere. The browser used to take a DOM shortcut
+// (textContent -> innerHTML) that escapes < > & but NOT quotes, while
+// Node took this path, so the tests checked a function the page did not
+// run, and any value placed inside an attribute was one quote away from
+// breaking out of it.
 function escapeHtml(str){
-  if(typeof document !== 'undefined'){
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// Every invisible formatting character (Unicode category Cf), not a
+// hand-picked list: the list missed LRM/RLM (U+200E/F), the word joiner
+// and invisible operators (U+2060-2064), the soft hyphen, the Arabic
+// letter mark and the whole Tags block, all usable to dress up a token name.
 function stripSpoofChars(str){
-  return String(str).replace(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, '');
+  return String(str).replace(/\p{Cf}/gu, '');
 }
 
 function getPath(obj, path){
@@ -66,9 +70,13 @@ const VerdictEngine = {
     const criticalSeen = checks.filter(c => c.critical).length; // critical-tier checks we got ANY answer for, PASS/RISK/UNKNOWN alike
     const criticalMissing = typeof criticalDefsTotal === 'number' ? Math.max(0, criticalDefsTotal - criticalSeen) : 0;
 
-    let score = 0;
-    risks.forEach(c => { score += c.severityWeight; });
-    score += unknowns.length; // each unreadable field nudges toward caution, doesn't force it alone
+    // Only confirmed findings can make a FAIL. Unreadable fields push toward
+    // CAUTION but never, on their own, claim a risk was found: six of them
+    // used to add up to "Significant risk indicators detected" with no
+    // indicator detected at all.
+    let riskScore = 0;
+    risks.forEach(c => { riskScore += c.severityWeight; });
+    const score = riskScore + unknowns.length;
 
     const coverage = expectedChecks ? valid / expectedChecks : 0;
     const insufficientData = valid === 0 || coverage < 0.4;
@@ -80,12 +88,12 @@ const VerdictEngine = {
     } else if(insufficientData){
       verdict = 'unknown'; label = 'INSUFFICIENT DATA';
       sub = `Only ${valid}/${expectedChecks} indicators returned usable data — too little to form a judgment. This is not a clean result.`;
-    } else if(score >= 6){
+    } else if(riskScore >= 6){
       verdict = 'fail'; label = 'FAIL';
       sub = 'Significant risk indicators detected';
     } else if(score >= 2 || unknowns.length > 0){
       verdict = 'caution'; label = 'CAUTION';
-      sub = (unknowns.length > 0 && score < 2)
+      sub = (risks.length === 0)
         ? 'Some indicators returned unreadable data — treat as unverified, not clean'
         : 'Risk indicators detected — review before proceeding';
     } else {

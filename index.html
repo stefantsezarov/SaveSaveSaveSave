@@ -16,7 +16,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://*.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <title>Free Crypto Scam Checker — Messages &amp; Addresses — SaveSaveSaveSave</title>
@@ -228,6 +228,7 @@
   .examples{margin-top:12px; font-size:0.78rem; color:var(--text-muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .example-chip{font-family:'IBM Plex Mono', monospace; font-size:0.74rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); padding:4px 10px; border-radius:var(--radius-control); cursor:pointer;}
   .example-chip:hover{color:var(--accent); border-color:var(--accent);}
+  .example-chip:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   .inline-error{color:var(--danger); font-size:0.8rem; margin-top:10px; font-family:'IBM Plex Mono', monospace;}
 
   .ad-slot{border:1px dashed var(--border); border-radius:0; color:var(--text-muted); font-family:'IBM Plex Mono', monospace; font-size:0.72rem; text-align:center; display:flex; align-items:center; justify-content:center; letter-spacing:0.04em; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0 10px, transparent 10px 20px);}
@@ -835,11 +836,11 @@
 
       <div class="examples" id="examplesRow">
         Try an example:
-        <span class="example-chip" onclick="fillExample('evm','1','0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')">WETH · Ethereum</span>
-        <span class="example-chip" onclick="fillExample('evm','1','0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')">USDC · Ethereum</span>
-        <span class="example-chip" onclick="fillExample('solana','solana','EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')">USDC · Solana</span>
-        <span class="example-chip" onclick="fillExample('sui','sui','0xbc732bc5f1e9a9f4bdf4c0672ee538dbf56c161afe04ff1de2176efabdf41f92::suai::SUAI')">SUAI · Sui</span>
-        <span class="example-chip" onclick="fillExample('tron','tron','TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')">USDT · TRON</span>
+        <button type="button" class="example-chip" onclick="fillExample('evm','1','0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')">WETH · Ethereum</button>
+        <button type="button" class="example-chip" onclick="fillExample('evm','1','0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')">USDC · Ethereum</button>
+        <button type="button" class="example-chip" onclick="fillExample('solana','solana','EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')">USDC · Solana</button>
+        <button type="button" class="example-chip" onclick="fillExample('sui','sui','0xbc732bc5f1e9a9f4bdf4c0672ee538dbf56c161afe04ff1de2176efabdf41f92::suai::SUAI')">SUAI · Sui</button>
+        <button type="button" class="example-chip" onclick="fillExample('tron','tron','TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')">USDT · TRON</button>
       </div>
       <div class="inline-error" id="inlineError" style="display:none;"></div>
       <details class="twin" id="twinCheck">
@@ -876,10 +877,10 @@
 
         <div class="examples">
           Try an example:
-          <span class="example-chip" onclick="fillPrompt('safe')">A safe prompt</span>
-          <span class="example-chip" onclick="fillPrompt('hidden')">Hidden instructions</span>
-          <span class="example-chip" onclick="fillPrompt('drainer')">Wallet drainer</span>
-          <span class="example-chip" onclick="fillPrompt('article')">Article about injection</span>
+          <button type="button" class="example-chip" onclick="fillPrompt('safe')">A safe prompt</button>
+          <button type="button" class="example-chip" onclick="fillPrompt('hidden')">Hidden instructions</button>
+          <button type="button" class="example-chip" onclick="fillPrompt('drainer')">Wallet drainer</button>
+          <button type="button" class="example-chip" onclick="fillPrompt('article')">Article about injection</button>
         </div>
 
         <div class="privacy-line">
@@ -1045,17 +1046,21 @@
    ===================================================================== */
 
 // ---------- Sanitization ----------
+// One implementation everywhere. The browser used to take a DOM shortcut
+// (textContent -> innerHTML) that escapes < > & but NOT quotes, while
+// Node took this path, so the tests checked a function the page did not
+// run, and any value placed inside an attribute was one quote away from
+// breaking out of it.
 function escapeHtml(str){
-  if(typeof document !== 'undefined'){
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// Every invisible formatting character (Unicode category Cf), not a
+// hand-picked list: the list missed LRM/RLM (U+200E/F), the word joiner
+// and invisible operators (U+2060-2064), the soft hyphen, the Arabic
+// letter mark and the whole Tags block, all usable to dress up a token name.
 function stripSpoofChars(str){
-  return String(str).replace(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, '');
+  return String(str).replace(/\p{Cf}/gu, '');
 }
 
 function getPath(obj, path){
@@ -1103,9 +1108,13 @@ const VerdictEngine = {
     const criticalSeen = checks.filter(c => c.critical).length; // critical-tier checks we got ANY answer for, PASS/RISK/UNKNOWN alike
     const criticalMissing = typeof criticalDefsTotal === 'number' ? Math.max(0, criticalDefsTotal - criticalSeen) : 0;
 
-    let score = 0;
-    risks.forEach(c => { score += c.severityWeight; });
-    score += unknowns.length; // each unreadable field nudges toward caution, doesn't force it alone
+    // Only confirmed findings can make a FAIL. Unreadable fields push toward
+    // CAUTION but never, on their own, claim a risk was found: six of them
+    // used to add up to "Significant risk indicators detected" with no
+    // indicator detected at all.
+    let riskScore = 0;
+    risks.forEach(c => { riskScore += c.severityWeight; });
+    const score = riskScore + unknowns.length;
 
     const coverage = expectedChecks ? valid / expectedChecks : 0;
     const insufficientData = valid === 0 || coverage < 0.4;
@@ -1117,12 +1126,12 @@ const VerdictEngine = {
     } else if(insufficientData){
       verdict = 'unknown'; label = 'INSUFFICIENT DATA';
       sub = `Only ${valid}/${expectedChecks} indicators returned usable data — too little to form a judgment. This is not a clean result.`;
-    } else if(score >= 6){
+    } else if(riskScore >= 6){
       verdict = 'fail'; label = 'FAIL';
       sub = 'Significant risk indicators detected';
     } else if(score >= 2 || unknowns.length > 0){
       verdict = 'caution'; label = 'CAUTION';
-      sub = (unknowns.length > 0 && score < 2)
+      sub = (risks.length === 0)
         ? 'Some indicators returned unreadable data — treat as unverified, not clean'
         : 'Risk indicators detected — review before proceeding';
     } else {

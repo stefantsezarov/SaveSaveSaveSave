@@ -469,6 +469,34 @@ console.log('\n== Recent counterparty checking ==');
   ok ? passed++ : failed++;
 }
 
+{ // 40. unreadable fields alone can never produce FAIL
+  const unk = i => ({ id:'u'+i, category:'x', status:'UNKNOWN', critical:false, severityWeight:1, label:'u', detail:'u', source:'test' });
+  const ok_ = i => ({ id:'p'+i, category:'x', status:'PASS', critical:false, severityWeight:0, label:'p', detail:'p', source:'test' });
+  const checks = [0,1,2,3,4,5].map(unk).concat([0,1,2,3,4,5,6,7].map(ok_));
+  const v = VerdictEngine.evaluate(checks, 14, 'test', 0);
+  const ok = v.label === 'CAUTION' && /unreadable/.test(v.sub);
+  console.log((ok ? 'PASS' : 'FAIL') + ' 6 unreadable fields and no risk -> CAUTION (unreadable), never FAIL -> ' + v.label + ': ' + v.sub);
+  ok ? passed++ : failed++;
+}
+{ // 41. confirmed non-critical risks still reach FAIL on their own
+  const bad = i => ({ id:'b'+i, category:'x', status:'RISK', critical:false, severityWeight:3, label:'b', detail:'b', source:'test' });
+  const ok_ = i => ({ id:'p'+i, category:'x', status:'PASS', critical:false, severityWeight:0, label:'p', detail:'p', source:'test' });
+  const v = VerdictEngine.evaluate([bad(0), bad(1)].concat([0,1,2,3,4,5].map(ok_)), 8, 'test', 0);
+  const ok = v.label === 'FAIL';
+  console.log((ok ? 'PASS' : 'FAIL') + ' two confirmed high-weight risks -> FAIL -> ' + v.label);
+  ok ? passed++ : failed++;
+}
+{ // 42. escapeHtml escapes quotes, whatever environment it runs in
+  const ok = escapeHtml(`"'<>&`) === '&quot;&#39;&lt;&gt;&amp;';
+  console.log((ok ? 'PASS' : 'FAIL') + ' escapeHtml escapes quotes as well as < > &');
+  ok ? passed++ : failed++;
+}
+{ // 43. every invisible formatting character is stripped from display names
+  const spoofed = 'US‎DC⁠­؜\u{E0041}‮﻿';
+  const ok = stripSpoofChars(spoofed) === 'USDC';
+  console.log((ok ? 'PASS' : 'FAIL') + ' stripSpoofChars removes LRM, word joiner, soft hyphen, ALM, tag characters, overrides');
+  ok ? passed++ : failed++;
+}
 console.log(passed + '/' + (passed + failed) + ' regression tests passed');
 console.log('='.repeat(60));
 if(failed > 0) process.exitCode = 1;
