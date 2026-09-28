@@ -518,6 +518,9 @@ console.log('\n== Recent counterparty checking ==');
   const verdict = ev => { const b = P.buildPackageChecks(ev, NOW); return P.VerdictEngine.evaluate(b.checks, b.expected, 'npm', b.criticalTotal); };
   t('an established, clean package passes', verdict(base()).label === 'PASS', verdict(base()).label);
   t('a package OSV reports as malicious fails', verdict(base({ osv: { ok: true, vulns: [{ id: 'MAL-2025-1234' }] } })).label === 'FAIL');
+  const ghsaMal = P.buildPackageChecks(base({ osv: { ok: true, vulns: [{ id: 'GHSA-c2m4-w5hm-vqjw', summary: 'Malicious Package in crossenv', database_specific: { cwe_ids: ['CWE-506'], severity: 'CRITICAL' } }] } }), NOW);
+  t('a GitHub malware advisory counts as reported malicious, not as a vulnerability',
+    ghsaMal.checks.find(c => c.id === 'pkg_reported_malicious').status === 'RISK' && ghsaMal.checks.find(c => c.id === 'pkg_known_vulns').status === 'PASS');
   t('an npm security placeholder fails', verdict(base({ name: 'crossenv', resolvedVersion: '0.0.2-security', description: 'security holding package' })).label === 'FAIL');
   const squat = base({ name: 'lodahs', resolvedVersion: '1.0.0', weekly: 12,
     time: { created: '2026-09-20T00:00:00Z', '1.0.0': '2026-09-27T00:00:00Z' },

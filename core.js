@@ -918,8 +918,14 @@ function buildPackageChecks(ev, now){
     add('pkg_known_vulns', 'UNKNOWN', 'Known vulnerabilities in this version', why, src.osv, 1);
   } else {
     const vulns = ev.osv.vulns || [];
-    const mal = vulns.filter(v => /^MAL-/.test(v.id || ''));
-    const other = vulns.filter(v => !/^MAL-/.test(v.id || ''));
+    // Malicious, not merely vulnerable: OSV's own MAL- records, and GitHub
+    // advisories filed as embedded malicious code (CWE-506) or titled as
+    // malware, which is how hijacks like crossenv and ua-parser-js appear.
+    const isMal = v => /^MAL-/.test(v.id || '')
+      || ((v.database_specific && v.database_specific.cwe_ids) || []).includes('CWE-506')
+      || /\b(?:malicious|malware)\b/i.test(v.summary || '');
+    const mal = vulns.filter(isMal);
+    const other = vulns.filter(v => !isMal(v));
     if(mal.length) add('pkg_reported_malicious', 'RISK', 'Reported as malicious',
       'OSV.dev lists this package as malicious (' + mal.slice(0, 3).map(v => pkgClip(v.id, 30)).join(', ') + '). Do not install it. If it is already installed, treat that computer as compromised.',
       src.osv, 3, true);
