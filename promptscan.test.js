@@ -703,6 +703,23 @@ check('early-return results still carry an addresses array',
   Array.isArray(S.scanPrompt('   ').addresses) && Array.isArray(S.scanPrompt(null).addresses),
   'the UI reads this unconditionally');
 
+// ------------------------------------------- fake-interview install lure
+{
+  const lure = id => r => r.findings.some(f => f.ruleId === id && f.severity !== 'INFO');
+  const isLure = lure('INSTALL_LURE_001');
+  const job1 = S.scanPrompt('Hi! For the interview task please clone our repo and run npm install && npm start before the call.');
+  const job2 = S.scanPrompt('Thanks for applying to the Senior Blockchain Developer position. Our technical assessment is on GitHub: github.com/acme-hr/wallet-dashboard. Download the project, run npm install and npm run dev, then fix the bug in the balance page.');
+  check('interview lure: "clone our repo and run npm install" for an interview is flagged', isLure(job1) && job1.verdict !== 'pass', job1.verdict);
+  check('interview lure: a technical assessment on GitHub with npm run dev is flagged', isLure(job2) && job2.verdict !== 'pass', job2.verdict);
+  check('interview lure: ordinary README setup steps are not flagged',
+    !isLure(S.scanPrompt('## Setup\nClone the repository and run npm install, then npm start.')));
+  check('interview lure: a bare install command is not flagged', !isLure(S.scanPrompt('npm install lodash')));
+  check('interview lure: a job post with no install step is not flagged',
+    !isLure(S.scanPrompt('We are hiring a Rust developer. Send us your GitHub profile.')));
+  check('interview lure: an article describing the scam is not treated as the scam',
+    !isLure(S.scanPrompt('Attackers posing as recruiters send a take-home test on GitHub and ask the candidate to run npm install; the install script then steals wallets.')));
+}
+
 // ----------------------------------------------------------------- done
 console.log('\n' + '='.repeat(60));
 console.log(`${pass}/${pass + fail} prompt-scan tests passed`);

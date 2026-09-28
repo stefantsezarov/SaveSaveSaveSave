@@ -2723,7 +2723,8 @@ function directiveScore(fragment) {
 }
 
 // A rule is {id, category, severity, confidence, re, title, plain, action,
-// requiresDirective}. `requiresDirective` means the match only counts when
+// requiresDirective, context?}. `context` is a list of patterns that must
+// all appear somewhere in the text for the match to count. `requiresDirective` means the match only counts when
 // the surrounding sentence is actually instructing, not describing.
 const RULES = [
   {
@@ -2900,6 +2901,22 @@ const RULES = [
     requiresDirective: false,
   },
   {
+    // Fake job interviews aimed at developers: the "take-home test" is a
+    // project whose install script steals wallets and keys the moment it
+    // is installed. Suspicious only in combination: an install or run
+    // command, a job/test framing, and someone else's repository or files.
+    id: 'INSTALL_LURE_001', category: 'CODE_EXECUTION', severity: 'MEDIUM', confidence: 0.78,
+    re: /\b(?:npm\s+(?:i|install|ci|start|run\s+[\w:-]+)|yarn(?:\s+(?:install|start|dev))?|pnpm\s+(?:i|install|start|dev)|npx\s+[\w@./-]+|pip\s+install\s+-r|node\s+[\w./-]+\.js)\b/i,
+    context: [
+      /\b(?:interview|take[- ]home|technical\s+(?:test|task|assessment|challenge)|coding\s+(?:test|task|challenge|assignment)|test\s+(?:task|project)|assessment|assignment|recruit(?:er|ing|ment)|hiring|job\s+(?:offer|opportunity)|freelance|bounty)\b/i,
+      /\b(?:clone|repo(?:sitory)?|github\.com|gitlab\.com|bitbucket\.org|download\s+(?:the\s+)?(?:project|code|files?|zip))\b|\.zip\b/i,
+    ],
+    title: 'Asks you to install and run a stranger\u2019s project',
+    plain: 'Fake job interviews and "test tasks" are a known way to attack developers. The project you are asked to install runs its own scripts during the install, and those scripts look for crypto wallets, keys and saved passwords.',
+    action: 'Do not install or run it on a computer that holds wallets, keys or passwords. Read the "scripts" section of package.json first, and if you must run it, use a throwaway virtual machine.',
+    requiresDirective: true,
+  },
+  {
     id: 'CODE_EXECUTION_001', category: 'CODE_EXECUTION', severity: 'MEDIUM', confidence: 0.75,
     re: /\b(run|execute|eval)\s+(?:this|the following|these)\s+(?:command|script|code|snippet)|\b(?:bash|sh|powershell|cmd\.exe|python|node)\s+-c\b|\b(?:iex|iwr)\s*\(|\|\s*(?:bash|sh)\b/i,
     title: 'Asks for code to be executed',
@@ -2986,6 +3003,9 @@ function runRules(text) {
   for (const rule of RULES) {
     const m = text.match(rule.re);
     if (!m) continue;
+    // A rule may also require other patterns somewhere in the same text,
+    // for lures that are only suspicious in combination.
+    if (rule.context && !rule.context.every(c => c.test(text))) continue;
     const idx = m.index;
     // Judge intent from the sentence the match sits in, not the whole text.
     const sentStart = Math.max(0, text.lastIndexOf('.', idx) + 1);
