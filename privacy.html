@@ -40,7 +40,7 @@
       "url": "https://savesavesavesave.xyz/privacy",
       "inLanguage": "en",
       "datePublished": "2026-09-17",
-      "dateModified": "2026-09-27",
+      "dateModified": "2026-09-28",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -116,12 +116,15 @@
     <p>This part does use the network, because the security data lives elsewhere. When you check an address, the address itself and the chain identifier are sent to a third-party security data provider, and for sanctions checks to a public blockchain node through our own proxy.</p>
     <p>What is sent is the address and the chain. What is not sent is the message the address came from, any other text on the page, or anything identifying you beyond the ordinary information any web request carries (your IP address and browser user-agent, which every website you visit receives).</p>
     <p>If an address came from a message you pasted, only the address travels. The message stays in your browser.</p>
+    <p id="package-check"><strong>Checking an npm package.</strong> When you check a package, its name (and the version, if you give one) is sent from your browser to the npm registry and npm's download counter (<code>registry.npmjs.org</code>, <code>api.npmjs.org</code>) and to OSV.dev (<code>api.osv.dev</code>), Google's open vulnerability database. Like any web request, these carry your IP address and browser user-agent. Nothing else is sent, the package's code is never downloaded or run, and nothing about the check reaches an advertiser.</p>
 
     <h2>4. Third parties that receive anything</h2>
     <table class="chains">
       <tr><th>Service</th><th>When it is contacted</th><th>What it receives</th></tr>
       <tr><td><strong>GoPlus Labs</strong><br><code>api.gopluslabs.io</code></td><td>When you check an address or token</td><td>The address and chain id, plus your IP and user-agent</td></tr>
       <tr><td><strong>Our own Cloudflare Worker</strong><br><code>cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev</code></td><td>For chains where a direct call is blocked, for sanctions checks, once when a scan finishes, to count it, and when the homepage loads, to fetch the public weekly total (section 5)</td><td>For the checks: the address and chain id. For the count: only the kind of scan, the chain and the verdict. Plus your IP and user-agent, as with any request; we do not store them</td></tr>
+      <tr><td><strong>npm</strong><br><code>registry.npmjs.org</code>, <code>api.npmjs.org</code></td><td>When you check an npm package</td><td>The package name and version, plus your IP and user-agent</td></tr>
+      <tr><td><strong>OSV.dev</strong> (Google)<br><code>api.osv.dev</code></td><td>When you check an npm package</td><td>The package name and version, plus your IP and user-agent</td></tr>
       <tr><td><strong>Google Fonts</strong><br><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code></td><td>On every page load, to load the typefaces</td><td>Your IP and user-agent. No scan data ever reaches it.</td></tr>
       <tr><td><strong>Cloudflare</strong></td><td>On every page load — Cloudflare serves this site</td><td>Standard web-server request data</td></tr>
       <tr><td><strong>Cloudflare Web Analytics</strong><br><code>static.cloudflareinsights.com</code>, <code>cloudflareinsights.com</code></td><td>On every page load, to count the visit</td><td>Page URL, referrer, approximate country, browser and device type, page-load timing. No cookie. No scan content — see section 5.</td></tr>

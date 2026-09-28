@@ -411,6 +411,10 @@ if (fs.existsSync(guidePath)) {
   const cats = [...new Set([...idx.matchAll(/category: '([A-Z_]+)'/g)].map(x => x[1]))].filter(c => c !== 'BENIGN_INFORMATIONAL');
   const missing = cats.filter(c => !api.CARD_CATEGORY[c]);
   check('card: every category the engine can report has card wording', missing.length === 0, missing.join(', '));
+  const pk = api.verdictCardModel({ kind: 'package', verdict: 'fail', packageLabel: 'crossenv@0.0.2-security',
+    found: ['Removed by npm for security reasons'], notChecked: ['Package code not analysed'], when: new Date(Date.UTC(2026, 8, 28, 9, 0)) });
+  check('card: a package card names the package and keeps the fixed wording',
+    pk && pk.target === 'npm package \u00b7 crossenv@0.0.2-security' && pk.groups === null && pk.label === 'FAIL');
   check('card: the share control sits outside the results area',
     idx.indexOf('id="shareCard"') > idx.indexOf('<section id="results"></section>'));
 }

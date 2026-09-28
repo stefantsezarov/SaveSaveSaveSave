@@ -497,6 +497,53 @@ console.log('\n== Recent counterparty checking ==');
   console.log((ok ? 'PASS' : 'FAIL') + ' stripSpoofChars removes LRM, word joiner, soft hyphen, ALM, tag characters, overrides');
   ok ? passed++ : failed++;
 }
+{ // 44-52. npm package check: parsing, look-alikes, verdicts, network failures
+  const P = require(path.join(__dirname, 'core.js'));
+  const t = (name, ok, extra) => { console.log((ok ? 'PASS' : 'FAIL') + ' package check: ' + name + (extra ? ' -> ' + extra : '')); ok ? passed++ : failed++; };
+  const spec = P.parsePackageSpec;
+  t('parses names, scopes, versions and a pasted install command',
+    JSON.stringify(spec('npm install @solana/web3.js@1.95.8')) === JSON.stringify({ name: '@solana/web3.js', version: '1.95.8' })
+    && spec('lodash').name === 'lodash' && spec('<script>') === null && spec('a b').name === 'a' && spec('') === null);
+  t('flags look-alikes of popular names, not the real packages',
+    P.packageLookalike('crossenv').target === 'cross-env' && P.packageLookalike('lodahs').target === 'lodash'
+    && P.packageLookalike('react-domm').target === 'react-dom' && P.packageLookalike('lodash') === null
+    && P.packageLookalike('cross-env') === null && P.packageLookalike('my-own-thing') === null);
+  const NOW = Date.parse('2026-09-28T12:00:00Z');
+  const base = (over) => Object.assign({
+    name: 'lodash', resolvedVersion: '4.17.21', description: 'Lodash modular utilities.',
+    time: { created: '2012-04-23T16:37:11Z', '4.17.21': '2021-02-20T15:42:16Z' },
+    version: { scripts: { test: 'jest' }, gypfile: false, repository: { url: 'git+https://github.com/lodash/lodash.git' }, deprecated: null },
+    weekly: 50000000, osv: { ok: true, vulns: [] },
+  }, over || {});
+  const verdict = ev => { const b = P.buildPackageChecks(ev, NOW); return P.VerdictEngine.evaluate(b.checks, b.expected, 'npm', b.criticalTotal); };
+  t('an established, clean package passes', verdict(base()).label === 'PASS', verdict(base()).label);
+  t('a package OSV reports as malicious fails', verdict(base({ osv: { ok: true, vulns: [{ id: 'MAL-2025-1234' }] } })).label === 'FAIL');
+  t('an npm security placeholder fails', verdict(base({ name: 'crossenv', resolvedVersion: '0.0.2-security', description: 'security holding package' })).label === 'FAIL');
+  const squat = base({ name: 'lodahs', resolvedVersion: '1.0.0', weekly: 12,
+    time: { created: '2026-09-20T00:00:00Z', '1.0.0': '2026-09-27T00:00:00Z' },
+    version: { scripts: { postinstall: 'node collect.js' }, repository: null, deprecated: null } });
+  const sq = verdict(squat);
+  t('a new look-alike that runs code on install fails, without any report', sq.label === 'FAIL', sq.label + ' ' + sq.score);
+  t('a popular package with an install script is CAUTION, not FAIL',
+    verdict(base({ name: 'esbuild', version: { scripts: { postinstall: 'node install.js' }, repository: 'x', deprecated: null } })).label === 'CAUTION');
+  const down = verdict(base({ osv: { ok: false, error: 'no response' }, weekly: null }));
+  t('OSV and download counts unreachable: never PASS', down.label !== 'PASS' && down.checksUnknown === 3, down.label);
+  {
+    const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+    const nf = await P.fetchPackageEvidence({ name: 'no-such-pkg-xyz', version: null }, async () => reply(404, {}));
+    const vm = await P.fetchPackageEvidence({ name: 'lodash', version: '9.9.9' }, async () => reply(200, { 'dist-tags': { latest: '4.17.21' }, versions: { '4.17.21': {} } }));
+    const calls = [];
+    const ev = await P.fetchPackageEvidence({ name: '@scope/pkg', version: null }, async (url, init) => {
+      calls.push(url);
+      if (url.startsWith(P.OSV_QUERY_URL)) throw new TypeError('Failed to fetch');
+      if (url.startsWith(P.NPM_DOWNLOADS_URL)) return reply(200, { downloads: 1234 });
+      return reply(200, { 'dist-tags': { latest: '1.0.0' }, versions: { '1.0.0': { scripts: {} } }, time: { created: '2020-01-01T00:00:00Z' } });
+    });
+    t('network: missing package, missing version, and a failed OSV call are reported as such',
+      nf.notFound === true && vm.versionMissing === true && ev.osv.ok === false && ev.weekly === 1234
+      && calls[0] === P.NPM_REGISTRY_URL + '/@scope%2Fpkg');
+  }
+}
 console.log(passed + '/' + (passed + failed) + ' regression tests passed');
 console.log('='.repeat(60));
 if(failed > 0) process.exitCode = 1;

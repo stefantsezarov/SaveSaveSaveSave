@@ -16,7 +16,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <title>Free Crypto Scam Checker — Messages &amp; Addresses — SaveSaveSaveSave</title>
@@ -666,6 +666,8 @@
   .mode-switch .tab[aria-selected="true"]{background:var(--accent-solid); color:var(--on-accent);}
   .prompt-panel{display:none;}
   .prompt-panel.active{display:block;}
+  .tabs{flex-wrap:wrap;}
+  .pkg-note{font-size:0.9rem; line-height:1.6; margin:0;}
   .prompt-warn{display:flex; gap:10px; align-items:flex-start; background:var(--danger-dim); border:1px solid var(--danger); border-radius:0; padding:12px 14px; margin-bottom:14px; font-size:0.82rem; color:var(--text);}
   .prompt-warn strong{color:var(--danger);}
   .prompt-input{width:100%; min-height:190px; resize:vertical; background:var(--ink); border:1px solid var(--border); border-radius:var(--radius-control); padding:14px; color:var(--text); font-family:'IBM Plex Mono', monospace; font-size:0.82rem; line-height:1.55;}
@@ -810,6 +812,7 @@
       <div class="mode-switch" role="tablist" aria-label="What to scan">
         <button class="tab" role="tab" aria-selected="true" id="smode-address" onclick="setScanMode('address')">Scan an address</button>
         <button class="tab" role="tab" aria-selected="false" id="smode-prompt" onclick="setScanMode('prompt')">Scan a prompt</button>
+        <button class="tab" role="tab" aria-selected="false" id="smode-package" onclick="setScanMode('package')">Check a package</button>
       </div>
 
       <div id="addressPanel">
@@ -887,6 +890,24 @@
           <span class="accent">&#9679;</span> This scan is local. The text you paste is analysed in your browser — never sent, never stored, never seen by us. <a href="whitepaper.html#privacy">What the site itself loads</a>.
         </div>
         <div class="inline-error" id="promptError" style="display:none;"></div>
+      </div>
+
+      <div class="prompt-panel package-panel" id="packagePanel">
+        <div class="field-row">
+          <label class="sr-only" for="packageInput">npm package name</label>
+          <input class="addr-input" id="packageInput" type="text" placeholder="npm package: lodash, @scope/name or name@1.2.3" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="if(event.key==='Enter')runPackageScan()">
+          <button class="scan-btn" id="packageScanBtn" onclick="runPackageScan()">Check package</button>
+        </div>
+        <div class="examples">
+          Try an example:
+          <button type="button" class="example-chip" onclick="fillPackage('lodash')">lodash</button>
+          <button type="button" class="example-chip" onclick="fillPackage('esbuild')">esbuild</button>
+          <button type="button" class="example-chip" onclick="fillPackage('crossenv')">crossenv</button>
+        </div>
+        <div class="privacy-line">
+          <span class="accent">&#9679;</span> Only the package name and version go to the npm registry and to OSV.dev, Google's open vulnerability database. The package's code is never downloaded or run. <a href="privacy.html#package-check">Details</a>
+        </div>
+        <div class="inline-error" id="packageError" style="display:none;"></div>
       </div>
     </div>
   </section>
@@ -1833,13 +1854,263 @@ function detectEcosystem(addr){
 // block is skipped and every const/function above simply lives in script
 // scope, same as before. In Node (the regression suite), this makes the
 // exact same source file directly require()-able with no duplication.
+
+// =====================================================================
+// PACKAGE CHECK (npm)
+// Reads public information ABOUT a package: the npm registry record, its
+// usage, and OSV.dev's list of malicious and vulnerable versions. It never
+// downloads or runs the package's code, and every result says so. Same
+// evidence model as the address scans: each check is PASS, RISK or
+// UNKNOWN, and VerdictEngine decides.
+// =====================================================================
+const NPM_REGISTRY_URL = 'https://registry.npmjs.org';
+const OSV_QUERY_URL = 'https://api.osv.dev/v1/query';
+const NPM_DOWNLOADS_URL = 'https://api.npmjs.org/downloads/point/last-week/';
+
+// Names attackers copy: widely used packages, the crypto libraries this
+// site's visitors are most likely to install, and packages that have been
+// hijacked or imitated before.
+const POPULAR_NPM = [
+  'react','react-dom','vue','svelte','next','nuxt','@angular/core','express','koa','fastify',
+  'lodash','underscore','axios','request','node-fetch','cross-fetch','isomorphic-fetch','got','superagent',
+  'chalk','debug','commander','yargs','minimist','meow','inquirer','ora','boxen','figlet',
+  'moment','dayjs','date-fns','uuid','async','bluebird','rxjs','immer','zustand','mobx',
+  'typescript','ts-node','tslib','webpack','vite','rollup','esbuild','@babel/core','babel-core',
+  'eslint','prettier','jest','mocha','chai','sinon','jquery','bootstrap','tailwindcss','postcss',
+  'autoprefixer','sass','less','dotenv','cross-env','rimraf','mkdirp','glob','minimatch','semver',
+  'fs-extra','graceful-fs','colors','color','colorette','picocolors','kleur','supports-color','strip-ansi','ansi-regex',
+  'ws','socket.io','mongoose','mongodb','mysql','mysql2','pg','sequelize','typeorm','knex','prisma','@prisma/client',
+  'sqlite3','better-sqlite3','redis','ioredis','body-parser','cors','helmet','morgan','cookie-parser',
+  'jsonwebtoken','bcrypt','bcryptjs','passport','nodemon','pm2','electron','puppeteer','playwright','cheerio',
+  'classnames','prop-types','redux','react-redux','@reduxjs/toolkit','react-router','react-router-dom',
+  'styled-components','@emotion/react','zod','yup','joi','execa','shelljs','cross-spawn','which','node-gyp','nan',
+  'qs','form-data','formidable','multer','sharp','canvas','core-js','regenerator-runtime','@types/node','@types/react',
+  'nodemailer','winston','pino','handlebars','ejs','pug','marked','highlight.js','three','d3','chart.js',
+  'graphql','@apollo/client','xml2js','js-yaml','yaml','ini',
+  'ethers','web3','viem','wagmi','@solana/web3.js','@solana/spl-token','@coral-xyz/anchor','bitcoinjs-lib',
+  'bip39','bip32','ethereumjs-util','ethereum-cryptography','@ethersproject/providers','hardhat','truffle',
+  '@openzeppelin/contracts','@metamask/sdk','@walletconnect/web3-provider','@web3-react/core',
+  '@coinbase/wallet-sdk','@rainbow-me/rainbowkit','tweetnacl','bs58','elliptic','secp256k1','keccak',
+  'crypto-js','@noble/hashes','@noble/curves','bn.js','big.js','bignumber.js','decimal.js',
+  'event-stream','left-pad','ua-parser-js','coa','rc','node-ipc','@faker-js/faker',
+];
+
+// "lodash", "@scope/name", "name@1.2.3", or a pasted "npm install name".
+function parsePackageSpec(input){
+  let s = String(input || '').trim();
+  s = s.replace(/^(?:npm|pnpm)\s+(?:i|install|add)\s+|^yarn\s+add\s+|^npx\s+/i, '');
+  s = s.split(/\s+/)[0] || '';
+  s = s.replace(/^npm:/i, '');
+  let name = s, version = null;
+  const at = s.lastIndexOf('@');
+  if(at > 0){ name = s.slice(0, at); version = s.slice(at + 1); }
+  if(!name || name.length > 214) return null;
+  if(!/^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/i.test(name)) return null;
+  if(version !== null && !/^[\w.+~^-]{1,64}$/.test(version)) return null;
+  return { name, version: version || null };
+}
+
+function osaDistance(a, b, cap){
+  if(Math.abs(a.length - b.length) > cap) return cap + 1;
+  const d = [];
+  for(let i = 0; i <= a.length; i++){ d[i] = [i]; }
+  for(let j = 0; j <= b.length; j++){ d[0][j] = j; }
+  for(let i = 1; i <= a.length; i++){
+    for(let j = 1; j <= b.length; j++){
+      const cost = a[i-1] === b[j-1] ? 0 : 1;
+      d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + cost);
+      if(i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]) d[i][j] = Math.min(d[i][j], d[i-2][j-2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+// The popular package this name imitates, if any.
+function packageLookalike(name){
+  const n = String(name).toLowerCase();
+  if(POPULAR_NPM.includes(n)) return null;
+  const squash = s => s.replace(/[-_.]/g, '');
+  for(const p of POPULAR_NPM){
+    if(squash(p) === squash(n)) return { target: p, how: 'differs only in dashes, dots or underscores' };
+  }
+  if(n.length < 5) return null;
+  for(const p of POPULAR_NPM){
+    if(p.length >= 5 && osaDistance(n, p, 1) === 1) return { target: p, how: 'is one character away' };
+  }
+  return null;
+}
+
+const PKG_INSTALL_HOOKS = ['preinstall', 'install', 'postinstall'];
+// Weekly downloads above which a similar name is an established package in
+// its own right, not a trap.
+const PKG_LOOKALIKE_ESTABLISHED = 50000;
+
+function pkgClip(s, n){
+  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+// Pure: turns the evidence into checks. `ev` comes from fetchPackageEvidence.
+function buildPackageChecks(ev, now){
+  const t = typeof now === 'number' ? now : Date.now();
+  const src = { npm: 'npm registry', osv: 'OSV.dev (open vulnerability database)',
+                usage: 'npm download counts', local: 'SaveSaveSaveSave (name comparison)' };
+  const checks = [];
+  const add = (id, status, label, detail, source, weight, critical) =>
+    checks.push({ id, category: 'package', status, critical: !!critical,
+                  severityWeight: status === 'RISK' ? (weight || 1) : 0, label, detail, source });
+  const meta = ev.version || {};
+  const version = ev.resolvedVersion;
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+  // 1. npm itself took the package down and left a placeholder.
+  const holding = /-security$/.test(String(version || '')) || /^security holding package$/i.test(String(ev.description || ''));
+  if(holding) add('pkg_removed', 'RISK', 'Removed by npm for security reasons',
+    'npm replaced this package with an empty "security holding" placeholder, which it does when a package was malicious. Whatever you were told to install under this name was not safe.',
+    src.npm, 3, true);
+  else add('pkg_removed', 'PASS', 'Not removed by npm', 'npm has not replaced this package with a security placeholder.', src.npm, 0, true);
+
+  // 2 + 3. OSV: reported malicious, reported vulnerable.
+  if(!ev.osv || !ev.osv.ok){
+    const why = 'OSV.dev could not be reached' + (ev.osv && ev.osv.error ? ' (' + pkgClip(ev.osv.error, 60) + ')' : '') + ', so this was not checked.';
+    add('pkg_reported_malicious', 'UNKNOWN', 'Reported as malicious', why, src.osv, 1, true);
+    add('pkg_known_vulns', 'UNKNOWN', 'Known vulnerabilities in this version', why, src.osv, 1);
+  } else {
+    const vulns = ev.osv.vulns || [];
+    const mal = vulns.filter(v => /^MAL-/.test(v.id || ''));
+    const other = vulns.filter(v => !/^MAL-/.test(v.id || ''));
+    if(mal.length) add('pkg_reported_malicious', 'RISK', 'Reported as malicious',
+      'OSV.dev lists this package as malicious (' + mal.slice(0, 3).map(v => pkgClip(v.id, 30)).join(', ') + '). Do not install it. If it is already installed, treat that computer as compromised.',
+      src.osv, 3, true);
+    else add('pkg_reported_malicious', 'PASS', 'Not reported as malicious',
+      'OSV.dev has no malicious-package report for this version. A brand-new attack may not be reported yet.', src.osv, 0, true);
+    if(other.length){
+      const sev = other.map(v => String((v.database_specific && v.database_specific.severity) || '').toUpperCase());
+      const serious = sev.some(s => s === 'HIGH' || s === 'CRITICAL');
+      add('pkg_known_vulns', 'RISK', 'Known vulnerabilities in this version',
+        plural(other.length, 'published vulnerability', 'published vulnerabilities') + (serious ? ', at least one rated high or critical' : '')
+        + ': ' + other.slice(0, 3).map(v => pkgClip(v.id, 30)).join(', ') + (other.length > 3 ? ' and more' : '') + '. A newer version may fix them.',
+        src.osv, serious ? 3 : 1);
+    } else add('pkg_known_vulns', 'PASS', 'No known vulnerabilities in this version',
+      'OSV.dev lists no vulnerability affecting ' + (version || 'this version') + '.', src.osv);
+  }
+
+  // 4. Code that runs during npm install.
+  const scripts = meta.scripts || {};
+  const hooks = PKG_INSTALL_HOOKS.filter(h => typeof scripts[h] === 'string' && scripts[h].trim());
+  if(hooks.length) add('pkg_install_scripts', 'RISK', 'Runs code automatically when installed',
+    'This version has a "' + hooks[0] + '" script: ' + pkgClip(scripts[hooks[0]], 90) + '. It runs on your computer during npm install, before you use the package at all. Many honest packages do this to build native parts; it is also how most malicious packages strike.',
+    src.npm, 2);
+  else if(meta.gypfile) add('pkg_install_scripts', 'RISK', 'Runs code automatically when installed',
+    'This version builds native code during npm install (binding.gyp). That runs on your computer before you use the package.', src.npm, 2);
+  else add('pkg_install_scripts', 'PASS', 'No install scripts', 'Nothing in this version runs automatically during npm install.', src.npm);
+
+  // 5. A name copied from a popular package.
+  const like = packageLookalike(ev.name);
+  const weekly = typeof ev.weekly === 'number' ? ev.weekly : null;
+  if(like && !(weekly !== null && weekly >= PKG_LOOKALIKE_ESTABLISHED)) add('pkg_lookalike', 'RISK', 'Name looks like a popular package',
+    'The name ' + like.how + ' from "' + like.target + '". Typo-squatters copy popular names to catch a mistyped install. If you meant ' + like.target + ', install that instead.',
+    src.local, 3);
+  else add('pkg_lookalike', 'PASS', 'Name does not imitate a popular package',
+    like ? 'Similar to "' + like.target + '", but widely used in its own right.' : 'Not a near-copy of any name on our list of popular and often-imitated packages.', src.local);
+
+  // 6. How old the package is.
+  const created = ev.time && ev.time.created ? Date.parse(ev.time.created) : NaN;
+  if(isNaN(created)) add('pkg_age', 'UNKNOWN', 'Package age', 'The registry did not say when this package was first published.', src.npm);
+  else {
+    const days = Math.max(0, Math.floor((t - created) / 86400000));
+    if(days < 30) add('pkg_age', 'RISK', 'Brand-new package', 'First published ' + plural(days, 'day', 'days') + ' ago. Most malicious packages are young.', src.npm, 1);
+    else add('pkg_age', 'PASS', 'Established package', 'First published ' + new Date(created).toISOString().slice(0, 10) + '.', src.npm);
+  }
+
+  // 7. How fresh this particular version is.
+  const vtime = ev.time && version && ev.time[version] ? Date.parse(ev.time[version]) : NaN;
+  if(isNaN(vtime)) add('pkg_fresh_version', 'UNKNOWN', 'Version age', 'The registry did not say when this version was published.', src.npm);
+  else {
+    const hours = Math.max(0, Math.floor((t - vtime) / 3600000));
+    if(hours < 72) add('pkg_fresh_version', 'RISK', 'This version is very new',
+      'Version ' + version + ' was published ' + (hours < 1 ? 'less than an hour' : plural(hours, 'hour', 'hours')) + ' ago. Hijacked versions of real packages are usually caught within days; waiting a few days before installing a brand-new version avoids most of them.',
+      src.npm, 1);
+    else add('pkg_fresh_version', 'PASS', 'Version is not brand-new', 'Version ' + version + ' was published ' + new Date(vtime).toISOString().slice(0, 10) + '.', src.npm);
+  }
+
+  // 8. Usage.
+  if(weekly === null) add('pkg_usage', 'UNKNOWN', 'How widely it is used', 'Weekly downloads could not be read, so this was not checked.', src.usage);
+  else if(weekly < 100) add('pkg_usage', 'RISK', 'Almost nobody uses it',
+    plural(weekly, 'download', 'downloads') + ' last week. Widely used packages are not automatically safe, but far more people would notice a problem.', src.usage, 1);
+  else add('pkg_usage', 'PASS', 'In real use', weekly.toLocaleString('en-US') + ' downloads last week.', src.usage);
+
+  // 9. Source link.
+  const repo = meta.repository ? (typeof meta.repository === 'string' ? meta.repository : meta.repository.url) : null;
+  if(repo) add('pkg_source_link', 'PASS', 'Links to its source code',
+    'The package points to ' + pkgClip(repo, 80) + '. That link is the author’s claim: nothing here checks that the published code matches it.', src.npm);
+  else add('pkg_source_link', 'RISK', 'No link to its source code',
+    'The package does not say where its source code lives, so nobody can easily read it before installing.', src.npm, 1);
+
+  // 10. Deprecated.
+  if(meta.deprecated) add('pkg_deprecated', 'RISK', 'Marked deprecated',
+    'The maintainer marked this version deprecated: "' + pkgClip(meta.deprecated, 120) + '"', src.npm, 1);
+  else add('pkg_deprecated', 'PASS', 'Not deprecated', 'The maintainer has not marked this version deprecated.', src.npm);
+
+  return { checks, expected: 10, criticalTotal: 2 };
+}
+
+// Network: the registry record, weekly downloads and OSV. `fetchImpl` is
+// injectable so the tests never touch the network.
+async function fetchPackageEvidence(spec, fetchImpl, opts){
+  const f = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  const o = opts || {};
+  const get = async (url, init) => {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), o.timeoutMs || 15000) : null;
+    try { return await f(url, Object.assign({}, init || {}, ctl ? { signal: ctl.signal } : {})); }
+    finally { if(timer) clearTimeout(timer); }
+  };
+  const reg = await get(NPM_REGISTRY_URL + '/' + spec.name.replace('/', '%2F'), { headers: { Accept: 'application/json' } });
+  if(reg.status === 404) return { notFound: true, name: spec.name };
+  if(!reg.ok) throw new Error('The npm registry answered HTTP ' + reg.status + '.');
+  const doc = await reg.json();
+  const tags = doc['dist-tags'] || {};
+  const resolvedVersion = spec.version ? (tags[spec.version] || spec.version) : tags.latest;
+  const v = doc.versions && resolvedVersion ? doc.versions[resolvedVersion] : null;
+  if(!v) return { versionMissing: true, name: spec.name, requested: spec.version || 'latest' };
+
+  // Weekly downloads: npm's download counts, or its search index if that
+  // is unavailable. Neither answering is reported as unknown, not as zero.
+  const fromSearch = () => get(NPM_REGISTRY_URL + '/-/v1/search?text=' + encodeURIComponent(spec.name) + '&size=20')
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const hit = j && (j.objects || []).find(x => x && x.package && x.package.name === spec.name);
+      return hit && hit.downloads && typeof hit.downloads.weekly === 'number' ? hit.downloads.weekly : null;
+    })
+    .catch(() => null);
+  const usage = get(NPM_DOWNLOADS_URL + spec.name)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => j && typeof j.downloads === 'number' ? j.downloads : null)
+    .catch(() => null)
+    .then(w => w !== null ? w : fromSearch());
+  const osv = get(OSV_QUERY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package: { name: spec.name, ecosystem: 'npm' }, version: resolvedVersion }) })
+    .then(async r => r.ok ? { ok: true, vulns: ((await r.json()) || {}).vulns || [] } : { ok: false, error: 'HTTP ' + r.status })
+    .catch(e => ({ ok: false, error: (e && e.name === 'AbortError') ? 'timed out' : 'no response' }));
+  const [weekly, osvResult] = await Promise.all([usage, osv]);
+  return {
+    name: spec.name, resolvedVersion, description: doc.description || '', time: doc.time || {},
+    version: { scripts: v.scripts || {}, gypfile: !!v.gypfile,
+               repository: v.repository || doc.repository || null, deprecated: v.deprecated || null },
+    weekly, osv: osvResult,
+  };
+}
+
 if(typeof module !== 'undefined' && module.exports){
   module.exports = {
     escapeHtml, stripSpoofChars, getPath, flagState, buildCheck, VerdictEngine, fetchGoPlus,
     EVM_TOKEN_CHECK_DEFS, EVM_WALLET_CHECK_DEFS, EVM_CHAINS, normalizeEvmRecord, EvmAdapter,
     COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
     SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
-    SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem
+    SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem,
+    POPULAR_NPM, parsePackageSpec, packageLookalike, buildPackageChecks, fetchPackageEvidence,
+    NPM_REGISTRY_URL, NPM_DOWNLOADS_URL, OSV_QUERY_URL
   };
 }
 
@@ -4551,6 +4822,9 @@ function verdictCardModel(o){
   if(o.kind === 'address'){
     m.groups = cardAddressGroups(o.address);
     m.target = [o.chainLabel, o.scanType].filter(Boolean).join(' · ');
+  } else if(o.kind === 'package'){
+    m.groups = null;
+    m.target = 'npm package · ' + String(o.packageLabel || '');
   } else {
     m.groups = null;
     m.target = 'Message scan · ' + Number(o.characters || 0).toLocaleString('en-US')
@@ -4703,16 +4977,179 @@ function currentMessageCard(){
   return c ? verdictCardModel(messageCardInput(c, MSG.promptScan, MSG)) : null;
 }
 
+// ---- Package check (npm): UI -------------------------------------------
+// The engine part lives in the core block (parsePackageSpec,
+// fetchPackageEvidence, buildPackageChecks). This renders it. Everything
+// that came from npm or OSV is escaped before it touches the page: package
+// names, deprecation messages and script text are chosen by whoever
+// published the package.
+function fillPackage(name){
+  const el = document.getElementById('packageInput');
+  if(el){ el.value = name; el.focus(); }
+}
+
+function packageCardInput(result, ev, checks){
+  const nc = ['Package code not analysed', 'Dependencies not checked'];
+  if(result.checksUnknown > 0) nc.unshift(result.checksUnknown + ' of ' + result.checksExpected + ' checks unreadable');
+  return {
+    kind: 'package', verdict: result.verdict, packageLabel: ev.name + '@' + ev.resolvedVersion,
+    found: checks.filter(c => c.status === 'RISK').map(c => c.label), notChecked: nc, when: new Date(),
+  };
+}
+
+function packageNotice(badge, headline, bodyHtml){
+  const results = document.getElementById('results');
+  results.innerHTML = '<div class="pass"><div class="pass-top"><div class="verdict">'
+    + '<div class="verdict-badge unknown">' + escapeHtml(badge) + '</div>'
+    + '<div class="verdict-meta"><strong>' + escapeHtml(headline) + '</strong></div>'
+    + '</div></div><div class="pass-body"><p class="pkg-note">' + bodyHtml + '</p></div></div>';
+  results.style.display = 'block';
+  if(results.scrollIntoView) results.scrollIntoView(ScanConsole.scrollOpts());
+}
+
+function renderPackage(result, ev, built){
+  const safe = c => Object.assign({}, c, { label: escapeHtml(c.label), detail: escapeHtml(c.detail), source: escapeHtml(c.source) });
+  const rows = built.checks.filter(c => c.status === 'RISK')
+    .concat(built.checks.filter(c => c.status === 'UNKNOWN'), built.checks.filter(c => c.status === 'PASS')).map(safe);
+  const limits = [
+    { material: true, text: 'The package code was not downloaded or analysed. These checks read public information about the package, not what its code does.' },
+    { material: true, text: 'Its dependencies were not checked. A package that looks clean can still pull in one that is not.' },
+    { text: 'A brand-new attack that nobody has reported to OSV.dev yet will not show up as "reported as malicious".' },
+    { text: 'Only npm is covered. Packages from PyPI, crates.io and other registries are not.' },
+  ];
+  if(result.checksUnknown > 0) limits.unshift({ material: true, text: result.checksUnknown + ' of ' + result.checksExpected
+    + ' checks could not be answered and were NOT verified. Those are unknowns, not passes.' });
+  const scripts = (ev.version && ev.version.scripts) || {};
+  const raw = {
+    name: ev.name, version: ev.resolvedVersion, firstPublished: (ev.time || {}).created || null,
+    versionPublished: (ev.time || {})[ev.resolvedVersion] || null, weeklyDownloads: ev.weekly,
+    installScripts: PKG_INSTALL_HOOKS.filter(h => scripts[h]).reduce((o, h) => { o[h] = scripts[h]; return o; }, {}),
+    repository: ev.version ? ev.version.repository : null, deprecated: ev.version ? ev.version.deprecated : null,
+    osv: ev.osv && ev.osv.ok ? (ev.osv.vulns || []).map(v => v.id) : ('not answered: ' + ((ev.osv && ev.osv.error) || 'unknown')),
+  };
+  const html = '<div class="pass">'
+    + '<div class="pass-top"><div class="verdict">'
+      + '<div class="verdict-badge ' + escapeHtml(result.verdict) + '">' + escapeHtml(result.label) + '</div>'
+      + '<div class="verdict-meta"><strong>' + escapeHtml(result.sub) + '</strong></div>'
+    + '</div><div class="pass-id">npm · Package check'
+      + '<span class="addr">' + escapeHtml(ev.name) + '@' + escapeHtml(ev.resolvedVersion) + '</span></div></div>'
+    + '<div class="pass-body">'
+      + '<div class="coverage-line">' + result.checksValid + '/' + result.checksExpected + ' checks completed · '
+        + result.checksUnknown + ' unreadable · confidence: ' + escapeHtml(result.confidence) + '</div>'
+      + '<ul class="checklist">' + rows.map(checkRow).join('') + '</ul>'
+      + sectionShell('What this scan did not do', null, null, '<ul class="limit-list">'
+        + limits.map(l => '<li' + (l.material ? ' class="material"' : '') + '>' + escapeHtml(l.text) + '</li>').join('') + '</ul>')
+      + '<button class="raw-toggle" onclick="toggleRaw(this)">View the data this was based on</button>'
+      + '<pre class="raw">' + escapeHtml(JSON.stringify(raw, null, 2)) + '</pre>'
+    + '</div>'
+    + '<div class="pass-footer"><span>Checked ' + escapeHtml(new Date().toLocaleString()) + '</span>'
+      + '<span>Sources: npm registry · OSV.dev</span></div>'
+  + '</div>';
+  const results = document.getElementById('results');
+  results.innerHTML = html;
+  results.style.display = 'block';
+  offerShareCard(verdictCardModel(packageCardInput(result, ev, built.checks)));
+  if(results.scrollIntoView) results.scrollIntoView(ScanConsole.scrollOpts());
+}
+
+async function runPackageScan(){
+  const input = document.getElementById('packageInput');
+  const err = document.getElementById('packageError');
+  const results = document.getElementById('results');
+  const btn = document.getElementById('packageScanBtn');
+  err.style.display = 'none';
+  document.getElementById('scanError').style.display = 'none';
+  hideNextStep();
+  const spec = parsePackageSpec(input.value);
+  if(!spec){
+    err.textContent = 'That doesn’t look like an npm package name. Try lodash, @scope/name or name@1.2.3.';
+    err.style.display = 'block';
+    return;
+  }
+  results.style.display = 'none';
+  results.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Checking…';
+  const label = spec.name + (spec.version ? '@' + spec.version : '');
+  const clock = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const t0 = clock();
+  const runId = ScanConsole.begin({
+    title: 'Risk pass · package check',
+    target: label,
+    sub: 'npm · public information about the package',
+    foot: 'Only the package name goes to npm and OSV.dev. Its code is never downloaded or run.',
+    stages: [
+      { id:'format',   text:'Reading the package name' },
+      { id:'registry', text:'Asking the npm registry about the package' },
+      { id:'sources',  text:'Checking downloads and OSV.dev’s malicious-package reports' },
+      { id:'weigh',    text:'Weighing the evidence' },
+      { id:'cap_code', text:'Reading the package’s code', state:'skipped', note:'not performed — the code is never downloaded' },
+      { id:'cap_deps', text:'Checking its dependencies', state:'skipped', note:'not performed — only this package is checked' },
+    ],
+  });
+  try {
+    await ScanConsole.step(runId, 'format', 'done', label);
+    if(!ScanConsole.isCurrent(runId)) return;
+    ScanConsole.set(runId, 'registry', 'active', 'contacting registry.npmjs.org');
+    const ev = await fetchPackageEvidence(spec);
+    if(!ScanConsole.isCurrent(runId)) return;
+    if(ev.notFound){
+      ScanConsole.fail(runId, 'NOT ON NPM', 'no package with this name');
+      const like = packageLookalike(spec.name);
+      packageNotice('NOT ON NPM', 'No package named "' + spec.name + '" exists on npm.',
+        'If a message, a tutorial or an AI assistant told you to install it, be careful: anyone can register an unused name later and put anything in it.'
+        + (like ? ' The name ' + escapeHtml(like.how) + ' from <strong>' + escapeHtml(like.target) + '</strong>. If you meant that package, check it instead.' : ''));
+      return;
+    }
+    if(ev.versionMissing){
+      ScanConsole.fail(runId, 'NO SUCH VERSION', 'version ' + ev.requested + ' is not published');
+      packageNotice('NO SUCH VERSION', 'npm has no version "' + ev.requested + '" of ' + ev.name + '.',
+        'Check the version number, or leave it out to check the latest version.');
+      return;
+    }
+    await ScanConsole.step(runId, 'registry', 'done', 'version ' + ev.resolvedVersion);
+    if(!ScanConsole.isCurrent(runId)) return;
+    const n = ev.osv && ev.osv.ok ? (ev.osv.vulns || []).length : null;
+    await ScanConsole.step(runId, 'sources', ev.osv && ev.osv.ok ? 'done' : 'warn',
+      n === null ? 'OSV.dev did not answer' : (n ? n + ' report' + (n === 1 ? '' : 's') + ' for this version' : 'no reports for this version'));
+    if(!ScanConsole.isCurrent(runId)) return;
+    const built = buildPackageChecks(ev);
+    const result = VerdictEngine.evaluate(built.checks, built.expected, 'npm', built.criticalTotal);
+    const risks = built.checks.filter(c => c.status === 'RISK').length;
+    await ScanConsole.step(runId, 'weigh', risks ? 'warn' : 'done',
+      risks ? risks + ' risk signal' + (risks === 1 ? '' : 's') + ' found' : 'no risk signal in the answered checks');
+    if(!ScanConsole.isCurrent(runId)) return;
+    await ScanConsole.finish(runId, {
+      state: result.verdict === 'fail' ? 'failed' : (result.verdict === 'pass' ? 'done' : 'warn'),
+      stateText: result.label, realMs: clock() - t0,
+    });
+    if(!ScanConsole.isCurrent(runId)) return;
+    renderPackage(result, ev, built);
+  } catch(e){
+    if(!ScanConsole.isCurrent(runId)) return;
+    ScanConsole.fail(runId, 'SCAN STOPPED', 'the npm registry did not answer');
+    const se = document.getElementById('scanError');
+    se.textContent = 'The package check could not complete: ' + (e && e.name === 'AbortError' ? 'the npm registry did not answer in time' : ((e && e.message) || 'network error'))
+      + '. Treat this as INSUFFICIENT DATA, not as a pass.';
+    se.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Check package';
+  }
+}
+
 function setScanMode(m) {
   const addr = document.getElementById('addressPanel');
   const prompt = document.getElementById('promptPanel');
   const bAddr = document.getElementById('smode-address');
   const bPrompt = document.getElementById('smode-prompt');
-  const isPrompt = m === 'prompt';
-  addr.style.display = isPrompt ? 'none' : 'block';
+  const pkg = document.getElementById('packagePanel');
+  const bPkg = document.getElementById('smode-package');
+  const isPrompt = m === 'prompt', isPkg = m === 'package';
+  addr.style.display = (isPrompt || isPkg) ? 'none' : 'block';
   prompt.classList.toggle('active', isPrompt);
-  bAddr.setAttribute('aria-selected', String(!isPrompt));
+  if(pkg) pkg.classList.toggle('active', isPkg);
+  bAddr.setAttribute('aria-selected', String(!isPrompt && !isPkg));
   bPrompt.setAttribute('aria-selected', String(isPrompt));
+  if(bPkg) bPkg.setAttribute('aria-selected', String(isPkg));
   document.getElementById('results').style.display = 'none';
   document.getElementById('scanError').style.display = 'none';
   hideNextStep();
