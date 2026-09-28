@@ -1,6 +1,6 @@
 # SaveSaveSaveSave
 
-**A free checker for the moment before you act in crypto.** Paste a message, an address or a token and get an honest verdict: what was found, and what was *not* checked.
+**A free checker for the moment before you act in crypto.** Paste a message, an address, a token or an npm package and get an honest verdict: what was found, and what was *not* checked.
 
 **Live:** https://savesavesavesave.xyz · No account · Open source (AGPL-3.0)
 
@@ -12,6 +12,7 @@
 |---|---|---|---|
 | **Message scan** | A DM, email, "support" message or AI prompt | Requests for a recovery phrase, keys or logins; disguised links; invisible and look-alike characters; hidden markup; prompt injection aimed at AI assistants; addresses inside the text | **Entirely in your browser.** The text is never sent anywhere. |
 | **Address / token scan** | A wallet or token address | Honeypot patterns, owner powers (minting, balance edits, blacklists), sell restrictions and similar flags from public security data; sanctions screening for EVM wallets | Your browser asks [GoPlus Security](https://gopluslabs.io) directly; some chains and the sanctions checks go through our Cloudflare Worker |
+| **Package check** | An npm package name (optionally a version) | Removed by npm for security reasons; reported malicious or vulnerable in OSV.dev; code that runs during `npm install`; a name imitating a popular package; age, usage, source link, deprecation. The package's code is never downloaded | Your browser asks the npm registry and OSV.dev directly; only the name and version are sent |
 | **Compare two addresses** | The address you meant and the one you're about to pay | Every character, grouped in fours, to catch address poisoning | Entirely in your browser |
 
 Coverage: 14 EVM chains, Solana, Sui and TRON for token and address data. EVM wallets are also screened against the Chainalysis sanctions oracle, and their recent counterparties are screened on 8 chains.
