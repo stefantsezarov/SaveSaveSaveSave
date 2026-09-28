@@ -436,6 +436,18 @@ if (fs.existsSync(guidePath)) {
   }
 }
 
+// ---- "How the pass is built" matches the selected scan ------------------
+{
+  const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const how = (idx.match(/<section class="how">[\s\S]*?<\/section>/) || [''])[0];
+  for (const [id, hidden] of [['address', false], ['prompt', true], ['package', true]]) {
+    const m = how.match(new RegExp('<div class="steps" id="how-' + id + '"( hidden)?>([\\s\\S]*?)\\n    </div>'));
+    check('how it works: the ' + id + ' scan has three steps' + (hidden ? ', hidden until selected' : ', shown first'),
+      !!m && !!m[1] === hidden && (m[2].match(/class="step"/g) || []).length === 3);
+  }
+  check('how it works: switching scans switches the steps', /\['how-package', isPkg\]/.test(idx) && /\.steps\[hidden\]\{display:none;\}/.test(idx));
+}
+
 // ---- guide 8 is reachable from the tool it pairs with --------------------
 {
   const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');

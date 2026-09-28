@@ -727,6 +727,7 @@
   .how{margin:52px 0 20px;}
   .how h2{font-family:'Space Grotesk', sans-serif; font-size:1.3rem; margin-bottom:22px;}
   .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .steps[hidden]{display:none;}
   .step{background:var(--surface); border:1px solid var(--border); border-radius:0; padding:18px;}
   .step-n{font-family:'IBM Plex Mono', monospace; color:var(--accent); font-size:0.75rem; margin-bottom:8px;}
   .step h3{font-size:0.95rem; margin:0 0 6px; font-family:'Space Grotesk', sans-serif;}
@@ -1011,7 +1012,7 @@
 
   <section class="how">
     <h2>How the pass is built</h2>
-    <div class="steps">
+    <div class="steps" id="how-address">
       <div class="step">
         <div class="step-n">01</div>
         <h3>Pick a chain and an address</h3>
@@ -1026,6 +1027,40 @@
         <div class="step-n">03</div>
         <h3>A conservative verdict is formed</h3>
         <p>A single confirmed severe finding always means FAIL. Missing or unreadable data never quietly becomes a clean PASS — it's reported as insufficient data instead.</p>
+      </div>
+    </div>
+    <div class="steps" id="how-prompt" hidden>
+      <div class="step">
+        <div class="step-n">01</div>
+        <h3>Read in your browser</h3>
+        <p>The text you paste is analysed on this page. Nothing is sent, stored or seen by us, and nothing reaches an advertiser.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">02</div>
+        <h3>Known tricks checked, line by line</h3>
+        <p>It looks for invisible characters, concealed markup, encoded payloads, disguised links, requests for recovery phrases, keys or logins, and hidden instructions aimed at AI assistants. Addresses in the text can then be checked one by one.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">03</div>
+        <h3>A cautious verdict</h3>
+        <p>A critical finding always means FAIL. Minor signals alone never add up to FAIL, and text that explains a trick is weighed differently from text that uses it. A clean result means no covered pattern matched, not that the message is safe.</p>
+      </div>
+    </div>
+    <div class="steps" id="how-package" hidden>
+      <div class="step">
+        <div class="step-n">01</div>
+        <h3>Only the name leaves your browser</h3>
+        <p>The package name and version go to the npm registry and to OSV.dev, Google's open vulnerability database. The package's code is never downloaded or run.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">02</div>
+        <h3>Up to fifteen public checks</h3>
+        <p>Whether npm removed it, whether OSV.dev reports it as malicious or vulnerable, what its install script does, whether its name imitates a popular package, and whether this release looks hijacked next to the package's own history.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">03</div>
+        <h3>A conservative verdict</h3>
+        <p>A malicious report, an npm security takedown or an install script that pipes downloads into a shell means FAIL. Sources that do not answer count as unknown, never as a pass, and every result lists what was not checked.</p>
       </div>
     </div>
   </section>
@@ -5290,6 +5325,11 @@ function setScanMode(m) {
   bAddr.setAttribute('aria-selected', String(!isPrompt && !isPkg));
   bPrompt.setAttribute('aria-selected', String(isPrompt));
   if(bPkg) bPkg.setAttribute('aria-selected', String(isPkg));
+  // "How the pass is built" describes the scan that is actually selected.
+  [['how-address', !isPrompt && !isPkg], ['how-prompt', isPrompt], ['how-package', isPkg]].forEach(([id, on]) => {
+    const el = document.getElementById(id);
+    if(el) el.hidden = !on;
+  });
   document.getElementById('results').style.display = 'none';
   document.getElementById('scanError').style.display = 'none';
   hideNextStep();
