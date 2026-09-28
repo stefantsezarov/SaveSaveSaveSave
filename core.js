@@ -838,9 +838,10 @@ const POPULAR_NPM = [
 
 // "lodash", "@scope/name", "name@1.2.3", or a pasted "npm install name".
 function parsePackageSpec(input){
-  let s = String(input || '').trim();
+  const unquote = x => x.replace(/^[`'"\u2018\u2019\u201C\u201D]+|[`'"\u2018\u2019\u201C\u201D]+$/g, '');   // pasted with quotes
+  let s = unquote(String(input || '').trim()).trim();
   s = s.replace(/^(?:npm|pnpm)\s+(?:i|install|add)\s+|^yarn\s+add\s+|^npx\s+/i, '');
-  s = s.split(/\s+/)[0] || '';
+  s = unquote(s.split(/\s+/)[0] || '');
   s = s.replace(/^npm:/i, '');
   let name = s, version = null;
   const at = s.lastIndexOf('@');
@@ -870,10 +871,14 @@ function osaDistance(a, b, cap){
 function packageLookalike(name){
   const n = String(name).toLowerCase();
   if(POPULAR_NPM.includes(n)) return null;
-  const squash = s => s.replace(/[-_.]/g, '');
-  for(const p of POPULAR_NPM){
-    if(squash(p) === squash(n)) return { target: p, how: 'differs only in dashes, dots or underscores' };
-  }
+  // Separators and the scope's @ and / removed: catches reactrouter for
+  // react-router and solana-web3.js for @solana/web3.js.
+  const squash = s => s.replace(/[-_.@/]/g, '');
+  const scoped = s => s.charAt(0) === '@';
+  const same = POPULAR_NPM.filter(p => squash(p) === squash(n))
+    .sort((a, b) => (scoped(a) === scoped(n) ? 0 : 1) - (scoped(b) === scoped(n) ? 0 : 1))[0];
+  if(same) return { target: same, how: scoped(same) && !scoped(n)
+    ? 'copies a scoped package without its scope' : 'differs only in dashes, dots or underscores' };
   if(n.length < 5) return null;
   for(const p of POPULAR_NPM){
     if(p.length >= 5 && osaDistance(n, p, 1) === 1) return { target: p, how: 'is one character away' };
@@ -882,6 +887,36 @@ function packageLookalike(name){
 }
 
 const PKG_INSTALL_HOOKS = ['preinstall', 'install', 'postinstall'];
+
+// What an install-script LINE does, read as text. Only the line in
+// package.json is available here: when it runs a file (node install.js)
+// that file is never downloaded, and the result says so.
+function installScriptSignals(text){
+  const s = String(text || '');
+  const out = [];
+  if(/\|\s*(?:ba|z|da)?sh\b|\biex\b|Invoke-Expression/i.test(s))
+    out.push({ what: 'pipes downloaded code into a shell', critical: true });
+  if(/~\/\.(?:ssh|aws|npmrc|gnupg|config\/solana)|\bid_rsa\b|\.ethereum\/keystore|wallet\.dat|Login Data|Local State|keychain/i.test(s))
+    out.push({ what: 'reaches for keys or saved credentials', critical: true });
+  if(/\b(?:curl|wget|Invoke-WebRequest|iwr|certutil\s+-urlcache|bitsadmin)\b/i.test(s))
+    out.push({ what: 'downloads something', critical: false });
+  else if(/https?:\/\//i.test(s))
+    out.push({ what: 'contacts a web address', critical: false });
+  if(/base64|Buffer\.from\([^)]*['"](?:base64|hex)|\batob\(|(?:\\x[0-9a-f]{2}){4}|\beval\s*\(|new\s+Function\s*\(|powershell[^;&|]*\s-(?:enc|encodedcommand|e)\b|\bpython\d?\s+-c\b/i.test(s))
+    out.push({ what: 'runs hidden or encoded code', critical: false });
+  if(/process\.env\b|\$\{?(?:NPM_TOKEN|GITHUB_TOKEN|GH_TOKEN|AWS_[A-Z_]+|[A-Z_]*SECRET[A-Z_]*|[A-Z_]*API_KEY)\b/.test(s))
+    out.push({ what: 'reads secrets from the environment', critical: false });
+  return out.sort((a, b) => (b.critical ? 1 : 0) - (a.critical ? 1 : 0));
+}
+
+function repoKey(u){
+  let s = String(u || '').toLowerCase().trim();
+  // npm's shorthands: "github:owner/repo", "gitlab:…", "bitbucket:…", or bare "owner/repo".
+  s = s.replace(/^github:/, 'github.com/').replace(/^gitlab:/, 'gitlab.com/').replace(/^bitbucket:/, 'bitbucket.org/');
+  if(/^[\w.-]+\/[\w.-]+$/.test(s) && !/^[\w-]+\.[\w.-]+\//.test(s)) s = 'github.com/' + s;
+  return s.replace(/^git\+/, '').replace(/^[a-z]+:\/\//, '').replace(/^git@/, '')
+    .replace(/^([^/:]+):/, '$1/').replace(/^www\./, '').replace(/\.git$/, '').replace(/\/+$/, '');
+}
 // Weekly downloads above which a similar name is an established package in
 // its own right, not a trap.
 const PKG_LOOKALIKE_ESTABLISHED = 50000;
@@ -942,11 +977,18 @@ function buildPackageChecks(ev, now){
       'OSV.dev lists no vulnerability affecting ' + (version || 'this version') + '.', src.osv);
   }
 
-  // 4. Code that runs during npm install.
+  // 4. Code that runs during npm install, and what its script line does.
   const scripts = meta.scripts || {};
   const hooks = PKG_INSTALL_HOOKS.filter(h => typeof scripts[h] === 'string' && scripts[h].trim());
-  if(hooks.length) add('pkg_install_scripts', 'RISK', 'Runs code automatically when installed',
-    'This version has a "' + hooks[0] + '" script: ' + pkgClip(scripts[hooks[0]], 90) + '. It runs on your computer during npm install, before you use the package at all. Many honest packages do this to build native parts; it is also how most malicious packages strike.',
+  const signals = hooks.length ? installScriptSignals(hooks.map(h => scripts[h]).join(' ; ')) : [];
+  if(signals.length){
+    const critical = signals.some(x => x.critical);
+    add('pkg_install_scripts', 'RISK', 'Install script ' + signals[0].what,
+      'The "' + hooks[0] + '" script reads: ' + pkgClip(scripts[hooks[0]], 90) + '. It ' + signals.map(x => x.what).join(', ')
+      + ', and it runs on your computer during npm install, before you use the package at all. Honest packages almost never need this.',
+      src.npm, critical ? 3 : 4, critical);
+  } else if(hooks.length) add('pkg_install_scripts', 'RISK', 'Runs code automatically when installed',
+    'This version has a "' + hooks[0] + '" script: ' + pkgClip(scripts[hooks[0]], 90) + '. It runs on your computer during npm install, before you use the package at all. Many honest packages do this to build native parts; it is also how most malicious packages strike. Only this line was read, not any file it runs.',
     src.npm, 2);
   else if(meta.gypfile) add('pkg_install_scripts', 'RISK', 'Runs code automatically when installed',
     'This version builds native code during npm install (binding.gyp). That runs on your computer before you use the package.', src.npm, 2);
@@ -999,7 +1041,61 @@ function buildPackageChecks(ev, now){
     'The maintainer marked this version deprecated: "' + pkgClip(meta.deprecated, 120) + '"', src.npm, 1);
   else add('pkg_deprecated', 'PASS', 'Not deprecated', 'The maintainer has not marked this version deprecated.', src.npm);
 
-  return { checks, expected: 10, criticalTotal: 2 };
+  // 11-15. Signs of a hijacked release, judged against this package's own
+  // earlier versions. A first version has nothing to compare with, so these
+  // are skipped and the result says why.
+  const notes = [];
+  const h = ev.history || null;
+  if(!h || !h.count){
+    notes.push('This is the first published version, so there was nothing earlier to compare it with for signs of a hijacked release.');
+  } else {
+    const who = meta.publisher;
+    if(who && (h.earlierPublishers || []).length){
+      // Weight 1: large projects change publishing accounts often, so on its
+      // own this is a note; next to other signs it adds up.
+      if(h.count >= 3 && !h.earlierPublishers.includes(who) && meta.provenance) add('pkg_publisher', 'PASS', 'New publishing account, with a build record',
+        'Version ' + version + ' was published by "' + pkgClip(who, 40) + '", an account new to this package, but it carries a provenance record tying it to its source repository\u2019s build. Someone publishing from a stolen account could not easily produce that.', src.npm);
+      else if(h.count >= 3 && !h.earlierPublishers.includes(who)) add('pkg_publisher', 'RISK', 'Published by a new account',
+        'Version ' + version + ' was published by the npm account "' + pkgClip(who, 40) + '", which published none of the earlier versions. That happens when a project changes hands or moves its publishing, and it is also what a hijacked package looks like.', src.npm, 1);
+      else if(h.earlierPublishers.includes(who)) add('pkg_publisher', 'PASS', 'Published by a familiar account',
+        'Version ' + version + ' was published by "' + pkgClip(who, 40) + '", who also published earlier versions.', src.npm);
+      else add('pkg_publisher', 'PASS', 'Too few earlier versions to judge the publisher',
+        'Version ' + version + ' was published by "' + pkgClip(who, 40) + '", an account new to this package, but with only ' + h.count + ' earlier version' + (h.count === 1 ? '' : 's') + ' that is not unusual yet.', src.npm);
+    }
+    if(h.earlierProvenance && !meta.provenance) add('pkg_provenance', 'RISK', 'No build record, unlike earlier versions',
+      'Recent earlier versions were published with a provenance record linking them to their source code and build. This one was not, which suggests it was published by hand from someone\u2019s account. Hijacked versions usually are.', src.npm, 3);
+    else if(meta.provenance) add('pkg_provenance', 'PASS', 'Has a build record (provenance)',
+      'npm holds a provenance record linking this version to its source repository and build. This check confirms the record exists; it does not verify its signature.', src.npm);
+    else add('pkg_provenance', 'PASS', 'No build record, same as before',
+      'Neither this version nor recent earlier ones carry a provenance record. Most packages do not; it is a warning sign only when it disappears.', src.npm);
+    const prev = h.previous;
+    const pt = prev && prev.time ? Date.parse(prev.time) : NaN;
+    if(!isNaN(pt) && !isNaN(vtime)){
+      const gap = Math.floor((vtime - pt) / 86400000), age = Math.floor((t - vtime) / 86400000);
+      if(gap > 365 && age < 30 && meta.provenance) add('pkg_dormant', 'PASS', 'Back after a long silence, with a build record',
+        'Version ' + version + ' came out after ' + plural(Math.floor(gap / 30), 'month', 'months') + ' with no release, but it carries a provenance record tying it to its source repository\u2019s build, which a hijacker publishing by hand would not have.', src.npm);
+      else if(gap > 365 && age < 30) add('pkg_dormant', 'RISK', 'Sudden release after a long silence',
+        'Version ' + version + ' came out ' + plural(age, 'day', 'days') + ' ago, after ' + plural(Math.floor(gap / 30), 'month', 'months') + ' with no release. Hijackers favour quiet packages whose owners are no longer watching.', src.npm, 2);
+      else add('pkg_dormant', 'PASS', 'No sudden return from silence', 'The release before this one was ' + plural(gap, 'day', 'days') + ' earlier.', src.npm);
+    }
+    if(prev && prev.repository){
+      const was = typeof prev.repository === 'string' ? prev.repository : prev.repository.url;
+      const own = meta.ownRepository ? (typeof meta.ownRepository === 'string' ? meta.ownRepository : meta.ownRepository.url) : null;
+      if(!own) add('pkg_repo_changed', 'RISK', 'Source link removed in this version',
+        'The previous version pointed to ' + pkgClip(was, 70) + '. This one gives no source link at all.', src.npm, 2);
+      else if(repoKey(own) !== repoKey(was)) add('pkg_repo_changed', 'RISK', 'Source link changed in this version',
+        'The previous version pointed to ' + pkgClip(was, 60) + '; this one points to ' + pkgClip(own, 60) + '. Check that the new place really belongs to the same project.', src.npm, 2);
+      else add('pkg_repo_changed', 'PASS', 'Same source link as the previous version', 'Both versions point to the same source repository.', src.npm);
+    }
+    if(meta.unpackedSize && prev && prev.unpackedSize){
+      const mb = n => (n / 1048576).toFixed(n < 1048576 ? 2 : 1) + ' MB';
+      if(meta.unpackedSize > prev.unpackedSize * 5 && meta.unpackedSize - prev.unpackedSize > 1048576) add('pkg_size_jump', 'RISK', 'Much bigger than the previous version',
+        'This version unpacks to ' + mb(meta.unpackedSize) + ', against ' + mb(prev.unpackedSize) + ' for the previous one. A sudden jump can mean something extra was bundled in.', src.npm, 1);
+      else add('pkg_size_jump', 'PASS', 'Size in line with the previous version', mb(meta.unpackedSize) + ' unpacked, against ' + mb(prev.unpackedSize) + ' before.', src.npm);
+    }
+  }
+
+  return { checks, expected: checks.length, criticalTotal: checks.filter(c => c.critical).length, notes };
 }
 
 // Network: the registry record, weekly downloads and OSV. `fetchImpl` is
@@ -1021,6 +1117,28 @@ async function fetchPackageEvidence(spec, fetchImpl, opts){
   const resolvedVersion = spec.version ? (tags[spec.version] || spec.version) : tags.latest;
   const v = doc.versions && resolvedVersion ? doc.versions[resolvedVersion] : null;
   if(!v) return { versionMissing: true, name: spec.name, requested: spec.version || 'latest' };
+
+  // Earlier versions, in publishing order, for the hijack comparisons.
+  const times = doc.time || {};
+  const ordered = Object.keys(doc.versions || {}).filter(k => times[k] && !isNaN(Date.parse(times[k])))
+    .sort((a, b) => Date.parse(times[a]) - Date.parse(times[b]));
+  const at = ordered.indexOf(resolvedVersion);
+  const all = at > 0 ? ordered.slice(0, at) : [];
+  // Compare a stable release with earlier stable releases: nightlies and
+  // release candidates are often built by other accounts and pipelines.
+  const pre = k => /-/.test(k);
+  const stable = pre(resolvedVersion) ? all : all.filter(k => !pre(k));
+  const earlier = (stable.length ? stable : all).map(k => doc.versions[k]);
+  const hasProv = x => !!(x && x.dist && x.dist.attestations && x.dist.attestations.provenance);
+  const who = x => x && x._npmUser && x._npmUser.name ? String(x._npmUser.name) : null;
+  const last = earlier.length ? earlier[earlier.length - 1] : null;
+  const history = {
+    count: earlier.length,
+    earlierPublishers: [...new Set(all.map(k => who(doc.versions[k])).filter(Boolean))],
+    earlierProvenance: earlier.slice(-5).some(hasProv),
+    previous: last ? { time: times[last.version] || null, repository: last.repository || null,
+                       unpackedSize: (last.dist && last.dist.unpackedSize) || null } : null,
+  };
 
   // Weekly downloads: npm's download counts, or its search index if that
   // is unavailable. Neither answering is reported as unknown, not as zero.
@@ -1044,8 +1162,10 @@ async function fetchPackageEvidence(spec, fetchImpl, opts){
   return {
     name: spec.name, resolvedVersion, description: doc.description || '', time: doc.time || {},
     version: { scripts: v.scripts || {}, gypfile: !!v.gypfile,
-               repository: v.repository || doc.repository || null, deprecated: v.deprecated || null },
-    weekly, osv: osvResult,
+               repository: v.repository || doc.repository || null, ownRepository: v.repository || null,
+               deprecated: v.deprecated || null, publisher: who(v), provenance: hasProv(v),
+               unpackedSize: (v.dist && v.dist.unpackedSize) || null },
+    history, weekly, osv: osvResult,
   };
 }
 
@@ -1056,7 +1176,7 @@ if(typeof module !== 'undefined' && module.exports){
     COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
     SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
     SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem,
-    POPULAR_NPM, parsePackageSpec, packageLookalike, buildPackageChecks, fetchPackageEvidence,
+    POPULAR_NPM, parsePackageSpec, packageLookalike, buildPackageChecks, fetchPackageEvidence, installScriptSignals, repoKey,
     NPM_REGISTRY_URL, NPM_DOWNLOADS_URL, OSV_QUERY_URL
   };
 }
