@@ -62,6 +62,9 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'scan_message', arguments: { message: 'hi', path: '/etc/passwd' } } },
     { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'write_file', arguments: {} } },
     { jsonrpc: '2.0', id: 6, method: 'nope' },
+    { jsonrpc: '2.0', method: 'tools/list' },
+    { jsonrpc: '2.0', method: 'ping' },
+    { jsonrpc: '2.0', method: 'tools/call', params: { name: 'scan_message', arguments: { message: 'hi' } } },
   ].map(x => JSON.stringify(x)).join('\n') + '\nnot json\n';
   const r = spawnSync(process.execPath, [path.join(__dirname, 'mcp-server.js')], { input: lines, encoding: 'utf8', timeout: 20000 });
   const out = r.stdout.trim().split('\n').map(l => JSON.parse(l));
