@@ -347,6 +347,8 @@
   /* The global p rule is for the white paper; on the dark page it made the footer text near-invisible. */
   footer.site-footer p{color:inherit; font-size:inherit; line-height:1.9; margin:0;}
   footer.site-footer a{white-space:nowrap;}
+  .coffee-btn{display:inline-block; margin-left:8px; padding:3px 10px; border:1px solid #FF5E5B; border-radius:999px; color:#FF8A87 !important; text-decoration:none; font-size:0.78rem; white-space:nowrap;}
+  .coffee-btn:hover{background:rgba(255,94,91,0.14);}
 
   /* ---- Advertising rails -------------------------------------------
      Fixed in the page gutters, so they never enter the document flow.
