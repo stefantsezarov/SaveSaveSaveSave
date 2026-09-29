@@ -58,6 +58,8 @@ jobs:
         run: node redteam.js
       - name: Titles, cards, structured data
         run: node seo.test.js
+      - name: Agent package and MCP server
+        run: node agent/agent.test.js
 
       # Not a test: it rewrites files. Running it here proves the route
       # policy is already applied, because a clean tree means the

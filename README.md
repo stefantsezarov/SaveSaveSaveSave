@@ -19,6 +19,10 @@ Coverage: 14 EVM chains, Solana, Sui and TRON for token and address data. EVM wa
 
 After a FAIL or CAUTION result you can **share the warning as an image**. It's drawn on your device, carries the date and "not a guarantee", and never contains the message text.
 
+## For AI agents
+
+An **MCP server**, **CLI** and **Node library** in [`agent/`](agent/) give agents the same four checks as read-only tools: `scan_message`, `check_package`, `scan_address`, `compare_addresses`. Zero dependencies, a hard-coded network allowlist, and CI keeps it identical to the site's engine. [`llms.txt`](https://savesavesavesave.xyz/llms.txt) describes the site for AI assistants.
+
 ## The rules it keeps
 
 - **It never says "safe".** Verdicts are PASS, CAUTION, FAIL or INSUFFICIENT DATA.
