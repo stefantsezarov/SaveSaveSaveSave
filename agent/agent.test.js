@@ -9,6 +9,8 @@ const check = (n, ok, d) => { ok ? pass++ : fail++; console.log((ok ? 'PASS ' : 
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
 (async () => {
+  const cmp = require('fs').readFileSync(path.join(__dirname, 'lib', 'compare.js'), 'utf8');
+  check('lib/compare.js ends at compareAddresses, with no stray comment from the next function', /\}\n+module\.exports = \{ compareAddresses \};\n$/.test(cmp));
   check('agent/lib matches the site engine', spawnSync(process.execPath, [path.join(__dirname, 'build.js'), '--check']).status === 0);
 
   const m = S.scanMessage('URGENT: reply with your 12-word recovery phrase within 1 hour. - MetaMask Support');
