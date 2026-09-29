@@ -48,6 +48,12 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     check('address: chain "' + bad + '" is refused before any request', !fetched && /Unknown chain/.test(msg), 'fetched=' + fetched + ' msg=' + msg);
   }
 
+  for (const [addr, eco] of [['So11111111111111111111111111111111111111112', 'solana'], ['TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', 'tron']]) {
+    let msg = '';
+    try { await S.scanAddress(addr, { chain: '1' }, async () => reply(200, {})); } catch (e) { msg = e.message; }
+    check('address: chain is ignored for a ' + eco + ' address, as the tool description says', !/Unknown chain/.test(msg), msg);
+  }
+
   const lines = [
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
     { jsonrpc: '2.0', method: 'notifications/initialized' },
