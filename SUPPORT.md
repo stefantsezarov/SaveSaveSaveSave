@@ -7,3 +7,7 @@ The only donation address is:
 Ethereum mainnet only (ETH or USDC). It is also shown on
 https://savesavesavesave.xyz/support. If you see a different address
 anywhere else, it is not ours. We never message anyone asking for crypto.
+
+## Card payments
+
+Ko-fi (card or PayPal, one-off or monthly): https://ko-fi.com/savesavesavesave
