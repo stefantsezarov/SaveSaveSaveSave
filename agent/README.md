@@ -15,7 +15,7 @@ Add this to your client's MCP configuration (for example `claude_desktop_config.
 ```json
 {
   "mcpServers": {
-    "savesavesavesave": { "command": "npx", "args": ["-y", "-p", "savesavesavesave", "savesavesavesave-mcp"] }
+    "savesavesavesave": { "command": "npx", "args": ["-y", "savesavesavesave", "mcp"] }
   }
 }
 ```

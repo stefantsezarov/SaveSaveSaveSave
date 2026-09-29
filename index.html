@@ -2142,7 +2142,11 @@ function buildPackageChecks(ev, now){
   // are skipped and the result says why.
   const notes = [];
   const h = ev.history || null;
-  if(!h || !h.count){
+  if(holding){
+    // npm's own placeholder is published by npm, not by a hijacker; the
+    // comparisons below would only describe the takedown itself.
+    notes.push('npm replaced this package with a security placeholder, so its release history was not compared for signs of a hijack.');
+  } else if(!h || !h.count){
     notes.push('This is the first published version, so there was nothing earlier to compare it with for signs of a hijacked release.');
   } else {
     const who = meta.publisher;

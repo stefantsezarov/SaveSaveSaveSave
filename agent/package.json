@@ -1,13 +1,39 @@
 {
   "name": "savesavesavesave",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Check messages, npm packages and crypto addresses before acting. The engine behind savesavesavesave.xyz, for scripts and AI agents (library, CLI and MCP server). Read-only, zero dependencies.",
   "license": "AGPL-3.0-only",
   "homepage": "https://savesavesavesave.xyz",
-  "repository": { "type": "git", "url": "git+https://github.com/stefantsezarov/SaveSaveSaveSave.git", "directory": "agent" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stefantsezarov/SaveSaveSaveSave.git",
+    "directory": "agent"
+  },
   "main": "index.js",
-  "bin": { "savesavesavesave": "cli.js", "savesavesavesave-mcp": "mcp-server.js" },
-  "files": ["index.js", "cli.js", "mcp-server.js", "lib/", "README.md"],
-  "engines": { "node": ">=18" },
-  "keywords": ["security", "scam", "crypto", "prompt-injection", "npm", "supply-chain", "mcp", "ai-agents"]
+  "bin": {
+    "savesavesavesave": "cli.js",
+    "savesavesavesave-mcp": "mcp-server.js"
+  },
+  "files": [
+    "index.js",
+    "cli.js",
+    "mcp-server.js",
+    "lib/",
+    "README.md",
+    "server.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "security",
+    "scam",
+    "crypto",
+    "prompt-injection",
+    "npm",
+    "supply-chain",
+    "mcp",
+    "ai-agents"
+  ],
+  "mcpName": "io.github.stefantsezarov/savesavesavesave"
 }

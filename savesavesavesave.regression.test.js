@@ -554,6 +554,10 @@ console.log('\n== Recent counterparty checking ==');
   const first = P.buildPackageChecks(base({ history: { count: 0, earlierPublishers: [], earlierProvenance: false, previous: null } }), NOW);
   t('a first version skips the comparisons and says why',
     !first.checks.some(c => c.id === 'pkg_publisher') && first.notes.length === 1 && first.expected === first.checks.length);
+  const ph = P.buildPackageChecks(base({ name: 'crossenv', resolvedVersion: '0.0.2-security', description: 'security holding package',
+    version: { scripts: {}, repository: 'x', ownRepository: 'x', publisher: 'npm', provenance: false },
+    history: { count: 3, earlierPublishers: ['someone'], earlierProvenance: false, previous: { time: '2017-07-19T00:00:00Z', repository: 'x' } } }), NOW);
+  t('an npm security placeholder is not reported as a hijack', !ph.checks.some(c => c.id === 'pkg_publisher') && ph.notes.length === 1);
   t('an npm security placeholder fails', verdict(base({ name: 'crossenv', resolvedVersion: '0.0.2-security', description: 'security holding package' })).label === 'FAIL');
   const squat = base({ name: 'lodahs', resolvedVersion: '1.0.0', weekly: 12,
     time: { created: '2026-09-20T00:00:00Z', '1.0.0': '2026-09-27T00:00:00Z' },
