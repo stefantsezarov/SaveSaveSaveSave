@@ -9,6 +9,8 @@ const check = (n, ok, d) => { ok ? pass++ : fail++; console.log((ok ? 'PASS ' : 
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
 (async () => {
+  const cmp = require('fs').readFileSync(path.join(__dirname, 'lib', 'compare.js'), 'utf8');
+  check('lib/compare.js ends at compareAddresses, with no stray comment from the next function', /\}\n+module\.exports = \{ compareAddresses \};\n$/.test(cmp));
   check('agent/lib matches the site engine', spawnSync(process.execPath, [path.join(__dirname, 'build.js'), '--check']).status === 0);
 
   const m = S.scanMessage('URGENT: reply with your 12-word recovery phrase within 1 hour. - MetaMask Support');
@@ -40,6 +42,20 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
   check('package: only allowlisted hosts were contacted', seen.every(h => S.ALLOWED_HOSTS.has(h)));
   check('package: a Cyrillic look-alike name is refused before any request', (await S.checkPackage('lodaѕh', async () => { throw new Error('network used'); })).verdict === 'fail');
 
+  const evmAddr = '0x1234567890abcdef1234567890abcdef12345678';
+  for (const bad of ['__proto__', 'constructor', 'toString']) {
+    let fetched = false, msg = '';
+    try { await S.scanAddress(evmAddr, { chain: bad }, async () => { fetched = true; return reply(200, {}); }); }
+    catch (e) { msg = e.message; }
+    check('address: chain "' + bad + '" is refused before any request', !fetched && /Unknown chain/.test(msg), 'fetched=' + fetched + ' msg=' + msg);
+  }
+
+  for (const [addr, eco] of [['So11111111111111111111111111111111111111112', 'solana'], ['TJRabPrwbZy45sbavfcjinPJC18kjpRTv8', 'tron']]) {
+    let msg = '';
+    try { await S.scanAddress(addr, { chain: '1' }, async () => reply(200, {})); } catch (e) { msg = e.message; }
+    check('address: chain is ignored for a ' + eco + ' address, as the tool description says', !/Unknown chain/.test(msg), msg);
+  }
+
   const lines = [
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
     { jsonrpc: '2.0', method: 'notifications/initialized' },
@@ -48,6 +64,9 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'scan_message', arguments: { message: 'hi', path: '/etc/passwd' } } },
     { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'write_file', arguments: {} } },
     { jsonrpc: '2.0', id: 6, method: 'nope' },
+    { jsonrpc: '2.0', method: 'tools/list' },
+    { jsonrpc: '2.0', method: 'ping' },
+    { jsonrpc: '2.0', method: 'tools/call', params: { name: 'scan_message', arguments: { message: 'hi' } } },
   ].map(x => JSON.stringify(x)).join('\n') + '\nnot json\n';
   const r = spawnSync(process.execPath, [path.join(__dirname, 'mcp-server.js')], { input: lines, encoding: 'utf8', timeout: 20000 });
   const out = r.stdout.trim().split('\n').map(l => JSON.parse(l));

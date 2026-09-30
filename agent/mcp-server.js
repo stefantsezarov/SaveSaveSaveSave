@@ -57,6 +57,10 @@ function fail(id, code, message) { process.stdout.write(JSON.stringify({ jsonrpc
 async function handle(msg) {
   const { id, method, params } = msg || {};
   const isRequest = id !== undefined && id !== null;
+  // JSON-RPC: a message without an id is a notification and gets no reply,
+  // whatever its method (e.g. notifications/initialized, or a stray
+  // tools/call without an id, which must not run either).
+  if (!isRequest) return;
   try {
     if (method === 'initialize') {
       return reply(id, {
@@ -84,7 +88,6 @@ async function handle(msg) {
         return reply(id, { isError: true, content: [{ type: 'text', text: String((e && e.message) || e) }] });
       }
     }
-    if (!isRequest) return;                                   // notifications (e.g. notifications/initialized)
     return fail(id, -32601, 'Method not found: ' + method);
   } catch (e) {
     if (isRequest) fail(id, -32603, 'Internal error');

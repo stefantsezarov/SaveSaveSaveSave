@@ -14,6 +14,5 @@ function compareAddresses(a, b){
   let suffix = 0; while(suffix < x.length && x[x.length - 1 - suffix] === y[y.length - 1 - suffix]) suffix++;
   return { state: 'different', diffs, prefix, suffix, length: x.length, lookalike: prefix >= 3 && suffix >= 3 };
 }
-// Groups of four for reading aloud; an EVM "0x" stands on its own so the
 
 module.exports = { compareAddresses };

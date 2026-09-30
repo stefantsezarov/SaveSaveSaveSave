@@ -597,6 +597,46 @@ section('Token scan states its limits');
     fn(full, clean, 'token').some(l => /not a judgement about whether this is a good thing to buy/i.test(l.text)));
 }
 
+// ---- the address result escapes provider and pasted text ---------------
+// renderPass() builds its checklist with innerHTML. Check text can carry
+// provider strings (a Solana pool's dexname from GoPlus is interpolated
+// into a detail line) and the pasted address is printed back; a Sui
+// address only has to match `0x…::` before anything goes. Drive the real
+// renderPass() with a hostile check and a hostile address.
+section('Address result escapes provider and pasted text');
+{
+  const grab = (name) => {
+    const i = html.indexOf('function ' + name + '(');
+    let depth = 0, j = html.indexOf('{', i);
+    for (let k = j; k < html.length; k++) {
+      if (html[k] === '{') depth++;
+      else if (html[k] === '}' && --depth === 0) return html.slice(i, k + 1);
+    }
+    return '';
+  };
+  const src = [grab('escapeHtml'), grab('checkRow'), grab('renderPass')].join('\n');
+  check('renderPass, checkRow and escapeHtml extracted', src.includes('function renderPass(') && src.includes('function checkRow('));
+  const out = { innerHTML: '', style: {}, scrollIntoView(){} };
+  const sb = {
+    document: { getElementById: () => out },
+    tokenName: () => 'T (T)', renderLiquidityPanel: () => '', sectionShell: () => '',
+    mode: 'token', scanLimitations: () => [], CHAIN_LABEL: {}, showNextStep(){}, offerShareCard(){},
+    verdictCardModel(){}, addressCardInput(){}, ScanConsole: { scrollOpts: () => ({}) },
+  };
+  vm.createContext(sb);
+  vm.runInContext(src, sb);
+  const evil = '<img src=x onerror=alert(1)>';
+  const result = { verdict: 'pass', label: 'PASS', sub: 's', checksValid: 1, checksExpected: 1, checksUnknown: 0, confidence: 'high',
+    checks: [{ id: 'has_liquidity', status: 'PASS', critical: false, severityWeight: 0,
+               label: 'Liquidity found', detail: 'Largest pool: ' + evil + '.', source: 'GoPlus Security (Solana)' }] };
+  sb.renderPass(result, {}, '0x2::sui::' + evil, 'sui', {}, { name: 'Sui' }, null);
+  check('a provider string in a check detail is escaped',
+    !/<img/i.test(out.innerHTML) && /Largest pool: &lt;img/.test(out.innerHTML),
+    'GoPlus data must never become markup');
+  check('the pasted address is escaped when printed back',
+    /0x2::sui::&lt;img/.test(out.innerHTML));
+}
+
 // ---- a coverage gap must never be phrased as an all-clear -------------
   //
   // The shipped page told someone scanning an address he had taken from a

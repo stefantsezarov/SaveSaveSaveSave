@@ -77,8 +77,12 @@ async function scanAddress(address, opts, fetchImpl) {
     throw new Error('Not a valid EVM, Solana, Sui or TRON address.');
   }
   const mode = o.mode === 'wallet' ? 'wallet' : 'token';
-  const chainId = String(o.chain || (eco === 'evm' ? '1' : Object.keys(adapter.chains)[0]));
-  if (!adapter.chains[chainId]) {
+  // The MCP tool contract says chain is ignored outside EVM: an agent that
+  // always sends it must not get an error for a Solana, Sui or TRON address.
+  const chainId = eco === 'evm' ? String(o.chain || '1') : Object.keys(adapter.chains)[0];
+  // Own keys only: a plain lookup lets '__proto__', 'constructor' or
+  // 'toString' through as if they were chains.
+  if (!Object.prototype.hasOwnProperty.call(adapter.chains, chainId)) {
     throw new Error('Unknown chain "' + chainId + '" for ' + adapter.name + '. Options: ' + Object.keys(adapter.chains).join(', '));
   }
   const out = await adapter.fetchChecks(addr, mode, chainId, guardedFetch(fetchImpl));

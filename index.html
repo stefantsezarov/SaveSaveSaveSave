@@ -6245,9 +6245,12 @@ function renderLiquidityPanel(liq){
 
 function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummary){
   const name = tokenName(record);
-  const flagged = result.checks.filter(c => c.status === 'RISK');
-  const unknownChecks = result.checks.filter(c => c.status === 'UNKNOWN');
-  const clear = result.checks.filter(c => c.status === 'PASS');
+  // Check text can carry provider strings (e.g. a Solana pool's dexname
+  // from GoPlus), so escape it here exactly as the package renderer does.
+  const safe = c => Object.assign({}, c, { label: escapeHtml(c.label), detail: escapeHtml(c.detail), source: escapeHtml(c.source) });
+  const flagged = result.checks.filter(c => c.status === 'RISK').map(safe);
+  const unknownChecks = result.checks.filter(c => c.status === 'UNKNOWN').map(safe);
+  const clear = result.checks.filter(c => c.status === 'PASS').map(safe);
 
   const html = `
     <div class="pass">
@@ -6258,7 +6261,7 @@ function renderPass(result, record, addr, chainId, raw, adapter, liquiditySummar
         </div>
         <div class="pass-id">
           ${escapeHtml(CHAIN_LABEL[chainId] || String(chainId))} · ${adapter.name} · ${mode === 'token' ? 'Token scan' : 'Wallet scan'}
-          <span class="addr">${addr}</span>
+          <span class="addr">${escapeHtml(addr)}</span>
         </div>
       </div>
       <div class="pass-body">
