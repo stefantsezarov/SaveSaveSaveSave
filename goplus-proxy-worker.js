@@ -293,7 +293,7 @@ async function proxyTo(upstreamUrl) {
     clearTimeout(timeoutId);
     const isTimeout = err.name === 'AbortError';
     return jsonResponse(
-      { error: isTimeout ? 'Upstream request timed out' : 'Upstream request failed', detail: String(err) },
+      { error: isTimeout ? 'Upstream request timed out' : 'Upstream request failed' },
       504
     );
   }
@@ -324,13 +324,19 @@ function decodeBoolResult(hexResult) {
 // The caller must never treat `available: false` as `isSanctioned: false`.
 // An unanswerable question is not the same statement as a clean result --
 // the same principle the verdict engine already applies everywhere else.
+// Chain ids come from the query string. Only own keys of the tables count,
+// so "constructor" or "__proto__" can never reach a lookup.
+function ownLookup(table, key) {
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
 async function callSanctionsOracle(address, chainId) {
-  const oracleAddress = SANCTIONS_ORACLE_ADDRESSES[chainId];
+  const oracleAddress = ownLookup(SANCTIONS_ORACLE_ADDRESSES, chainId);
   if (!oracleAddress) {
     return { available: false, reason: 'No confirmed Chainalysis oracle deployment for this chain.' };
   }
-  const rpcUrl = CHAIN_RPC_ENDPOINTS[chainId];
-  if (!rpcUrl || !rpcUrl.startsWith('https://')) {
+  const rpcUrl = ownLookup(CHAIN_RPC_ENDPOINTS, chainId);
+  if (typeof rpcUrl !== 'string' || !rpcUrl.startsWith('https://')) {
     return { available: false, reason: rpcUrl === 'NOT-AVAILABLE-ON-PUBLICNODE'
       ? 'No RPC endpoint configured for this chain (not available on PublicNode).'
       : 'RPC endpoint not yet configured for this chain.' };
@@ -425,13 +431,13 @@ async function getTransferLogsOneDirection(rpcUrl, address, fromBlockHex, toBloc
 //     counterpartyCheckLimited: bool }
 //   { available: false, reason: '...' }
 async function checkRecentCounterparties(address, chainId) {
-  const rpcUrl = CHAIN_RPC_ENDPOINTS[chainId];
-  if (!rpcUrl || !rpcUrl.startsWith('https://')) {
+  const rpcUrl = ownLookup(CHAIN_RPC_ENDPOINTS, chainId);
+  if (typeof rpcUrl !== 'string' || !rpcUrl.startsWith('https://')) {
     return { available: false, reason: rpcUrl === 'NOT-AVAILABLE-ON-PUBLICNODE'
       ? 'No RPC endpoint configured for this chain (not available on PublicNode).'
       : 'RPC endpoint not yet configured for this chain.' };
   }
-  if (!SANCTIONS_ORACLE_ADDRESSES[chainId]) {
+  if (!ownLookup(SANCTIONS_ORACLE_ADDRESSES, chainId)) {
     return { available: false, reason: 'No confirmed sanctions oracle deployment for this chain -- counterparty results could not be checked.' };
   }
 
@@ -515,11 +521,32 @@ function parseCountKey(raw) {
   if (kind === 'address' && (mode === '-' || !COUNT_CHAINS.has(chain))) return null;
   return m[0].slice(3);
 }
+// Rate limit, so a script cannot inflate the public totals. Kept only in
+// this Worker instance's memory for the current minute, then dropped: no
+// IP address is ever written to storage or logs. Best effort by design
+// (each Cloudflare location keeps its own window), which is enough to make
+// mass inflation slow and visible rather than free.
+const COUNT_LIMIT_PER_MINUTE = 20;
+const COUNT_LIMIT_MAX_KEYS = 10000;
+let countWindow = { minute: -1, hits: new Map() };
+function countAllowed(request, now) {
+  const minute = Math.floor((now === undefined ? Date.now() : now) / 60000);
+  if (countWindow.minute !== minute) countWindow = { minute, hits: new Map() };
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const n = (countWindow.hits.get(ip) || 0) + 1;
+  if (n > COUNT_LIMIT_PER_MINUTE) return false;
+  if (countWindow.hits.size >= COUNT_LIMIT_MAX_KEYS && !countWindow.hits.has(ip)) return false;
+  countWindow.hits.set(ip, n);
+  return true;
+}
 function handleCount(request, env, ctx) {
   const origin = request.headers.get('Origin');
   const key = parseCountKey(new URL(request.url).searchParams.get('count'));
   if (!origin || !ALLOWED_ORIGINS.has(origin) || !key) {
     return new Response(null, { status: 400, headers: corsHeaders() });
+  }
+  if (!countAllowed(request)) {
+    return new Response(null, { status: 429, headers: corsHeaders() });
   }
   if (env && env.COUNTS && ctx) {
     const day = new Date().toISOString().slice(0, 10);
@@ -546,7 +573,24 @@ function summariseCounts(rows) {
   }
   return out;
 }
-async function handleStats(env) {
+// The weekly summary is cached at the edge for 5 minutes, so repeated
+// requests cannot each run a D1 query.
+const STATS_CACHE_KEY = 'https://stats.savesavesavesave.internal/week';
+async function handleStats(env, ctx) {
+  const cache = (typeof caches !== 'undefined' && caches.default) || null;
+  if (cache) {
+    try {
+      const hit = await cache.match(STATS_CACHE_KEY);
+      if (hit) return hit;
+    } catch (_) { /* fall through to a fresh answer */ }
+  }
+  const res = await buildStats(env);
+  if (cache && ctx) {
+    try { ctx.waitUntil(cache.put(STATS_CACHE_KEY, res.clone()).catch(() => {})); } catch (_) {}
+  }
+  return res;
+}
+async function buildStats(env) {
   const since = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
   let body = { available: false, days: 7, since };
   if (env && env.COUNTS) {
@@ -575,7 +619,7 @@ async function handleRequest(request, env, ctx) {
     return jsonResponse({ error: 'Only GET is supported' }, 405);
   }
   if (new URL(request.url).searchParams.get('stats') === 'week') {
-    return handleStats(env);
+    return handleStats(env, ctx);
   }
 
   const url = new URL(request.url);

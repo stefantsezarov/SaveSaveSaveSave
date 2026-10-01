@@ -1,6 +1,6 @@
 {
   "name": "savesavesavesave",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Check messages, npm packages and crypto addresses before acting. The engine behind savesavesavesave.xyz, for scripts and AI agents (library, CLI and MCP server). Read-only, zero dependencies.",
   "license": "AGPL-3.0-only",
   "homepage": "https://savesavesavesave.xyz",
@@ -20,7 +20,8 @@
     "mcp-server.js",
     "lib/",
     "README.md",
-    "server.json"
+    "server.json",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"

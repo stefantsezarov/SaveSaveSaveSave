@@ -58,6 +58,33 @@ function ok(cond, name) {
     'public stats split by verdict');
   ok(JSON.stringify(Object.keys(sum).sort()) === JSON.stringify(['address', 'message', 'total', 'verdicts']),
     'public stats publish nothing beyond kind and verdict totals');
+
+  // Rate limit on ?count: per address per minute, in memory only.
+  vm.runInContext('this.allowed = countAllowed; this.LIMIT = COUNT_LIMIT_PER_MINUTE;', cx);
+  const req = (ip) => ({ headers: { get: (h) => (h === 'CF-Connecting-IP' ? ip : null) } });
+  const t0 = 1790000000000;
+  let okCount = 0;
+  for (let i = 0; i < cx.LIMIT + 5; i++) if (cx.allowed(req('203.0.113.7'), t0)) okCount++;
+  ok(okCount === cx.LIMIT, 'count route allows ' + cx.LIMIT + ' counts a minute from one address, then refuses');
+  ok(cx.allowed(req('198.51.100.9'), t0), 'one busy address does not block another');
+  ok(cx.allowed(req('203.0.113.7'), t0 + 60000), 'the limit resets the next minute');
+  ok(!/COUNTS[\s\S]{0,200}CF-Connecting-IP|bind\([^)]*ip/.test(src), 'the client address is never written to storage');
+}
+
+// ---- Worker hardening: chain lookups and error detail -------------------
+{
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'goplus-proxy-worker.js'), 'utf8');
+  ok(!/detail:\s*String\(err\)/.test(src), 'Worker errors do not echo internal error text');
+  ok(!/(CHAIN_RPC_ENDPOINTS|SANCTIONS_ORACLE_ADDRESSES)\[chainId\]/.test(src),
+    'Worker never indexes chain tables directly with a query-string value');
+  const vm = require('vm');
+  const a = src.indexOf('function ownLookup'), b = src.indexOf('async function callSanctionsOracle');
+  const cx = {}; vm.createContext(cx);
+  vm.runInContext(src.slice(a, b) + ';this.own = ownLookup;', cx);
+  const T = { '1': 'https://x' };
+  ok(cx.own(T, '1') === 'https://x' && ['constructor', '__proto__', 'toString', 'hasOwnProperty'].every(k => cx.own(T, k) === undefined),
+    'chain lookup ignores inherited names such as constructor and __proto__');
+  ok(/caches\.default/.test(src) && /handleStats\(env, ctx\)/.test(src), 'weekly stats are served from the edge cache');
 }
 
 // A fetch stub that records every URL it is asked for.
