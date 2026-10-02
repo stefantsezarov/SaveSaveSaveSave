@@ -102,11 +102,11 @@
 
     <h2><span class="sec-n">01</span>Scan selected text (bookmark)</h2>
     <p>Drag this button to your bookmarks bar:</p>
-    <p><a class="dl-btn" href="javascript:(function(){var t=String(window.getSelection()||'');if(!t.trim()){alert('Select the suspicious text first, then click this bookmark.');return;}var o='https://savesavesavesave.xyz',w=window.open(o+'/#bookmarklet','_blank');if(!w){alert('Allow pop-ups for this site, then click the bookmark again.');return;}function h(e){if(e.source===w){if(e.origin===o){if(e.data){if(e.data.type==='s4-ready'){w.postMessage({type:'s4-text',text:t},o);window.removeEventListener('message',h);}}}}}window.addEventListener('message',h);})();" onclick="return false;" title="Drag me to your bookmarks bar">Scan with SaveSaveSaveSave</a></p>
+    <p><a class="dl-btn" href="javascript:(function(){var%20t=String(window.getSelection()||&#x27;&#x27;);if(!t.trim()){alert(&#x27;Select%20the%20suspicious%20text%20first,%20then%20click%20this%20bookmark.&#x27;);return;}if(t.length&gt;20000){t=t.slice(0,20000);}window.open(&#x27;https://savesavesavesave.xyz/#scan=&#x27;+encodeURIComponent(t),&#x27;_blank&#x27;,&#x27;noopener&#x27;);})();" onclick="return false;" title="Drag me to your bookmarks bar">Scan with SaveSaveSaveSave</a></p>
     <p>Then, on any page (a web email, a chat in the browser, a forum post), select the text you are unsure about and click the bookmark. The scanner opens in a new tab and checks it.</p>
     <ul>
-      <li><strong>Your text is not put in a link or sent to a server.</strong> The bookmark hands it to the scanner tab directly inside your browser, and the scan runs there, the same as pasting it.</li>
-      <li>On a phone, or on a few sites that block it, the bookmark cannot pass the text across. Copy the text and paste it into the <a href="index.html">scanner</a> instead.</li>
+      <li><strong>Your text is not sent to any server.</strong> The bookmark passes it in the part of the address after <code>#</code>, which browsers never send anywhere; the scanner removes it from the address bar and history before any other script runs, and the scan runs in your browser, the same as pasting it. Up to 20,000 characters.</li>
+      <li>On a phone, or on the few sites that block bookmarks, it may not run. Copy the text and paste it into the <a href="index.html">scanner</a> instead.</li>
       <li>You can read the whole bookmark: it is the short script in the button's link, and it does nothing else.</li>
     </ul>
 

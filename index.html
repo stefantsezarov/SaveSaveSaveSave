@@ -17,6 +17,15 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<script>
+/* "Scan selected text" bookmark (see /tools): the text arrives after #scan= .
+   The part of an address after # is never sent to any server. Take it out
+   of the address bar and history before anything else on the page runs,
+   so no analytics or advertising script can read it. */
+(function(){try{var h=location.hash;if(h.indexOf('#scan=')!==0)return;
+window.__s4Selected=decodeURIComponent(h.slice(6)).slice(0,200000);
+history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=null;history.replaceState(null,'',location.pathname);}})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <title>Free Scam Checker: Messages, Crypto Addresses, npm — SaveSaveSaveSave</title>
@@ -6405,6 +6414,16 @@ receiveFromBookmarklet();
 // scanned locally exactly as if it had been pasted.
 function receiveFromBookmarklet(){
   try {
+    const sel = window.__s4Selected;
+    window.__s4Selected = null;
+    if (typeof sel === 'string' && sel.trim()) {
+      setScanMode('prompt');
+      document.getElementById('promptInput').value = sel;
+      updatePromptCount();
+      runPromptScan();
+      return;
+    }
+    // Older copies of the bookmark hand the text over with postMessage.
     if (window.location.hash !== '#bookmarklet' || !window.opener) return;
     history.replaceState(null, '', window.location.pathname);
     window.addEventListener('message', function onText(e){
