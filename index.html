@@ -6048,8 +6048,14 @@ async function attemptScan(adapter, addr, mode, chainId, timeoutMs, onNet, contr
   }
 }
 
+// Set when a token scan finds no token at the address and the scan is
+// re-run as a wallet scan; shown in the console so the switch is visible.
+let autoSwitchNote = '';
+
 async function runScan(){
   const addrRaw = document.getElementById('addrInput').value.trim();
+  const switchNote = autoSwitchNote;
+  autoSwitchNote = '';
   const errEl = document.getElementById('inlineError');
   const scanErr = document.getElementById('scanError');
   const results = document.getElementById('results');
@@ -6103,7 +6109,8 @@ async function runScan(){
     // so a security tool that prints 0x742d…8A91 is rehearsing the habit
     // that gets people robbed.
     target: addrRaw,
-    sub: [adapter.name, adapter.chains[chainId] || chainId, mode === 'wallet' ? 'wallet screening' : 'token security'].join(' · '),
+    sub: [adapter.name, adapter.chains[chainId] || chainId, mode === 'wallet' ? 'wallet screening' : 'token security'].join(' · ')
+      + (switchNote ? ' · ' + switchNote : ''),
     foot: 'The address is sent to the security provider. Nothing about this scan reaches an advertiser.',
     stages,
   });
@@ -6183,7 +6190,26 @@ async function runScan(){
     // A run that has been superseded says nothing at all. Its abort is
     // not an error the user needs to hear about.
     if(!ScanConsole.isCurrent(runId)) return;
+    // People paste wallet addresses into the token tab all the time. "No
+    // token here" is not a failure: on chains with wallet screening the
+    // same address is checked as a wallet straight away; elsewhere the
+    // message says what the address is and what can still be done.
+    const notAToken = mode === 'token' && /does not appear to be a recognized token/i.test(e.message || '');
+    if(notAToken && adapter.capabilities.walletScreening){
+      ScanConsole.fail(runId, 'Not a token', 'No token contract at this address. Checking it as a wallet instead.');
+      setMode('wallet');
+      autoSwitchNote = 'switched from token: no token contract at this address';
+      btn.disabled = false; btn.textContent = 'Run risk pass';
+      runScan();
+      return;
+    }
     countScan('address', mode, chainId, 'stopped');
+    if(notAToken){
+      scanErr.textContent = 'This address is not a token on ' + (adapter.chains[chainId] || adapter.name) + ', so it is probably a wallet. Wallet screening is not available for ' + adapter.name + ' yet, so this address has NOT been checked. Paying it? Use "Compare two addresses" below to confirm it matches the address from a trusted source, character by character.';
+      scanErr.style.display = 'block';
+      ScanConsole.fail(runId, 'Not a token', 'No token at this address, and wallet screening is not available on this chain. The address is unchecked.');
+      return;
+    }
     const isRateLimited = /too many requests|rate limit/i.test(e.message || '');
     // A provider that cannot answer for this chain is a different thing
     // from a request that never arrived, and the two must not share a
