@@ -59,6 +59,8 @@ const PAGES = {
   'address-poisoning.html':  { type: 'guide',   crumb: 'Address poisoning', section: 'Address risk' },
   'privacy.html':            { type: 'page',    crumb: 'Privacy' },
   'support.html':            { type: 'page',    crumb: 'Support' },
+  'tools.html':              { type: 'page',    crumb: 'Tools' },
+  'agents.html':             { type: 'page',    crumb: 'For agents' },
   'terms.html':              { type: 'page',    crumb: 'Terms' },
 };
 

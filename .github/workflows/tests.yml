@@ -74,3 +74,25 @@ jobs:
       # worse than none, and it drifts silently.
       - name: SEO blocks are already applied
         run: node seo.js --check
+
+  # The published GitHub Action, run against the real npm registry and
+  # OSV.dev: a known-clean package must pass and a package npm removed for
+  # security must fail the job. Offline unit tests cannot prove either.
+  dependency-action:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: A clean dependency passes
+        uses: ./
+        with:
+          path: .github/action-fixtures/clean
+      - name: A removed-for-security dependency fails
+        id: bad
+        continue-on-error: true
+        uses: ./
+        with:
+          path: .github/action-fixtures/bad
+      - name: The bad fixture really failed
+        run: test "${{ steps.bad.outcome }}" = "failure"

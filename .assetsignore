@@ -91,3 +91,9 @@ switch-domain.sh
 .git
 .git/**
 .gitignore
+
+# ---- npm package and GitHub Action ------------------------------------
+# Published to npm and used from the repository by GitHub; not site pages.
+agent
+agent/**
+action.yml

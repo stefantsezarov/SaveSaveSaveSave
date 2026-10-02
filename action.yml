@@ -1,0 +1,26 @@
+name: SaveSaveSaveSave dependency check
+description: Check your npm dependencies before they are installed - removed by npm, reported malicious in OSV.dev, install scripts, look-alike names, signs of a hijacked release.
+author: Stefan Tsezarov
+branding:
+  icon: shield
+  color: orange
+inputs:
+  path:
+    description: Folder that contains package.json (and package-lock.json, if any).
+    default: '.'
+  fail-on:
+    description: Fail the check at "fail" (default) or also at "caution".
+    default: fail
+  include-dev:
+    description: Also check devDependencies.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Check npm dependencies
+      shell: bash
+      env:
+        S4_PATH: ${{ inputs.path }}
+        S4_FAIL_ON: ${{ inputs.fail-on }}
+        S4_DEV: ${{ inputs.include-dev }}
+      run: node "$GITHUB_ACTION_PATH/agent/action-run.js"

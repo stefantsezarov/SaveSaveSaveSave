@@ -19,8 +19,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
-<title>Free Crypto Scam Checker — Messages &amp; Addresses — SaveSaveSaveSave</title>
-<meta name="description" content="Paste a suspicious message, wallet or token address and get a plain-English risk verdict in seconds. Hidden instructions, phishing links, honeypots. Free.">
+<title>Free Scam Checker: Messages, Crypto Addresses, npm — SaveSaveSaveSave</title>
+<meta name="description" content="Paste a suspicious message, link, crypto address or npm package and get a plain-English risk verdict in seconds. Phishing, hidden instructions, honeypots. Free.">
 <link rel="canonical" href="https://savesavesavesave.xyz/">
 <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
 <meta name="theme-color" content="#08080C">
@@ -883,7 +883,7 @@
 
         <div class="examples">
           Try an example:
-          <button type="button" class="example-chip" onclick="fillPrompt('safe')">A safe prompt</button>
+          <button type="button" class="example-chip" onclick="fillPrompt('safe')">A harmless prompt</button>
           <button type="button" class="example-chip" onclick="fillPrompt('hidden')">Hidden instructions</button>
           <button type="button" class="example-chip" onclick="fillPrompt('drainer')">Wallet drainer</button>
           <button type="button" class="example-chip" onclick="fillPrompt('article')">Article about injection</button>
@@ -1086,7 +1086,7 @@
   <p>SaveSaveSaveSave is an independent screening aid built on public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
   <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — SaveSaveSaveSave itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
   <p>Message and prompt text is analysed inside your browser and is never sent anywhere — see the <a class="nav-link" href="privacy.html">privacy policy</a> for exactly what does and does not leave this page.</p>
-  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
+  <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> &nbsp;·&nbsp; <a class="nav-link" href="tools.html">Tools: bookmark, CI, CLI</a> &nbsp;·&nbsp; <a class="nav-link" href="agents.html">For AI agents (MCP)</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
   <p style="margin-top:14px; color:var(--text-muted);">© 2026 Stefan Tsezarov. Code under <a class="nav-link" href="LICENSE.md">AGPL-3.0</a>; guides and brand all rights reserved. · <a class="nav-link" href="support.html">Support</a> <a class="coffee-btn" href="https://ko-fi.com/savesavesavesave" target="_blank" rel="noopener">&#9749; Buy me a coffee</a></p>
 </footer>
 
@@ -6396,6 +6396,30 @@ renderCapabilityNote();
 situationFromHash();
 window.addEventListener('hashchange', situationFromHash);
 loadScanCount();
+receiveFromBookmarklet();
+
+// The "Scan selected text" bookmarklet (see /tools) opens this page with
+// #bookmarklet and hands over the selected text with postMessage. The text
+// never travels in a URL, so no server or analytics sees it. Only a message
+// from the window that opened this page is accepted, only once, and it is
+// scanned locally exactly as if it had been pasted.
+function receiveFromBookmarklet(){
+  try {
+    if (window.location.hash !== '#bookmarklet' || !window.opener) return;
+    history.replaceState(null, '', window.location.pathname);
+    window.addEventListener('message', function onText(e){
+      if (e.source !== window.opener) return;
+      const d = e.data;
+      if (!d || d.type !== 's4-text' || typeof d.text !== 'string' || !d.text.trim()) return;
+      window.removeEventListener('message', onText);
+      setScanMode('prompt');
+      document.getElementById('promptInput').value = d.text.slice(0, 200000);
+      updatePromptCount();
+      runPromptScan();
+    });
+    window.opener.postMessage({ type: 's4-ready' }, '*');
+  } catch(_) {}
+}
 </script>
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
      Installed manually rather than auto-injected: this site is served by a

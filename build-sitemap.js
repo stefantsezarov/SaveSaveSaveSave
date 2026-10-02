@@ -50,6 +50,8 @@ const PAGES = [
   { file: 'privacy.html',    loc: '/privacy',    changefreq: 'monthly', priority: '0.3' },
   { file: 'terms.html',      loc: '/terms',      changefreq: 'monthly', priority: '0.3' },
   { file: 'support.html',    loc: '/support',    changefreq: 'monthly', priority: '0.3' },
+  { file: 'tools.html',      loc: '/tools',      changefreq: 'monthly', priority: '0.6' },
+  { file: 'agents.html',     loc: '/agents',     changefreq: 'monthly', priority: '0.6' },
 ];
 
 function lastCommitDate(file) {

@@ -426,3 +426,11 @@
     .rule-box{padding:14px 16px;}
     .rule-box .ladder{font-size:0.82rem;}
   }
+
+  /* Code blocks on the developer pages (tools, agents): scroll inside the
+     block instead of pushing the whole page sideways on a phone. */
+  .paper pre{background:#FFFFFF; border:1px solid var(--paper-border); padding:12px 14px;
+    margin:0 0 16px; overflow-x:auto; max-width:100%; -webkit-overflow-scrolling:touch;}
+  .paper pre code{font-family:'IBM Plex Mono',monospace; font-size:0.84rem; line-height:1.55;
+    white-space:pre; word-break:normal;}
+  .paper p code, .paper li code{overflow-wrap:anywhere;}

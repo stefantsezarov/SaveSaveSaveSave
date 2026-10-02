@@ -80,6 +80,47 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
   check('mcp: unknown methods and bad JSON get protocol errors', byId(6).error && out.some(o => o.error && o.error.code === -32700));
   check('mcp: notifications get no reply', out.length === 7);
 
+  // ---- dependency check (CLI `deps` and the GitHub Action) -------------
+  {
+    const fs = require('fs'), os = require('os');
+    const D = require('./deps-check.js');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4deps-'));
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { lodash: '^4.17.21', crossenv: '^6.0.0', 'my-fork': 'github:someone/my-fork', '@scope/pkg': '1.0.0' },
+      devDependencies: { 'lodahs': '1.0.0', lodash: '^4.0.0' } }));
+    fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify({ packages: {
+      'node_modules/lodash': { version: '4.17.21', resolved: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz' },
+      'node_modules/@scope/pkg': { version: '1.0.0', resolved: 'https://evil.example/pkg-1.0.0.tgz' } } }));
+    const asked = [];
+    const fake = async (spec) => {
+      asked.push(spec);
+      if (spec.startsWith('crossenv')) return { verdict: 'fail', label: 'REMOVED BY NPM', summary: 'npm removed it for security', checks: [] };
+      if (spec.startsWith('lodahs')) return { verdict: 'caution', label: 'LOOK-ALIKE', summary: 'looks like lodash', checks: [] };
+      return { verdict: 'pass', label: 'PASS', checks: [] };
+    };
+    const rep = await D.checkDeps(dir, {}, fake);
+    const by = n => rep.results.find(r => r.name === n) || {};
+    check('deps: reads dependencies and devDependencies once each', rep.checked === 5 && asked.filter(a => a.startsWith('lodash')).length === 1, JSON.stringify(asked));
+    check('deps: checks the exact version from package-lock.json', asked.includes('lodash@4.17.21'));
+    check('deps: a FAIL package is reported first', rep.results[0].name === 'crossenv' && rep.results[0].verdict === 'fail');
+    check('deps: git and non-registry sources are flagged without a network call',
+      by('my-fork').label === 'NOT FROM NPM' && by('@scope/pkg').label === 'NOT FROM NPM' && !asked.some(a => /my-fork|@scope/.test(a)));
+    check('deps: --fail-on fail counts FAIL only; caution counts more', D.failed(rep.results, 'fail').length === 1 && D.failed(rep.results, 'caution').length === 4);
+    const md = D.markdown(rep, 'fail');
+    check('deps: summary is a readable table with the limits stated', /\| `crossenv` \|/.test(md) && /Transitive dependencies are not checked/.test(md) && /not that a package is safe/.test(md));
+    const noDev = await D.checkDeps(dir, { includeDev: false }, fake);
+    check('deps: devDependencies can be left out', !noDev.results.some(r => r.name === 'lodahs'));
+    // The Action's entry point, run for real. Offline, every registry check
+    // fails to connect: those must be reported, not silently passed.
+    const env = Object.assign({}, process.env, { S4_PATH: dir, S4_FAIL_ON: 'caution', GITHUB_STEP_SUMMARY: path.join(dir, 'summary.md') });
+    const run = spawnSync(process.execPath, [path.join(__dirname, 'action-run.js')], { env, encoding: 'utf8', timeout: 120000 });
+    check('action: exits 1 when something is at the failure level', run.status === 1, run.stdout.slice(-300));
+    check('action: writes the job summary and annotations', fs.existsSync(env.GITHUB_STEP_SUMMARY) && /::warning title=my-fork::NOT FROM NPM/.test(run.stdout));
+    const cli = spawnSync(process.execPath, [path.join(__dirname, 'cli.js'), 'deps', dir, '--markdown'], { encoding: 'utf8', timeout: 120000 });
+    check('cli: `deps` prints the same report', /SaveSaveSaveSave dependency check/.test(cli.stdout));
+    check('cli: a missing package.json is a usage error, not a pass', spawnSync(process.execPath, [path.join(__dirname, 'cli.js'), 'deps', path.join(dir, 'nope')]).status === 3);
+  }
+
   console.log('\n' + pass + '/' + (pass + fail) + ' agent checks passed');
   process.exit(fail ? 1 : 0);
 })();

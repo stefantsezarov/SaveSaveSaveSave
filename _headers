@@ -42,6 +42,11 @@
 # detection rules that have already been corrected.
 /
   Cache-Control: public, max-age=0, must-revalidate
+  # The "Scan selected text" bookmarklet (/tools) opens this exact URL from
+  # another site and hands the selected text over with postMessage. COOP
+  # same-origin would cut that link (window.opener becomes null), so the
+  # scanner's root URL alone drops it. Every other path keeps same-origin.
+  ! Cross-Origin-Opener-Policy
 
 /*.html
   Cache-Control: public, max-age=0, must-revalidate

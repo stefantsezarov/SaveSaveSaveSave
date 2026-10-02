@@ -40,7 +40,7 @@
       "url": "https://savesavesavesave.xyz/privacy",
       "inLanguage": "en",
       "datePublished": "2026-09-17",
-      "dateModified": "2026-09-29",
+      "dateModified": "2026-10-02",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -93,7 +93,7 @@
 
 <div class="paper-wrap">
   <article class="paper">
-    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 18 September 2026</p>
+    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 2 October 2026</p>
     <h1 class="title">What this site collects</h1>
     <p class="subtitle">Short version: almost nothing, and you can verify that yourself.</p>
 
@@ -109,8 +109,8 @@
 
     <h2>2. Scanning a message or prompt</h2>
     <p>When you paste text into the message scanner, the analysis runs entirely in JavaScript inside your own browser. The text is not uploaded, not logged, not stored, and not shown to anyone. When you close the tab it is gone.</p>
-    <p>You do not have to take that on trust. Open your browser's developer tools, switch to the Network tab, paste a message and press Scan. <strong>You will see no requests at all.</strong> That is how this was verified before publishing: a scan of a message containing a marker string, a phishing link, a seed-phrase request and an injection payload produced a full FAIL verdict and zero network requests.</p>
-    <p>A Content-Security-Policy restricts the page's outbound connections to the hosts listed in section 4 and nowhere else, and the browser itself enforces that. Be aware that the list grew when advertising was added: it now includes Google's ad hosts, so the policy alone no longer proves that scan text cannot leave. What holds that property today is the code — the scanner makes no network call at all — plus a test that fails the build if anything scan-derived can reach an advertising call.</p>
+    <p>You do not have to take that on trust. Open your browser's developer tools, switch to the Network tab, paste a message and press Scan. <strong>Your text is not in any request.</strong> The one request you will see is an anonymous count to our own Worker: it says only that a message scan happened and what the verdict was (section 5), and it is not sent at all if your browser uses Global Privacy Control.</p>
+    <p>A Content-Security-Policy restricts the page's outbound connections to the hosts listed in section 4 and nowhere else, and the browser itself enforces that. Be aware that the list grew when advertising was added: it now includes Google's ad hosts, so the policy alone no longer proves that scan text cannot leave. What holds that property today is the code — the scanner itself never sends your text anywhere — plus tests that fail the build if any part of a scanned text can reach the count or an advertising call.</p>
 
     <h2>3. Scanning a crypto address or token</h2>
     <p>This part does use the network, because the security data lives elsewhere. When you check an address, the address itself and the chain identifier are sent to a third-party security data provider, and for sanctions checks to a public blockchain node through our own proxy.</p>
@@ -202,7 +202,7 @@
 </div>
 
 <footer class="site-footer">
-  <p>© 2026 Stefan Tsezarov. Code under <a class="nav-link" href="LICENSE.md">AGPL-3.0</a>; guides and brand all rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="terms.html">Terms</a> · <a class="nav-link" href="support.html">Support</a> <a class="coffee-btn" href="https://ko-fi.com/savesavesavesave" target="_blank" rel="noopener">&#9749; Buy me a coffee</a></p>
+  <p>© 2026 Stefan Tsezarov. Code under <a class="nav-link" href="LICENSE.md">AGPL-3.0</a>; guides and brand all rights reserved. · <a class="nav-link" href="index.html">Scanner</a> · <a class="nav-link" href="guides.html">Guides</a> · <a class="nav-link" href="whitepaper.html">Before You Act</a> · <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> · <a class="nav-link" href="tools.html">Tools</a> · <a class="nav-link" href="agents.html">For agents</a> · <a class="nav-link" href="terms.html">Terms</a> · <a class="nav-link" href="support.html">Support</a> <a class="coffee-btn" href="https://ko-fi.com/savesavesavesave" target="_blank" rel="noopener">&#9749; Buy me a coffee</a></p>
 </footer>
 
 <!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
