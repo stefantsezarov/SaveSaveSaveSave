@@ -652,8 +652,13 @@ async function afterSweep() {
 
     const svg = html.slice(html.indexOf('<svg viewBox="0 0 200 200"'), html.indexOf('</svg>', html.indexOf('<svg viewBox="0 0 200 200"')));
     const texts = (svg.match(/<text[^>]*>([^<]*)<\/text>/g) || []).map(t => t.replace(/<[^>]+>/g, ''));
-    check('the scope prints no invented readouts: its only text is the bearing scale',
-      texts.length === 4 && texts.every(t => /^(000|090|180|270)$/.test(t)), JSON.stringify(texts));
+    // Besides the bearing scale, the scope's only text is the verdict
+    // stamp, which ships empty and is filled from the verdict label alone.
+    check('the scope prints no invented readouts: bearing scale plus an empty verdict stamp',
+      texts.length === 5 && texts.slice(0, 4).every(t => /^(000|090|180|270)$/.test(t)) && texts[4] === '' &&
+      /stamp\.textContent = String\(o\.stateText \|\| ''\)/.test(html), JSON.stringify(texts));
+    check('...and after a pass the stamp shows exactly the verdict label',
+      nodes['cfVerdict'] ? /^[A-Z ]+$/.test(nodes['cfVerdict'].textContent || '') : true);
     const cssAll = html.slice(html.indexOf('/* ---- Live scan console'), html.indexOf('/* ---- Composite message scan'));
     check('the sweep turns only while a pass is running',
       /\.console\.running \.cf-radar\{[^}]*animation:/.test(cssAll) && !/(^|\n)\s*\.cf-radar\{[^}]*animation:/.test(cssAll));
@@ -1026,7 +1031,10 @@ async function afterSweep() {
   {
     const css = html.slice(html.indexOf('/* ---- Live scan console'), html.indexOf('/* ---- Composite message scan'));
     const animated = (css.match(/animation:/g) || []).length;
-    check('the console animates a handful of things, not dozens', animated > 0 && animated <= 12, animated + ' animation declarations');
+    // 15, not 12, since the handoff (Oct 2026): the verdict stamp, the
+    // result's rise and its colour bar each play ONCE per pass, and each
+    // has its reduced-motion "none". Nothing new loops.
+    check('the console animates a handful of things, not dozens', animated > 0 && animated <= 15, animated + ' animation declarations');
     const props = (css.match(/@keyframes[\s\S]*?\}/g) || []).join('');
     check('every keyframe moves only transform or opacity',
       !/@keyframes[\s\S]*?(width|height|top|left|margin|box-shadow|filter):/.test(props),

@@ -451,6 +451,42 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
     animation:cfLock 0.75s cubic-bezier(0.2,0.8,0.3,1) 1 both;}
   @keyframes cfLock{0%{transform:scale(0.12); opacity:0.95;} 100%{transform:scale(1); opacity:0;}}
 
+  /* The verdict stamped on the scope when the pass locks: the same word
+     the result below opens with, in the same colour, so the eye can
+     follow it from the figure to the result. */
+  .cf-verdict{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:15px; letter-spacing:1.5px;
+    text-anchor:middle; opacity:0; fill:var(--accent-2); transform-origin:100px 128px;}
+  .console.lock-done .cf-verdict{fill:var(--safe);}
+  .console.lock-warn .cf-verdict{fill:var(--caution);}
+  .console.lock-failed .cf-verdict{fill:var(--danger);}
+  .console.lock-done .cf-verdict, .console.lock-warn .cf-verdict, .console.lock-failed .cf-verdict{
+    animation:cfStamp 0.5s cubic-bezier(0.2,0.9,0.3,1.2) 0.15s 1 both;}
+  @keyframes cfStamp{0%{opacity:0; transform:scale(1.8);} 100%{opacity:1; transform:scale(1);}}
+
+  /* Handoff: the result arrives carrying the verdict's colour along its
+     top edge, drawn left to right, and rises into place. Played once. */
+  #results.handoff{position:relative; animation:resultRise 0.55s cubic-bezier(0.2,0.8,0.3,1) 1 both;}
+  #results.handoff::before{content:''; position:absolute; top:0; left:0; right:0; height:3px; z-index:2;
+    background:var(--handoff, var(--accent-2)); transform-origin:left; animation:resultBar 0.7s cubic-bezier(0.3,0.8,0.3,1) 1 both;}
+  @keyframes resultRise{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+  @keyframes resultBar{from{transform:scaleX(0);} 60%{transform:scaleX(1); opacity:1;} to{transform:scaleX(1); opacity:0;}}
+
+  /* ---- live data readout ----
+     Real values from the record that was just read, printed one line at a
+     time as the pass reads them: the provider's own numbers, not a
+     summary of them. Every line is a value that exists in the response. */
+  .console-readout{display:none; margin-top:14px; padding-top:12px; border-top:1px solid var(--border);
+    font-family:'IBM Plex Mono', monospace; font-size:0.72rem; line-height:1.55;}
+  .console-readout.on{display:block;}
+  .console-readout ol{list-style:none; margin:6px 0 0; padding:0;}
+  .console-readout li{display:flex; gap:10px; opacity:0; transform:translateX(-4px);
+    transition:opacity 0.25s ease, transform 0.25s ease;}
+  .console-readout li.in{opacity:1; transform:none;}
+  .console-readout .rk{flex:0 0 9.5em; color:var(--text-muted); text-transform:lowercase;}
+  .console-readout .rv{color:var(--text); word-break:break-all; min-width:0;}
+  .console-readout li.risk .rv{color:var(--caution);}
+  .console-readout li.ok .rv{color:var(--safe);}
+
 
   /* ---- target + stages ---- */
   .console-label{font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); margin-bottom:5px;}
@@ -540,6 +576,11 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
     .console.running .console-stages li.is-active .glyph,
     .cs-cell.lit,
     .console.lock-done .cf-lock, .console.lock-warn .cf-lock, .console.lock-failed .cf-lock{animation:none;}
+    .console.lock-done .cf-verdict, .console.lock-warn .cf-verdict, .console.lock-failed .cf-verdict,
+    #results.handoff, #results.handoff::before{animation:none;}
+    .console.lock-done .cf-verdict, .console.lock-warn .cf-verdict, .console.lock-failed .cf-verdict{opacity:1;}
+    #results.handoff::before{display:none;}
+    .console-readout li{transition:none;}
     .console.running::before, .console-figure::after{display:none;}
     .console.running .console-stages li.is-active::after{display:none;}
     /* No sweep at all: a frozen one would read as a stalled scan. */
@@ -987,6 +1028,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
           <circle class="cf-core" cx="100" cy="100" r="4.5"/>
           <g id="cfNodes"></g>
           <circle class="cf-lock" cx="100" cy="100" r="80"/>
+          <text class="cf-verdict" id="cfVerdict" x="100" y="133"></text>
         </svg>
       </div>
       <!-- One cell per real check. aria-hidden because the stage list and
@@ -1003,6 +1045,10 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <div class="console-sub" id="consoleSub"></div>
         <div class="console-current" id="consoleCurrent"><span class="co-label">Now</span><span id="consoleCurrentText"></span></div>
         <ul class="console-stages" id="consoleStages"></ul>
+        <div class="console-readout" id="consoleReadout">
+          <div class="console-label">Data read</div>
+          <ol id="consoleReadoutLines"></ol>
+        </div>
       </div>
     </div>
     <div class="console-foot">
@@ -4487,6 +4533,58 @@ const ScanConsole = (function(){
     if(name && o.doneLabel) name.textContent = o.doneLabel;
   }
 
+  // Prints values from the record that was actually read, one line at a
+  // time. `lines` is [{k, v, tone}] built by the caller from the real
+  // response; empty values are dropped rather than shown as blanks.
+  // textContent only, like everything else in this module.
+  async function readout(id, lines, opts){
+    if(!isCurrent(id)) return;
+    const wrap = el('consoleReadout'), list = el('consoleReadoutLines');
+    const items = (lines || []).filter(l => l && l.v !== undefined && l.v !== null && String(l.v) !== '');
+    if(!wrap || !list || !items.length) return;
+    list.textContent = '';
+    wrap.classList.add('on');
+    const made = items.map(l => {
+      const li = document.createElement('li');
+      if(l.tone) li.className = l.tone;
+      const k = document.createElement('span'); k.className = 'rk'; k.textContent = l.k;
+      const v = document.createElement('span'); v.className = 'rv'; v.textContent = String(l.v);
+      li.appendChild(k); li.appendChild(v); list.appendChild(li);
+      return li;
+    });
+    if(reduced()){ made.forEach(li => li.classList.add('in')); return; }
+    const gap = Math.max(60, Math.min(220, Math.round(((opts && opts.spreadMs) || 1100) / made.length)));
+    for(const li of made){
+      await wait(gap);
+      if(!isCurrent(id)) return;
+      li.classList.add('in');
+    }
+  }
+  function hideReadout(){
+    const wrap = el('consoleReadout'), list = el('consoleReadoutLines');
+    if(wrap) wrap.classList.remove('on');
+    if(list) list.textContent = '';
+  }
+
+  // The result that appears after a lock is handed the verdict's colour.
+  // Watching for the moment it becomes visible keeps this in one place
+  // instead of in every renderer.
+  let pendingHandoff = null;
+  (function watchResults(){
+    try {
+      const res = document.getElementById('results');
+      if(!res || typeof MutationObserver === 'undefined') return;
+      new MutationObserver(() => {
+        if(!pendingHandoff || res.style.display !== 'block' || !res.firstChild) return;
+        const colour = pendingHandoff; pendingHandoff = null;
+        if(reduced()) return;
+        res.style.setProperty('--handoff', colour);
+        res.classList.remove('handoff'); void res.offsetWidth; res.classList.add('handoff');
+        setTimeout(() => res.classList.remove('handoff'), 900);
+      }).observe(res, { attributes: true, attributeFilter: ['style'], childList: true });
+    } catch(_) {}
+  })();
+
   function hideSignals(){
     const wrap = el('consoleSignals'), grid = el('consoleSignalGrid');
     if(wrap) wrap.classList.remove('on');
@@ -4567,6 +4665,9 @@ const ScanConsole = (function(){
     setHeadState('', 'Running');
     setCurrent('Starting the pass\u2026');
     hideSignals();
+    hideReadout();
+    pendingHandoff = null;
+    const stamp = el('cfVerdict'); if(stamp) stamp.textContent = '';
 
     const list = el('consoleStages');
     list.textContent = '';
@@ -4676,6 +4777,9 @@ const ScanConsole = (function(){
     // The verdict lands on the scope first, in its own colour, and holds
     // for a beat before the result below is revealed.
     const lock = reduced() ? 0 : LOCK_MS;
+    const stamp = el('cfVerdict');
+    if(stamp) stamp.textContent = String(o.stateText || '').slice(0, 14).toUpperCase();
+    pendingHandoff = state === 'failed' ? 'var(--danger)' : state === 'warn' ? 'var(--caution)' : 'var(--safe)';
     box.classList.add('lock-' + (state === 'failed' || state === 'warn' ? state : 'done'));
     setHeadState(state, o.stateText || 'Complete');
     setCurrent(o.stateText ? 'Pass complete \u00B7 ' + o.stateText : 'Pass complete', true);
@@ -4717,7 +4821,7 @@ const ScanConsole = (function(){
     return (ms / 1000).toFixed(1) + ' s';
   }
 
-  return { begin, step, set, signals, finish, fail, hide, isCurrent, elapsedMs, reduced, scrollOpts,
+  return { begin, step, set, signals, readout, finish, fail, hide, isCurrent, elapsedMs, reduced, scrollOpts,
            _targetMs: TARGET_MS, _minVisibleMs: MIN_VISIBLE_MS, _lockMs: LOCK_MS, _glyphs: GLYPH,
            _pace: () => run ? { visitMs: run.visitMs, dwellMs: run.dwellMs, signalMs: run.signalMs } : null };
 })();
@@ -5302,6 +5406,8 @@ async function runPackageScan(){
     await ScanConsole.step(runId, 'sources', ev.osv && ev.osv.ok ? 'done' : 'warn',
       n === null ? 'OSV.dev did not answer' : (n ? n + ' report' + (n === 1 ? '' : 's') + ' for this version' : 'no reports for this version'));
     if(!ScanConsole.isCurrent(runId)) return;
+    await ScanConsole.readout(runId, readoutForPackage(ev));
+    if(!ScanConsole.isCurrent(runId)) return;
     const built = buildPackageChecks(ev);
     const result = VerdictEngine.evaluate(built.checks, built.expected, 'npm', built.criticalTotal);
     const risks = built.checks.filter(c => c.status === 'RISK').length;
@@ -5440,6 +5546,68 @@ function messageScanStages(r){
   return stages;
 }
 
+// ---- live data readout: lines from the response that was really read ----
+// Each function only reports fields that exist in its input. Nothing is
+// estimated, and a missing field is left out rather than shown as "0".
+function rdPct(x){ const n = Number(x); return isFinite(n) && String(x) !== '' ? (Math.round(n * 1000) / 10) + '%' : undefined; }
+function rdNum(x){ const n = Number(x); return isFinite(n) && String(x) !== '' ? n.toLocaleString() : undefined; }
+function rdYesNo(x, yes, no){ return x === '1' || x === 1 || x === true ? yes : (x === '0' || x === 0 || x === false ? no : undefined); }
+const ZERO_ADDR = /^(0x0{40}|0x0{36}dead)$/i;
+function readoutForAddress(out, adapter, scanMode, chainId){
+  const r = (out && out.record) || {};
+  const lines = [{ k: 'source', v: 'GoPlus Security · ' + (adapter.chains[chainId] || adapter.name) }];
+  if(scanMode === 'wallet'){
+    const flags = Object.keys(r).filter(k => r[k] === '1' || r[k] === 1);
+    lines.push({ k: 'risk flags set', v: String(flags.length), tone: flags.length ? 'risk' : 'ok' });
+    if(flags.length) lines.push({ k: 'flags', v: flags.join(', ').replace(/_/g, ' '), tone: 'risk' });
+    lines.push({ k: 'data source', v: r.data_source || undefined });
+  } else {
+    const name = r.token_name || (r.metadata && r.metadata.name) || (r.name && r.name.name);
+    const sym = r.token_symbol || (r.metadata && r.metadata.symbol) || r.symbol;
+    lines.push({ k: 'token', v: name ? stripSpoofChars(String(name)) + (sym ? ' (' + stripSpoofChars(String(sym)) + ')' : '') : undefined });
+    lines.push({ k: 'holders', v: rdNum(r.holder_count) });
+    lines.push({ k: 'total supply', v: rdNum(r.total_supply) });
+    lines.push({ k: 'buy tax', v: rdPct(r.buy_tax), tone: Number(r.buy_tax) > 0.1 ? 'risk' : undefined });
+    lines.push({ k: 'sell tax', v: rdPct(r.sell_tax), tone: Number(r.sell_tax) > 0.1 ? 'risk' : undefined });
+    lines.push({ k: 'source code', v: rdYesNo(r.is_open_source, 'verified', 'not verified'), tone: r.is_open_source === '0' ? 'risk' : undefined });
+    if(r.owner_address !== undefined) lines.push({ k: 'owner', v: String(r.owner_address) === '' ? 'none listed' : ZERO_ADDR.test(String(r.owner_address)) ? 'zero address (renounced)' : String(r.owner_address) });
+    lines.push({ k: 'creator', v: r.creator_address || undefined });
+    lines.push({ k: 'dex pools', v: Array.isArray(r.dex) && r.dex.length ? String(r.dex.length) : undefined });
+  }
+  const answered = (out.checks || []).filter(c => c.status === 'PASS' || c.status === 'RISK').length;
+  lines.push({ k: 'checks answered', v: answered + ' of ' + out.expected });
+  return lines;
+}
+function readoutForMessage(r, matched){
+  const inp = r.input || {};
+  return [
+    { k: 'characters', v: rdNum(inp.characters) },
+    { k: 'invisible chars', v: rdNum(inp.invisibleCharactersRemoved), tone: inp.invisibleCharactersRemoved ? 'risk' : undefined },
+    { k: 'links found', v: String((r.urls || []).length) },
+    { k: 'encoded parts', v: String((r.decoded || []).length), tone: (r.decoded || []).length ? 'risk' : undefined },
+    { k: 'addresses found', v: String((r.addresses || []).length) },
+    { k: 'rules matched', v: matched + ' of ' + RULES.length, tone: matched ? 'risk' : 'ok' },
+    { k: 'sent anywhere', v: 'no · analysed in this tab', tone: 'ok' },
+  ];
+}
+function readoutForPackage(ev){
+  const v = ev.version || {};
+  const scripts = Object.keys(v.scripts || {}).filter(k => /^(pre|post)?install$|^prepare$/.test(k));
+  const n = ev.osv && ev.osv.ok ? (ev.osv.vulns || []).length : null;
+  const pub = ev.time && ev.time[ev.resolvedVersion] ? String(ev.time[ev.resolvedVersion]).slice(0, 10) : undefined;
+  return [
+    { k: 'package', v: ev.name + '@' + ev.resolvedVersion },
+    { k: 'published', v: pub },
+    { k: 'weekly downloads', v: typeof ev.weekly === 'number' ? ev.weekly.toLocaleString() : undefined },
+    { k: 'published by', v: v.publisher || undefined },
+    { k: 'provenance', v: v.provenance ? 'yes' : 'no' },
+    { k: 'install scripts', v: scripts.length ? scripts.join(', ') : 'none', tone: scripts.length ? 'risk' : 'ok' },
+    { k: 'OSV reports', v: n === null ? 'no answer' : String(n), tone: n ? 'risk' : (n === 0 ? 'ok' : undefined) },
+    { k: 'deprecated', v: v.deprecated ? 'yes' : undefined, tone: 'risk' },
+    { k: 'unpacked size', v: v.unpackedSize ? Math.round(v.unpackedSize / 1024).toLocaleString() + ' kB' : undefined },
+  ];
+}
+
 // The message scan is local and finishes in about a millisecond, so the
 // console cannot be driven by it in real time. It replays the passes in
 // the order the code ran them, with each pass's REAL outcome — and the
@@ -5457,6 +5625,9 @@ async function replayMessageScan(runId, r){
       .replace(/^./, c => c.toUpperCase()),
     status: hit.has(rule.id) ? 'risk' : 'pass',
   }));
+  // Rules in the table that matched: the same number the grid lights.
+  // (Some findings come from the other passes, not from a rule.)
+  const rulesMatched = ruleCells.filter(c => c.status === 'risk').length;
 
   await ScanConsole.step(runId, 'read', 'done',
     (r.input && r.input.characters ? r.input.characters.toLocaleString() : '0') + ' characters · never sent anywhere');
@@ -5469,7 +5640,9 @@ async function replayMessageScan(runId, r){
       // One cell per rule, filled with whether that rule matched.
       ScanConsole.set(runId, 'rules', 'active', 'running ' + RULES.length + ' rules over the text');
       await ScanConsole.signals(runId, ruleCells,
-        { doneLabel: hit.size + ' of ' + RULES.length + ' matched' });
+        { doneLabel: rulesMatched + ' of ' + RULES.length + ' matched' });
+      if(!ScanConsole.isCurrent(runId)) return;
+      await ScanConsole.readout(runId, readoutForMessage(r, rulesMatched));
       if(!ScanConsole.isCurrent(runId)) return;
     }
     await ScanConsole.step(runId, s.id, state === 'done' && warn ? 'warn' : state, s._note || '');
@@ -6167,6 +6340,8 @@ async function runScan(){
       label: c.label,
       status: c.status === 'PASS' ? 'pass' : c.status === 'RISK' ? 'risk' : 'unknown',
     })), { doneLabel: answered + ' of ' + out.expected + ' answered' });
+    if(!ScanConsole.isCurrent(runId)) return;
+    await ScanConsole.readout(runId, readoutForAddress(out, adapter, mode, chainId));
     if(!ScanConsole.isCurrent(runId)) return;
     await ScanConsole.step(runId, 'read', 'done',
       answered + ' of ' + out.expected + ' checks answered by the provider');
