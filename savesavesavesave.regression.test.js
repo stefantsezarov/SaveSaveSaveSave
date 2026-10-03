@@ -182,28 +182,79 @@ console.log('\n== Solana token checks ==');
 // correctly for chain_id=1. A user scanning an address he had taken from
 // a sanctions list was told "system error … the address has no data yet".
 // ---------------------------------------------------------------------
-{ // 18. the capability is off, and says why in its own words
-  const off = SolanaAdapter.capabilities.walletScreening === false;
-  console.log((off ? 'PASS' : 'FAIL') + ' Solana adapter declares walletScreening: false (provider returns code 5000 for chain_id=solana)');
-  off ? passed++ : failed++;
-
+// Solana wallets: since 3 Oct 2026 the scan reads the account from a
+// public Solana RPC node (what it is, whether it exists, what it holds),
+// because GoPlus still answers code 5000 for chain_id=solana. Reputation is
+// reported as NOT CHECKED, never as clean.
+const solMock = (kind, goplus) => {
+  const urls = [];
+  const f = async (url, init) => {
+    urls.push(url);
+    if(/publicnode/.test(url)){
+      const m = JSON.parse(init.body).method;
+      if(m === 'getAccountInfo'){
+        const val = kind === 'missing' ? null
+          : kind === 'wallet' ? { owner: '11111111111111111111111111111111', lamports: 2500000000, executable: false, data: ['', 'base64'] }
+          : kind === 'program' ? { owner: 'BPFLoaderUpgradeab1e11111111111111111111111', lamports: 1, executable: true, data: ['', 'base64'] }
+          : kind === 'mint' ? { owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', lamports: 1, executable: false, data: { parsed: { type: 'mint', info: {} } } }
+          : { owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', lamports: 1, executable: false, data: { parsed: { type: 'account', info: { owner: 'OwnerWa11et1111111111111111111111111111111', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' } } } };
+        return { ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: { value: val } }) };
+      }
+      if(m === 'getTokenAccountsByOwner') return { ok: true, json: async () => ({ result: { value: [1, 2, 3] } }) };
+    }
+    if(/token_security/.test(url)) return { ok: true, json: async () => ({ code: 7012, message: 'Not fungible spl token address ', result: null }) };
+    return { ok: true, json: async () => (goplus || { code: 5000, message: 'system error', result: null }) };
+  };
+  f.urls = urls; return f;
+};
+const ADDR_SOL = 'SomeAddress1111111111111111111111111111111';
+{ // 18. the capability is on, and its note says what kind of check it is
+  const on = SolanaAdapter.capabilities.walletScreening === true;
   const note = (SolanaAdapter.capabilityNotes || {}).walletScreening || '';
-  const explained = /no provider data/i.test(note) && !/not yet available/i.test(note);
-  console.log((explained ? 'PASS' : 'FAIL') + ' ...and the page says "no provider data", not "not yet available" -> "' + note + '"');
-  explained ? passed++ : failed++;
-}
-{ // 18a. a wallet request is refused BEFORE any network call, and the
-  // refusal says it is a coverage gap. The old version of this test
-  // asserted the opposite; it was asserting a bug.
-  let called = false;
-  const mockFetch = async () => { called = true; return { ok: true, json: async () => ({ code: 1, result: { sanctioned: '0' } }) }; };
-  let msg = '';
-  try {
-    await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null, mockFetch);
-  } catch(e){ msg = e.message; }
-  const ok = !called && /gap in coverage/i.test(msg) && /not a clean result/i.test(msg);
-  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: refused without a network call, as a coverage gap -> fetched=' + called);
+  const ok = on && /on-chain/i.test(note) && /no reputation provider/i.test(note);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet scans are on, described as on-chain checks without reputation -> "' + note + '"');
   ok ? passed++ : failed++;
+}
+{ // 18a. an ordinary wallet: account checks pass, reputation is UNKNOWN, so
+  // the verdict can never be a clean PASS.
+  const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('wallet'));
+  const rep = out.checks.find(c => c.id === 'sol_reputation');
+  const v = VerdictEngine.evaluate(out.checks, out.expected, 'test', out.criticalDefsTotal);
+  const ok = rep && rep.status === 'UNKNOWN' && /not a clean result/.test(rep.detail) && v.verdict === 'caution'
+    && out.record.sol_balance === 2.5;
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: account facts read, reputation reported as not checked, verdict CAUTION -> ' + v.verdict);
+  ok ? passed++ : failed++;
+}
+{ // 18c2. a program or token account is not a wallet: FAIL, with the reason.
+  for(const kind of ['program', 'token-account', 'mint']){
+    const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock(kind));
+    const v = VerdictEngine.evaluate(out.checks, out.expected, 'test', out.criticalDefsTotal);
+    const t = out.checks.find(c => c.id === 'sol_account_type');
+    const ok = v.verdict === 'fail' && t.status === 'RISK' && /not a wallet|not an ordinary wallet/i.test(t.detail);
+    console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: a ' + kind + ' is flagged as not a wallet -> ' + v.verdict);
+    ok ? passed++ : failed++;
+  }
+}
+{ // 18c3. never funded: flagged, not passed.
+  const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('missing'));
+  const e = out.checks.find(c => c.id === 'sol_account_exists');
+  const ok = e && e.status === 'RISK' && /never held SOL/.test(e.detail);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: an address that was never funded is flagged');
+  ok ? passed++ : failed++;
+}
+{ // 18c4. a wallet pasted on the TOKEN tab: GoPlus says "not a fungible SPL
+  // token"; the chain says it is a wallet; the error is the one the page
+  // turns into an automatic switch to the wallet scan.
+  let msg = '';
+  try { await SolanaAdapter.fetchChecks(ADDR_SOL, 'token', 'solana', solMock('wallet')); } catch(e){ msg = e.message; }
+  const ok = /does not appear to be a recognized token/i.test(msg) && !/system error/i.test(msg);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana: a wallet on the token tab is identified as a wallet -> "' + msg.slice(0, 70) + '"');
+  ok ? passed++ : failed++;
+  let msg2 = '';
+  try { await SolanaAdapter.fetchChecks(ADDR_SOL, 'token', 'solana', solMock('token-account')); } catch(e){ msg2 = e.message; }
+  const ok2 = /token account/i.test(msg2) && /OwnerWa11et/.test(msg2);
+  console.log((ok2 ? 'PASS' : 'FAIL') + ' Solana: a token account on the token tab names its owner wallet');
+  ok2 ? passed++ : failed++;
 }
 { // 18b. normalizeSolanaWalletRecord — this logic was never what broke; only the
   // endpoint routing was in question, and that's now restored
@@ -215,31 +266,23 @@ console.log('\n== Solana token checks ==');
   const { checks, expected, criticalDefsTotal } = normalizeSolanaWalletRecord(rec);
   assertVerdict('Solana wallet normalization: fully clean, full coverage', VerdictEngine.evaluate(checks, expected, 'test', criticalDefsTotal), 'PASS');
 }
-{ // 18d. if the capability is ever restored, the live 5000 must still be
-  // named as a coverage gap rather than handed up as the vendor's bare
-  // phrase "system error". That phrase is what the banner then wrapped in
-  // "the address has no data yet".
-  const mockFetch = async () => ({ ok: true, json: async () => ({ code: 5000, message: 'system error', result: null }) });
-  let msg = '';
-  try { await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111', mockFetch); }
-  catch(e){ msg = e.message; }
-  const ok = /gap in coverage/i.test(msg) && !/^system error$/i.test(msg);
-  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: a live code 5000 is reported as a coverage gap -> "' + msg.slice(0, 60) + '…"');
-  ok ? passed++ : failed++;
-}
-{ // 18e. THE DANGEROUS FIX. Dropping chain_id makes the endpoint return
-  // code 1 with every flag "0" and data_source "" — an empty record that
-  // the normalizer would turn into a full row of PASSes. An address with
-  // no record must never be rendered as an address with a clean record.
-  const mockFetch = async () => ({ ok: true, json: async () => ({
-    code: 1, message: 'ok',
-    result: Object.fromEntries([...EVM_WALLET_CHECK_DEFS.map(d => [d.key, '0']), ['data_source', '']]),
-  })});
-  let msg = '', threw = false;
-  try { await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111', mockFetch); }
-  catch(e){ threw = true; msg = e.message; }
-  const ok = threw && /no address record at all/i.test(msg) && /not absence of risk/i.test(msg);
-  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: an empty record (no data_source) is refused, never rendered as PASS');
+{ // 18d/18e. GoPlus code 5000, or an EMPTY record (no data_source), must
+  // never become reputation PASSes: both leave reputation as NOT CHECKED.
+  for(const [name, gp] of [['code 5000', { code: 5000, message: 'system error', result: null }],
+      ['empty record', { code: 1, message: 'ok', result: Object.fromEntries([...EVM_WALLET_CHECK_DEFS.map(d => [d.key, '0']), ['data_source', '']]) }]]){
+    const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('wallet', gp));
+    const rep = out.checks.find(c => c.id === 'sol_reputation');
+    const noFlagPasses = !out.checks.some(c => EVM_WALLET_CHECK_DEFS.some(d => d.key === c.id));
+    const ok = rep && rep.status === 'UNKNOWN' && noFlagPasses;
+    console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: GoPlus ' + name + ' leaves reputation unchecked, never PASS');
+    ok ? passed++ : failed++;
+  }
+  // ...and a REAL record (data_source set) is used.
+  const real = { code: 1, result: Object.assign(Object.fromEntries(EVM_WALLET_CHECK_DEFS.map(d => [d.key, '0'])), { sanctioned: '1', data_source: 'SlowMist' }) };
+  const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('wallet', real));
+  const v = VerdictEngine.evaluate(out.checks, out.expected, 'test', out.criticalDefsTotal);
+  const ok = v.verdict === 'fail' && !out.checks.some(c => c.id === 'sol_reputation');
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: if GoPlus starts answering, its flags are used (sanctioned -> FAIL)');
   ok ? passed++ : failed++;
 }
 { // 18f. and the adapter must never ask the address endpoint WITHOUT a

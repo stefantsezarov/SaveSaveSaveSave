@@ -664,42 +664,30 @@ section('Address result escapes provider and pasted text');
   // a reason that has nothing to do with the code under test.
   const inPage = expr => vm.runInContext(expr, sandbox, { timeout: 15000 });
 
-  check('the shipped page does not claim Solana wallet screening',
-    inPage('SolanaAdapter.capabilities.walletScreening') === false,
-    'the provider answers code 5000 for chain_id=solana; the dot must not be green');
-
-  check('...and explains why, rather than saying "not yet available"',
-    /no provider data/i.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')),
-    '"not yet available" describes something unbuilt; this is built and unanswered');
+  check('the shipped page offers Solana wallet scans as on-chain checks',
+    inPage('SolanaAdapter.capabilities.walletScreening') === true &&
+    /on-chain/.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')),
+    'the note must say these are account checks, not reputation');
 
   await (async () => {
+    // The page's Solana wallet scan: account read from the RPC node,
+    // reputation reported as NOT CHECKED (GoPlus answers 5000), verdict
+    // CAUTION -- never a clean PASS built from silence.
     const r = await inPage(`(async () => {
-      let fetched = false, msg = '';
-      try {
-        await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', null,
-          async () => { fetched = true; return { ok: true, json: async () => ({ code: 1, result: {} }) }; });
-      } catch (e) { msg = e.message; }
-      return { fetched, msg };
+      const f = async (url, init) => {
+        if(/publicnode/.test(url)){
+          const m = JSON.parse(init.body).method;
+          if(m === 'getAccountInfo') return { ok: true, json: async () => ({ result: { value: { owner: '11111111111111111111111111111111', lamports: 1e9, executable: false } } }) };
+          return { ok: true, json: async () => ({ result: { value: [] } }) };
+        }
+        return { ok: true, json: async () => ({ code: 5000, message: 'system error', result: null }) };
+      };
+      const out = await SolanaAdapter.fetchChecks('SomeAddress1111111111111111111111111111111', 'wallet', 'solana', f);
+      const v = VerdictEngine.evaluate(out.checks, out.expected, 'Solana', out.criticalDefsTotal);
+      return { verdict: v.verdict, rep: (out.checks.find(c => c.id === 'sol_reputation') || {}).status };
     })()`);
-    check('the shipped page refuses a Solana wallet scan before any fetch',
-      !r.fetched && /gap in coverage/i.test(r.msg) && /not a clean result/i.test(r.msg),
-      'fetched=' + r.fetched + ' msg="' + r.msg.slice(0, 70) + '"');
-  })();
-
-  await (async () => {
-    // The tempting fix, blocked in the page as well as in the module:
-    // without chain_id the endpoint answers code 1 with every flag "0"
-    // and no data_source, and that empty record would render as PASS.
-    const msg = await inPage(`(async () => {
-      try {
-        await SolanaAdapter._fetchWalletChecks('SomeAddress1111111111111111111111111111111',
-          async () => ({ ok: true, json: async () => ({ code: 1, result: { sanctioned: '0', data_source: '' } }) }));
-      } catch (e) { return e.message; }
-      return '';
-    })()`);
-    check('an empty provider record is refused, never rendered as a row of PASSes',
-      /no address record at all/i.test(msg) && /not absence of risk/i.test(msg),
-      'got: "' + String(msg).slice(0, 70) + '"');
+    check('a Solana wallet scan works in the page and never claims a clean reputation',
+      r.verdict === 'caution' && r.rep === 'UNKNOWN', JSON.stringify(r));
   })();
 
   console.log('\n' + '='.repeat(60));

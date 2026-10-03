@@ -17,6 +17,7 @@ const ALLOWED_HOSTS = new Set([
   'api.gopluslabs.io',                                       // address and token data
   new URL(core.SOLANA_PROXY_URL || 'https://invalid.invalid').host,  // our Worker: some chains, sanctions
   'registry.npmjs.org', 'api.npmjs.org', 'api.osv.dev',      // package check
+  'solana-rpc.publicnode.com',                               // Solana wallet: on-chain account checks
 ]);
 const MAX_TEXT = 200000;
 const TIMEOUT_MS = 20000;

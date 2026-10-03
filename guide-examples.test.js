@@ -338,9 +338,10 @@ if (fs.existsSync(guidePath)) {
   // Twelve-second Ethereum blocks: 2,000 of them is 400 minutes.
   check('guide 7: "a little under seven hours on Ethereum" still matches the look-back window',
     range === 2000 && /a little under seven hours on Ethereum/.test(g7), 'LOG_BLOCK_RANGE is ' + range);
-  check('guide 7: Solana, Sui and TRON wallets are still not screened',
-    ['solana', 'sui', 'tron'].every(k => C.Adapters[k].capabilities.walletScreening === false)
-      && /Solana, Sui and TRON wallets/.test(g7));
+  check('guide 7: Solana, Sui and TRON wallets are still not screened against sanctions lists',
+    ['sui', 'tron'].every(k => C.Adapters[k].capabilities.walletScreening === false)
+      && /no reputation provider/.test(C.Adapters.solana.capabilityNotes.walletScreening)
+      && /Solana, Sui and TRON wallets<\/td><td data-label="What happens">Not screened against sanctions lists/.test(g7));
   check('guide 7: token scans still carry no sanctions check',
     !C.EVM_TOKEN_CHECK_DEFS.some(d => d.key === 'sanctioned'));
   const clean = C.VerdictEngine.evaluate(mk({}), defs.length, 'EVM', crit);

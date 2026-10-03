@@ -487,56 +487,67 @@ async function fetchGoPlus(directUrl, proxyUrl, fetchImpl){
   }
 }
 
+// ---------- Solana on-chain account checks ----------
+// GoPlus has no Solana wallet data (address_security?chain_id=solana
+// answers code 5000 "system error" for every address, re-measured 3 October
+// 2026). So the wallet scan reads the account itself from a public Solana
+// RPC node: what kind of account it is, whether it exists, what it holds.
+// Those are facts, not reputation, and the result says so. If GoPlus ever
+// starts answering for Solana, its flags are added automatically.
+const SOLANA_RPC_URL = 'https://solana-rpc.publicnode.com';
+const SOLANA_SYSTEM_PROGRAM = '11111111111111111111111111111111';
+const SOLANA_TOKEN_PROGRAMS = {
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': 'SPL Token',
+  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb': 'Token-2022',
+};
+
+async function solanaRpc(method, params, fetchImpl){
+  const res = await fetchImpl(SOLANA_RPC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+  if(!res.ok) throw new Error('The Solana RPC node answered HTTP ' + res.status + '.');
+  const data = await res.json();
+  if(data.error) throw new Error('The Solana RPC node returned an error: ' + (data.error.message || 'unknown'));
+  return data.result;
+}
+
+// What an address is on chain. kind: missing | wallet | mint |
+// token-account | program | other.
+async function solanaAccountKind(addr, fetchImpl){
+  const r = await solanaRpc('getAccountInfo', [addr, { encoding: 'jsonParsed', commitment: 'confirmed' }], fetchImpl);
+  const v = r && r.value;
+  if(!v) return { kind: 'missing', lamports: 0 };
+  const owner = String(v.owner || '');
+  const parsed = v.data && v.data.parsed;
+  if(v.executable) return { kind: 'program', owner, lamports: v.lamports };
+  if(owner === SOLANA_SYSTEM_PROGRAM) return { kind: 'wallet', owner, lamports: v.lamports };
+  if(SOLANA_TOKEN_PROGRAMS[owner] && parsed){
+    if(parsed.type === 'mint') return { kind: 'mint', owner, lamports: v.lamports };
+    if(parsed.type === 'account') return { kind: 'token-account', owner, lamports: v.lamports,
+      tokenOwner: parsed.info && parsed.info.owner, mint: parsed.info && parsed.info.mint };
+  }
+  return { kind: 'other', owner, lamports: v.lamports };
+}
+
+function solanaKindSentence(info){
+  if(info.kind === 'program') return 'This is a Solana program (executable code), not a wallet or a token.';
+  if(info.kind === 'token-account') return 'This is a token account — a sub-account that holds one token' +
+    (info.mint ? ' (mint ' + info.mint + ')' : '') + ' for its owner wallet' + (info.tokenOwner ? ' ' + info.tokenOwner : '') +
+    '. It is not a wallet address or a token.' + (info.tokenOwner ? ' To check the person behind it, scan the owner wallet.' : '');
+  if(info.kind === 'mint') return 'This is a token mint, not a wallet.';
+  if(info.kind === 'other') return 'This account is owned by the program ' + info.owner + '; it is not an ordinary wallet or a token mint.';
+  return '';
+}
+
 const SolanaAdapter = {
   id: 'solana', name: 'Solana',
-  // WALLET SCREENING IS OFF FOR SOLANA, and this time the reason is
-  // measured rather than reasoned about.
-  //
-  // It was switched ON once before on the strength of GoPlus's public
-  // announcement that chain_id: 'solana' is accepted by the Malicious
-  // Address API. The announcement is real. The endpoint does not honour
-  // it. Queried directly, 21 September 2026:
-  //
-  //   address_security/42RLPACwZPx3…?chain_id=solana
-  //     -> {"code":5000,"message":"system error","result":null}
-  //   address_security/EPjFWdd5…?chain_id=solana   (USDC's mint)
-  //     -> {"code":5000,"message":"system error","result":null}
-  //   address_security/0x098B716B…?chain_id=1      (a listed address)
-  //     -> {"code":1, … "sanctioned":"1","data_source":"SlowMist,BlockSec"}
-  //
-  // So the route is healthy and the chain_id is what it refuses. Two
-  // addresses, one of them the best-known mint on Solana, rule out "that
-  // address simply has no record".
-  //
-  // This reached a user as "Scan failed: system error … the address has
-  // no data yet", on an address he had brought from a sanctions list.
-  // A security tool that answers a listed address with a shrug is worse
-  // than one that says it does not cover the chain, because the shrug
-  // reads as absence of evidence.
-  //
-  // DO NOT "FIX" THIS BY DROPPING chain_id. That was tested too:
-  // address_security/<solana addr> with no chain_id returns code 1 with
-  // every flag "0" and data_source "" — an empty record that this engine
-  // would faithfully render as a clean PASS. The failure would stop being
-  // visible and start being wrong, which is the only change that could
-  // make this worse.
-  //
-  // Re-enable when a query like the ones above returns code 1 with a
-  // populated data_source. Not before, and not on an announcement.
-  capabilities: { tokenSecurity:true, walletScreening:false, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
-  // "not yet available" is the right phrase for something not built yet.
-  // This one IS built; the provider will not answer. Different sentence.
-  capabilityNotes: { walletScreening: 'no provider data for Solana' },
+  capabilities: { tokenSecurity:true, walletScreening:true, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
+  // Wallet scans are ON-CHAIN ACCOUNT checks, not reputation screening:
+  // no provider currently answers for Solana wallets (see above).
+  capabilityNotes: { walletScreening: 'on-chain account checks; no reputation provider covers Solana wallets yet' },
   chains: { 'solana': 'Solana Mainnet' },
   validateAddress(addr){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(addr).trim()); },
 
   async fetchChecks(addr, assetType, chainId, fetchImpl){
-    // The same guard the EVM adapter has. The UI disables the wallet tab
-    // when walletScreening is false, but the UI is not the only caller and
-    // a capability flag that only the interface respects is decoration.
-    if(assetType === 'wallet' && !this.capabilities.walletScreening){
-      throw new Error('Wallet screening is not available on Solana. The security provider\'s address library does not answer for this chain, so this scanner has no wallet reputation data here — this is a gap in coverage, not a clean result.');
-    }
     if(assetType === 'wallet') return this._fetchWalletChecks(addr, fetchImpl);
     const res = await fetchGoPlus(
       `https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=${encodeURIComponent(addr)}`,
@@ -549,48 +560,80 @@ const SolanaAdapter = {
       throw new Error(`Network response was not OK (${res.status})${detail ? ': ' + detail : ''}`);
     }
     const data = await res.json();
-    if(data.code !== 1 || !data.result) throw new Error(data.message || data.error || 'No security data returned for this address.');
-    const keys = Object.keys(data.result);
-    if(keys.length === 0) throw new Error('This address does not appear to be a recognized token on Solana.');
+    const keys = data && data.code === 1 && data.result ? Object.keys(data.result) : [];
+    if(!keys.length){
+      // GoPlus answers a non-token address with "Not fungible spl token
+      // address" (7012) or "system error" (5000), which reached people as
+      // "Scan failed: system error". Ask the chain what the address is
+      // instead of passing the vendor's word on.
+      let info = null;
+      try { info = await solanaAccountKind(addr, fetchImpl); } catch(_){ /* fall through to the provider's own message */ }
+      if(info && (info.kind === 'wallet' || info.kind === 'missing')){
+        throw new Error('This address does not appear to be a recognized token on Solana. It is a wallet address.');
+      }
+      if(info && info.kind !== 'mint') throw new Error(solanaKindSentence(info));
+      throw new Error(keys.length === 0 && data && data.code === 1
+        ? 'This address does not appear to be a recognized token on Solana.'
+        : (data && (data.message || data.error)) || 'No security data returned for this address.');
+    }
     const record = data.result[keys[0]];
     const { checks, expected, criticalDefsTotal, liquiditySummary } = normalizeSolanaRecord(record);
     return { checks, expected, criticalDefsTotal, record, raw: data, liquiditySummary };
   },
 
   async _fetchWalletChecks(addr, fetchImpl){
-    const directUrl = `https://api.gopluslabs.io/api/v1/address_security/${addr}?chain_id=solana`;
-    let res;
-    try{
-      res = await fetchImpl(directUrl);
-    } catch(directErr){
-      if(SOLANA_PROXY_URL.includes('REPLACE-WITH-YOUR-WORKER-URL')){
-        throw new Error('Solana wallet screening needs the CORS proxy deployed and updated first — see setup instructions.');
-      }
-      const proxyUrl = `${SOLANA_PROXY_URL}?wallet_address=${addr}`;
-      res = await fetchImpl(proxyUrl);
+    const SRC = 'Solana RPC (on-chain account)';
+    const info = await solanaAccountKind(addr, fetchImpl);
+    const checks = [];
+    const notWallet = info.kind === 'program' || info.kind === 'mint' || info.kind === 'token-account' || info.kind === 'other';
+    checks.push({ id: 'sol_account_type', category: 'destination', critical: true, severityWeight: 3, source: SRC,
+      status: notWallet ? 'RISK' : 'PASS',
+      label: notWallet ? 'Not an ordinary wallet address' : 'Ordinary wallet account',
+      detail: notWallet ? solanaKindSentence(info) + ' Sending funds directly to it can lose them.'
+                        : 'Owned by the System Program, the way a normal wallet is.' });
+    if(!notWallet){
+      checks.push({ id: 'sol_account_exists', category: 'activity', critical: false, severityWeight: 1, source: SRC,
+        status: info.kind === 'missing' ? 'RISK' : 'PASS',
+        label: info.kind === 'missing' ? 'Never funded' : 'Account exists on chain',
+        detail: info.kind === 'missing'
+          ? 'This address has never held SOL. It may be brand new or mistyped — confirm it with the recipient through a channel you trust before sending.'
+          : 'The account has been funded at least once.' });
     }
-    if(!res.ok){
-      let detail = '';
-      try { const errBody = await res.json(); detail = errBody.error || errBody.message || errBody.detail || ''; }
-      catch(_){ /* response wasn't JSON, or already consumed */ }
-      throw new Error(`Network response was not OK (${res.status})${detail ? ': ' + detail : ''}`);
+    // Token holdings are not read: PublicNode refuses getTokenAccountsByOwner
+    // ("Request blocked", tested 3 Oct 2026), and a blank is better than a guess.
+    const tokenAccounts = null;
+    // Reputation: tried, and reported honestly when the provider has nothing.
+    let repo = null;
+    try {
+      const res = await fetchImpl(`https://api.gopluslabs.io/api/v1/address_security/${addr}?chain_id=solana`);
+      const data = res.ok ? await res.json() : null;
+      if(data && data.code === 1 && data.result && String(data.result.data_source || '').trim()) repo = data.result;
+    } catch(_){ repo = null; }
+    let expected = checks.length + 1;
+    if(repo){
+      const w = normalizeSolanaWalletRecord(repo);
+      w.checks.forEach(c => checks.push(c));
+      expected = checks.length;
+    } else {
+      checks.push({ id: 'sol_reputation', category: 'reputation', critical: false, severityWeight: 1, source: 'GoPlus Security',
+        status: 'UNKNOWN', label: 'Scam and sanctions lists',
+        detail: 'Not checked: no reputation provider currently answers for Solana wallets. This is a gap in coverage, not a clean result.' });
     }
-    const data = await res.json();
-    // code 5000 / "system error" is what this endpoint returns for every
-    // Solana address (see the capability note above). Name it, rather than
-    // passing the vendor's word up to a banner that will guess at a cause.
-    if(data.code === 5000){
-      throw new Error('the security provider\'s address library does not currently answer for Solana (it returned "system error" for this chain). This is a gap in coverage — it is not a statement that the address is clean');
-    }
-    if(data.code !== 1 || !data.result) throw new Error(data.message || data.error || 'No security data returned for this address.');
-    // An all-zero record with no data_source is an EMPTY record, not a
-    // clean one. Rendering it as a row of PASSes would manufacture
-    // reassurance out of a provider having nothing to say.
-    if(!String(data.result.data_source || '').trim()){
-      throw new Error('the security provider returned no address record at all (no data source), so there is nothing to screen against. Absence of a record is not absence of risk');
-    }
-    const { checks, expected, criticalDefsTotal } = normalizeSolanaWalletRecord(data.result);
-    return { checks, expected, criticalDefsTotal, record: data.result, raw: data, liquiditySummary: null };
+    const sol = typeof info.lamports === 'number' ? info.lamports / 1e9 : null;
+    const record = {
+      account_type: info.kind, owner_program: info.owner || '', sol_balance: sol, token_accounts: tokenAccounts,
+      reputation_source: repo ? repo.data_source : '',
+      _readout: [
+        { k: 'source', v: 'Solana RPC (publicnode)' + (repo ? ' + GoPlus' : '') },
+        { k: 'account type', v: { wallet: 'wallet (System Program)', missing: 'not on chain yet', mint: 'token mint', 'token-account': 'token account', program: 'program', other: 'other program account' }[info.kind],
+          tone: notWallet ? 'risk' : (info.kind === 'missing' ? 'risk' : 'ok') },
+        { k: 'SOL balance', v: sol === null ? undefined : sol.toLocaleString(undefined, { maximumFractionDigits: 6 }) },
+        { k: 'token accounts', v: tokenAccounts === null ? undefined : String(tokenAccounts) },
+        { k: 'owner wallet', v: info.tokenOwner || undefined },
+        { k: 'reputation', v: repo ? 'GoPlus: ' + repo.data_source : 'not covered for Solana', tone: repo ? undefined : 'risk' },
+      ],
+    };
+    return { checks, expected, criticalDefsTotal: 1, record, raw: { info }, liquiditySummary: null };
   }
 };
 
@@ -1179,6 +1222,7 @@ if(typeof module !== 'undefined' && module.exports){
     EVM_TOKEN_CHECK_DEFS, EVM_WALLET_CHECK_DEFS, EVM_CHAINS, normalizeEvmRecord, EvmAdapter,
     COUNTERPARTY_CHECK_SUPPORTED_CHAINS, fetchCounterpartyChecks,
     SOLANA_CHECK_DEFS, normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
+    SOLANA_RPC_URL, solanaAccountKind,
     SUI_CHECK_DEFS, suiFlagState, normalizeSuiRecord, SuiAdapter, TronAdapter, Adapters, detectEcosystem,
     POPULAR_NPM, parsePackageSpec, packageLookalike, buildPackageChecks, fetchPackageEvidence, installScriptSignals, repoKey,
     NPM_REGISTRY_URL, NPM_DOWNLOADS_URL, OSV_QUERY_URL, SOLANA_PROXY_URL

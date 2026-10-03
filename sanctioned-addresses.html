@@ -40,7 +40,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="SaveSaveSaveSave — free risk screening for crypto messages and addresses">
 <meta property="article:published_time" content="2026-09-23">
-<meta property="article:modified_time" content="2026-10-02">
+<meta property="article:modified_time" content="2026-10-03">
 <meta property="article:author" content="Stefan Tsezarov">
 <meta property="article:section" content="Address risk">
 <meta name="twitter:card" content="summary_large_image">
@@ -64,7 +64,7 @@
         "@id": "https://savesavesavesave.xyz/sanctioned-addresses"
       },
       "datePublished": "2026-09-23",
-      "dateModified": "2026-10-02",
+      "dateModified": "2026-10-03",
       "author": {
         "@type": "Person",
         "@id": "https://savesavesavesave.xyz/#author",
@@ -82,7 +82,7 @@
         }
       },
       "inLanguage": "en",
-      "wordCount": 2330,
+      "wordCount": 2359,
       "isAccessibleForFree": true,
       "articleSection": "Address risk",
       "isPartOf": {
@@ -223,7 +223,7 @@
           <tr><td data-label="Check">Has this wallet recently dealt with a listed address?</td><td data-label="What happens">On eight EVM chains, recent token transfers are read and counterparties are checked against the Chainalysis sanctions oracle. The look-back window is short: a little under seven hours on Ethereum, and from about eight minutes to just over an hour on faster chains. A match is <strong>CAUTION</strong>, not FAIL. Exposure is not the same as designation.</td></tr>
           <tr><td data-label="Check">Plain ETH moving between wallets</td><td data-label="What happens">Not seen. The recent-counterparty check reads token transfers only.</td></tr>
           <tr><td data-label="Check">The wallet's full history</td><td data-label="What happens">Not checked. The scan does not reconstruct everything the wallet has ever done.</td></tr>
-          <tr><td data-label="Check">Solana, Sui and TRON wallets</td><td data-label="What happens">Not screened. The scanner has no wallet-screening source for those chains, and says so rather than pretending otherwise.</td></tr>
+          <tr><td data-label="Check">Solana, Sui and TRON wallets</td><td data-label="What happens">Not screened against sanctions lists. The scanner has no sanctions source for those chains, and says so rather than pretending otherwise. Solana wallet scans read the account on chain (what kind of account it is, whether it was ever funded) and report the lists as not checked.</td></tr>
           <tr><td data-label="Check">Token contracts</td><td data-label="What happens">Not checked against sanctions lists. A token scan looks at what the contract can do, not at the identity of whoever may control or use it.</td></tr>
         </tbody>
       </table>

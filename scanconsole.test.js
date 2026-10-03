@@ -186,10 +186,10 @@ section('Capabilities the adapter lacks are shown as NOT performed');
   // The one that matters most after last week: a chain with wallet
   // screening switched off must say so rather than omit the row.
   const solWallet = run("addressScanStages(SolanaAdapter, 'wallet', 'solana').map(s => ({id:s.id, state:s.state, note:s.note}))");
-  const ws = solWallet.find(s => s.id === 'cap_walletScreening');
-  check('Solana wallet screening appears as an explicit not-performed row', !!ws && ws.state === 'skipped');
-  check('...carrying the provider reason, not a generic one',
-    !!ws && /no provider data/i.test(ws.note || ''), ws && ws.note);
+  const ws = solWallet.find(s => s.id === 'cap_reputation');
+  check('Solana wallet: scam and sanctions lists appear as an explicit not-performed row', !!ws && ws.state === 'skipped');
+  check('...carrying the reason, not a generic one',
+    !!ws && /no provider answers for Solana wallets/i.test(ws.note || ''), ws && ws.note);
 }
 
 section('Network rows are driven by requests that really went out');
@@ -278,10 +278,18 @@ async function afterFirstScan() {
     check('...and no result was rendered', !/verdict-badge/.test(nodes['results'].innerHTML || ''));
   }
 
-  section('A coverage gap is not reported as a failure to connect');
+  section('A Solana wallet scan reads the account and reports the lists as not checked');
   freshPage();
-  let fetched = false;
-  sandbox.fetch = async () => { fetched = true; return { ok: true, status: 200, json: async () => ({ code: 1, result: {} }) }; };
+  const solUrls = [];
+  sandbox.fetch = async (url, init) => {
+    solUrls.push(String(url));
+    if (/publicnode/.test(url)) {
+      const m = JSON.parse(init.body).method;
+      if (m === 'getAccountInfo') return { ok: true, status: 200, json: async () => ({ result: { value: { owner: '11111111111111111111111111111111', lamports: 5e8, executable: false } } }) };
+      return { ok: true, status: 200, json: async () => ({ result: { value: [] } }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ code: 5000, message: 'system error', result: null }) };
+  };
   nodes['addrInput'] = makeEl('addrInput');
   nodes['addrInput'].value = '42RLPACwZPx3vYYmxSueqsogfynBDqXK298EDsNoyoHi';
   nodes['chainSelect'] = makeEl('chainSelect');
@@ -290,21 +298,12 @@ async function afterFirstScan() {
   await run('runScan()');
   await settle();
   {
-    check('no request was made for a chain with no wallet coverage', !fetched,
-      'asking the provider anyway would spend a quota on a question it refuses');
-    check('the head says the address was not screened',
-      /Not screened/.test(nodes['consoleStateText']._text), nodes['consoleStateText']._text);
-    check('the console tells the reader to treat it as unchecked',
-      /unchecked/i.test(nodes['consoleFootLeft']._text), nodes['consoleFootLeft']._text);
-    // Reading the address and identifying the network DID happen, and
-    // showing them as done is true. What must never carry a tick is any
-    // row that would imply the address was screened.
-    const screening = stageRows().filter(r => /security record|Reading the record|Weighing the evidence/.test(r.text));
-    check('the control rows exist (control)', screening.length === 3, screening.length + ' found');
-    check('no screening stage is marked done', screening.every(r => r.state !== 'is-done'),
-      'a gap in coverage must never leave a tick on a screening row');
-    check('the wallet-screening row still says not performed',
-      stageRows().some(r => /Wallet reputation screening/.test(r.text) && r.state === 'is-skipped'));
+    check('the account was read from the Solana RPC node', solUrls.some(u => /publicnode/.test(u)), solUrls.join(' '));
+    check('the verdict is CAUTION, never a clean PASS, while the lists are unchecked',
+      /CAUTION/.test(nodes['consoleStateText']._text), nodes['consoleStateText']._text);
+    check('the lists row says not performed',
+      stageRows().some(r => /Scam and sanctions lists/.test(r.text) && r.state === 'is-skipped'));
+    check('no error banner: the scan worked', nodes['scanError'].style.display !== 'block');
   }
 
   section('A superseded scan writes nothing');
