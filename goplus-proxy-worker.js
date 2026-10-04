@@ -251,7 +251,8 @@ function jsonResponse(obj, status) {
 // token with the request. The key and secret never leave the Worker and
 // are never logged or returned. Without them, behaviour is unchanged.
 // GoPlus sign-in: POST /api/v1/token {app_key, time, sign}, where
-// sign = sha1(app_key + time + app_secret), lowercase hex.
+// sign = sha1(app_key + time + app_secret), lowercase hex. The token is
+// sent as "Authorization: Bearer <token>" (GoPlus API reference).
 let goplusToken = { value: '', expires: 0 };
 async function goplusAccessToken(env) {
   if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return '';
@@ -288,7 +289,7 @@ async function proxyTo(upstreamUrl, authToken) {
   const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const upstreamResponse = await fetch(upstreamUrl, authToken
-      ? { signal: controller.signal, headers: { Authorization: authToken } }
+      ? { signal: controller.signal, headers: { Authorization: 'Bearer ' + authToken } }
       : { signal: controller.signal });
     clearTimeout(timeoutId);
     const body = await upstreamResponse.text();
@@ -657,7 +658,7 @@ async function handleRequest(request, env, ctx) {
     let solanaCode = null;
     try {
       const r = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg?chain_id=solana`,
-        token ? { headers: { Authorization: token } } : {});
+        token ? { headers: { Authorization: 'Bearer ' + token } } : {});
       const j = await r.json(); solanaCode = j && j.code;
     } catch (_) { solanaCode = 'no answer'; }
     return jsonResponse({ keyConfigured, signInOk: !!token, solanaAddressCode: solanaCode }, 200);
