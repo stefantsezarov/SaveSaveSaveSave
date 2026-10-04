@@ -558,7 +558,8 @@ const SolanaAdapter = {
   capabilities: { tokenSecurity:true, walletScreening:true, txSimulation:false, liquidityAnalysis:true, contractAnalysis:false },
   // Wallet scans are ON-CHAIN ACCOUNT checks, not reputation screening:
   // no provider currently answers for Solana wallets (see above).
-  capabilityNotes: { walletScreening: 'on-chain account checks and the OFAC sanctions list; no scam-report provider covers Solana wallets yet' },
+  capabilityNotes: { walletScreening: 'on-chain account checks and the OFAC sanctions list; no scam-report provider covers Solana wallets yet',
+    txSimulation: 'no free trade-simulation source', contractAnalysis: 'not applicable: every SPL token runs the same audited token program' },
   chains: { 'solana': 'Solana Mainnet' },
   validateAddress(addr){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(addr).trim()); },
 
