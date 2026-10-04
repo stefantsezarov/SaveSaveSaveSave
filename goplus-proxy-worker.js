@@ -252,7 +252,9 @@ function jsonResponse(obj, status) {
 // are never logged or returned. Without them, behaviour is unchanged.
 // GoPlus sign-in: POST /api/v1/token {app_key, time, sign}, where
 // sign = sha1(app_key + time + app_secret), lowercase hex. The token is
-// sent as "Authorization: Bearer <token>" (GoPlus API reference).
+// sent bare in the Authorization header. Tested 4 Oct 2026: with a
+// "Bearer " prefix GoPlus answers 4012 "Wrong Signature"; bare, it is
+// accepted (EVM probe below answers code 1).
 let goplusToken = { value: '', expires: 0 };
 async function goplusAccessToken(env) {
   if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return '';
@@ -289,7 +291,7 @@ async function proxyTo(upstreamUrl, authToken) {
   const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const upstreamResponse = await fetch(upstreamUrl, authToken
-      ? { signal: controller.signal, headers: { Authorization: 'Bearer ' + authToken } }
+      ? { signal: controller.signal, headers: { Authorization: authToken } }
       : { signal: controller.signal });
     clearTimeout(timeoutId);
     const body = await upstreamResponse.text();
@@ -658,10 +660,18 @@ async function handleRequest(request, env, ctx) {
     let solanaCode = null;
     try {
       const r = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg?chain_id=solana`,
-        token ? { headers: { Authorization: 'Bearer ' + token } } : {});
+        token ? { headers: { Authorization: token } } : {});
       const j = await r.json(); solanaCode = j && j.code;
     } catch (_) { solanaCode = 'no answer'; }
-    return jsonResponse({ keyConfigured, signInOk: !!token, solanaAddressCode: solanaCode }, 200);
+    // Control: the same keyed request for an EVM address. Code 1 here and
+    // 5000 above means the key works and Solana is what GoPlus refuses.
+    let evmCode = null;
+    try {
+      const r2 = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/0x098B716B8Aaf21512996dC57EB0615e2383E2f96?chain_id=1`,
+        token ? { headers: { Authorization: token } } : {});
+      const j2 = await r2.json(); evmCode = j2 && j2.code;
+    } catch (_) { evmCode = 'no answer'; }
+    return jsonResponse({ keyConfigured, signInOk: !!token, solanaAddressCode: solanaCode, evmControlCode: evmCode }, 200);
   }
   if (new URL(request.url).searchParams.get('stats') === 'week') {
     return handleStats(env, ctx);
