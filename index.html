@@ -39,18 +39,18 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SaveSaveSaveSave">
 <meta property="og:url" content="https://savesavesavesave.xyz/">
-<meta property="og:title" content="Is this a scam? Check the message and the address.">
-<meta property="og:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot and mint-authority checks across EVM, Solana, Sui and TRON, and wallet sanctions screening on EVM chains. Free, in your browser, no wallet connection.">
+<meta property="og:title" content="Is this a scam? Check the message, the address or the package.">
+<meta property="og:description" content="Three free checks: a suspicious message or prompt (read in your browser, never sent), a crypto token or wallet address across EVM, Solana, Sui and TRON, and an npm package before you install it. No account, no wallet connection.">
 <meta property="og:image" content="https://savesavesavesave.xyz/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="SaveSaveSaveSave — check a suspicious message and the crypto address inside it, free.">
+<meta property="og:image:alt" content="SaveSaveSaveSave — free checks for a suspicious message, a crypto address or an npm package.">
 <meta property="og:locale" content="en_US">
 
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Is this a scam? Check the message and the address.">
-<meta name="twitter:description" content="Check the message that arrived before the address, and the address itself. Prompt injection, hidden instructions and disguised links, plus honeypot and mint-authority checks across EVM, Solana, Sui and TRON, and wallet sanctions screening on EVM chains. Free, in your browser, no wallet connection.">
+<meta name="twitter:title" content="Is this a scam? Check the message, the address or the package.">
+<meta name="twitter:description" content="Three free checks: a suspicious message or prompt (read in your browser, never sent), a crypto token or wallet address across EVM, Solana, Sui and TRON, and an npm package before you install it. No account, no wallet connection.">
 <meta name="twitter:image" content="https://savesavesavesave.xyz/og-image.png">
 
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -65,7 +65,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       "@id": "https://savesavesavesave.xyz/#website",
       "url": "https://savesavesavesave.xyz/",
       "name": "SaveSaveSaveSave",
-      "description": "Free browser-based risk screening for suspicious messages and prompts, and for crypto tokens and wallet addresses.",
+      "description": "Free browser-based risk screening for suspicious messages and prompts, crypto tokens and wallet addresses, and npm packages.",
       "inLanguage": "en",
       "publisher": { "@id": "https://savesavesavesave.xyz/#author" }
     },
@@ -81,7 +81,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       "alternateName": "SaveSaveSaveSave Risk Pass",
       "url": "https://savesavesavesave.xyz/",
       "applicationCategory": "SecurityApplication",
-      "applicationSubCategory": "Cryptocurrency risk screening",
+      "applicationSubCategory": "Scam, crypto-address and npm-package risk screening",
       "operatingSystem": "Any (web browser)",
       "browserRequirements": "Requires JavaScript.",
       "softwareVersion": "0.5",
@@ -89,7 +89,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       "image": "https://savesavesavesave.xyz/og-image.png",
       "screenshot": "https://savesavesavesave.xyz/og-image.png",
       "author": { "@id": "https://savesavesavesave.xyz/#author" },
-      "description": "Two scanners in one page. Reads a pasted message or prompt for hidden instructions, invisible characters, disguised links and requests for secrets — entirely in the browser, without transmitting the text. Screens a crypto token contract or wallet address against chain-native security indicators across EVM, Solana, Sui and TRON. Returns a plain-English PASS, CAUTION, FAIL or INSUFFICIENT DATA verdict. No wallet connection required.",
+      "description": "Three checks in one page. Reads a pasted message or prompt for hidden instructions, invisible characters, disguised links and requests for secrets — entirely in the browser, without transmitting the text. Screens a crypto token contract or wallet address against chain-native security indicators across EVM, Solana, Sui and TRON. Looks up an npm package before install: npm security removals, OSV.dev malware and vulnerability reports, install scripts and look-alike names, without downloading the code. Returns a plain-English PASS, CAUTION, FAIL or INSUFFICIENT DATA verdict. No wallet connection required.",
       "featureList": [
         "Message and prompt scanning for hidden instructions and prompt injection",
         "Invisible-character, bidirectional-override and homoglyph detection",
@@ -100,6 +100,8 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         "Sanctioned and blacklisted address screening",
         "Proxy and mutable-contract detection (EVM)",
         "Chain-native validation for EVM, Solana, Sui and TRON addresses",
+        "npm package check: security removals, OSV.dev malware and vulnerability reports, install scripts, look-alike names",
+        "Character-by-character comparison of two addresses against address poisoning",
         "Message and prompt scanning is performed locally in the browser; the submitted text is never transmitted",
         "Conservative verdicts: missing data is reported, never treated as a pass",
         "Mixed results are never averaged: the worst component controls the guidance"
@@ -206,7 +208,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .sub{color:var(--text-muted); font-size:clamp(0.95rem, 2vw, 1.05rem); max-width:560px; margin:0 auto 24px;}
   .four-saves{font-family:'IBM Plex Mono', monospace; font-size:0.74rem; color:var(--text-muted); letter-spacing:0.02em; margin:18px auto 0; max-width:560px; text-align:center;}
   /* The public weekly total. Shown only when there is a real number. */
-  .scan-count{font-family:'IBM Plex Mono', monospace; font-size:0.74rem; color:var(--text-muted); margin:-12px auto 20px; max-width:620px; line-height:1.6;}
+  .scan-count{font-family:'IBM Plex Mono', monospace; font-size:0.74rem; color:var(--text-muted); margin:6px auto 0; text-align:center; max-width:620px; line-height:1.6;}
   .scan-count strong{color:var(--text); font-weight:500;}
   .scan-count a{color:var(--accent-2); text-decoration:none;}
   .scan-count a:hover{text-decoration:underline;}
@@ -881,7 +883,6 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   <section class="hero">
     <h1>Check it before you trust it.</h1>
     <p class="sub">Three free security checks. Pick the one that matches what is in front of you.</p>
-    <p class="scan-count" id="scanCount" style="display:none;"></p>
 
     <div class="scanner">
       <!-- The three checks are the product: they are the first and largest
@@ -1014,6 +1015,10 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
     </div>
   </section>
   <p class="four-saves">Save your funds. Save your time. Save your trust. Save the regret.</p>
+  <!-- Below the scanner on purpose: this line appears only after the
+       weekly total loads, and above the scanner it pushed every control
+       down (measured CLS 0.06 on a phone). -->
+  <p class="scan-count" id="scanCount" style="display:none;"></p>
 
   <!-- The dashed "connect your ad network here" placeholders that used to
        sit here and below #results are gone. Advertising is real now, and it
