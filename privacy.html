@@ -7,7 +7,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Stefan Tsezarov">
 <meta name="description" content="What SaveSaveSaveSave collects and what it does not. Pasted text is analysed in your browser and never transmitted. No cookies of our own; Google ads may.">
@@ -40,7 +40,7 @@
       "url": "https://savesavesavesave.xyz/privacy",
       "inLanguage": "en",
       "datePublished": "2026-09-17",
-      "dateModified": "2026-10-03",
+      "dateModified": "2026-10-04",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -78,9 +78,22 @@
 </script>
 <!-- SEO:END -->
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Typefaces are self-hosted (SIL OFL 1.1, fonts/OFL-*.txt): no request
+     to Google Fonts, and no render-blocking third-party stylesheet. -->
+<link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:optional;src:url(fonts/space-grotesk-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:600;font-display:optional;src:url(fonts/space-grotesk-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:optional;src:url(fonts/space-grotesk-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:optional;src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:optional;src:url(fonts/ibm-plex-sans-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:optional;src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:700;font-display:optional;src:url(fonts/ibm-plex-sans-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:optional;src:url(fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:optional;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:optional;src:url(fonts/ibm-plex-mono-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+</style>
 <link rel="stylesheet" href="paper.css">
 </head>
 <body>
@@ -93,7 +106,7 @@
 
 <div class="paper-wrap">
   <article class="paper">
-    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 2 October 2026</p>
+    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 4 October 2026</p>
     <h1 class="title">What this site collects</h1>
     <p class="subtitle">Short version: almost nothing, and you can verify that yourself.</p>
 
@@ -126,7 +139,6 @@
       <tr><td><strong>Our own Cloudflare Worker</strong><br><code>cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev</code></td><td>For chains where a direct call is blocked, for sanctions checks, once when a scan finishes, to count it, and when the homepage loads, to fetch the public weekly total (section 5)</td><td>For the checks: the address and chain id. For the count: only the kind of scan, the chain and the verdict. Plus your IP and user-agent, as with any request; we do not store them</td></tr>
       <tr><td><strong>npm</strong><br><code>registry.npmjs.org</code>, <code>api.npmjs.org</code></td><td>When you check an npm package</td><td>The package name and version, plus your IP and user-agent</td></tr>
       <tr><td><strong>OSV.dev</strong> (Google)<br><code>api.osv.dev</code></td><td>When you check an npm package</td><td>The package name and version, plus your IP and user-agent</td></tr>
-      <tr><td><strong>Google Fonts</strong><br><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code></td><td>On every page load, to load the typefaces</td><td>Your IP and user-agent. No scan data ever reaches it.</td></tr>
       <tr><td><strong>Cloudflare</strong></td><td>On every page load — Cloudflare serves this site</td><td>Standard web-server request data</td></tr>
       <tr><td><strong>Cloudflare Web Analytics</strong><br><code>static.cloudflareinsights.com</code>, <code>cloudflareinsights.com</code></td><td>On every page load, to count the visit</td><td>Page URL, referrer, approximate country, browser and device type, page-load timing. No cookie. No scan content — see section 5.</td></tr>
       <tr><td><strong>Google AdSense</strong><br><code>pagead2.googlesyndication.com</code>, <code>*.g.doubleclick.net</code> and related Google ad hosts</td><td>On every page load, to serve the ads in the side columns</td><td>Page URL, your IP and user-agent, and Google's own advertising cookies. No scan content — see section 7.</td></tr>
