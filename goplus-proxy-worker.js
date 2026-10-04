@@ -244,7 +244,34 @@ function jsonResponse(obj, status) {
 // privacy-conscious one, which for a crypto safety tool is a meaningful
 // slice of the actual audience. Caching keeps this fallback usable for
 // them instead of handing them the same rate-limit wall.
-async function proxyTo(upstreamUrl) {
+// ---- GoPlus API key (optional) -------------------------------------
+// Anonymous requests to GoPlus's address endpoint answer code 5000 for
+// chain_id=solana. If the Worker has GOPLUS_APP_KEY and GOPLUS_APP_SECRET
+// set as Cloudflare secrets, it signs in to GoPlus and sends the access
+// token with the request. The key and secret never leave the Worker and
+// are never logged or returned. Without them, behaviour is unchanged.
+// GoPlus sign-in: POST /api/v1/token {app_key, time, sign}, where
+// sign = sha1(app_key + time + app_secret), lowercase hex.
+let goplusToken = { value: '', expires: 0 };
+async function goplusAccessToken(env) {
+  if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return '';
+  const now = Math.floor(Date.now() / 1000);
+  if (goplusToken.value && goplusToken.expires - 60 > now) return goplusToken.value;
+  const time = String(now);
+  const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(env.GOPLUS_APP_KEY + time + env.GOPLUS_APP_SECRET));
+  const sign = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const res = await fetch('https://api.gopluslabs.io/api/v1/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_key: env.GOPLUS_APP_KEY, time: Number(time), sign }),
+  });
+  const data = await res.json().catch(() => null);
+  const tok = data && data.code === 1 && data.result && data.result.access_token;
+  if (!tok) return '';
+  goplusToken = { value: String(tok), expires: now + Math.max(300, Number(data.result.expires_in) || 3600) };
+  return goplusToken.value;
+}
+
+async function proxyTo(upstreamUrl, authToken) {
   const cache = caches.default;
   const cacheKey = new Request(upstreamUrl, { method: 'GET' });
 
@@ -260,7 +287,9 @@ async function proxyTo(upstreamUrl) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const upstreamResponse = await fetch(upstreamUrl, { signal: controller.signal });
+    const upstreamResponse = await fetch(upstreamUrl, authToken
+      ? { signal: controller.signal, headers: { Authorization: authToken } }
+      : { signal: controller.signal });
     clearTimeout(timeoutId);
     const body = await upstreamResponse.text();
 
@@ -618,6 +647,21 @@ async function handleRequest(request, env, ctx) {
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Only GET is supported' }, 405);
   }
+  // ?goplus_status=1 -- is a GoPlus key configured, does sign-in work, and
+  // what does GoPlus answer for a Solana address with it? Returns codes
+  // only: never the key, the secret or the token.
+  if (new URL(request.url).searchParams.get('goplus_status') === '1') {
+    const keyConfigured = !!(env && env.GOPLUS_APP_KEY && env.GOPLUS_APP_SECRET);
+    let token = '';
+    try { token = await goplusAccessToken(env); } catch (_) { token = ''; }
+    let solanaCode = null;
+    try {
+      const r = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg?chain_id=solana`,
+        token ? { headers: { Authorization: token } } : {});
+      const j = await r.json(); solanaCode = j && j.code;
+    } catch (_) { solanaCode = 'no answer'; }
+    return jsonResponse({ keyConfigured, signInOk: !!token, solanaAddressCode: solanaCode }, 200);
+  }
   if (new URL(request.url).searchParams.get('stats') === 'week') {
     return handleStats(env, ctx);
   }
@@ -643,7 +687,8 @@ async function handleRequest(request, env, ctx) {
     if (!SOLANA_ADDRESS_RE.test(walletAddress)) {
       return jsonResponse({ error: 'Invalid Solana address format' }, 400);
     }
-    return proxyTo(`${ADDRESS_SECURITY_UPSTREAM}/${encodeURIComponent(walletAddress)}?chain_id=solana`);
+    return proxyTo(`${ADDRESS_SECURITY_UPSTREAM}/${encodeURIComponent(walletAddress)}?chain_id=solana`,
+      await goplusAccessToken(env).catch(() => ''));
   }
 
   if (suiAddress) {

@@ -43,7 +43,7 @@
       "url": "https://savesavesavesave.xyz/agents",
       "inLanguage": "en",
       "datePublished": "2026-10-02",
-      "dateModified": "2026-10-02",
+      "dateModified": "2026-10-03",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -107,7 +107,7 @@
       <tbody>
         <tr><td data-label="Tool"><code>scan_message</code></td><td data-label="Call it before">following instructions in a web page, README, issue, email or DM</td><td data-label="Checks">Prompt injection aimed at AI agents, hidden instructions (HTML comments, invisible and Unicode-tag characters, encoded payloads), requests for keys, passwords, 2FA codes or recovery phrases, attempts to send data out, dangerous commands, disguised links</td><td data-label="Network">None: runs locally</td></tr>
         <tr><td data-label="Tool"><code>check_package</code></td><td data-label="Call it before"><code>npm install</code></td><td data-label="Checks">Removed by npm for security, malware or vulnerability reports in OSV.dev, what the install script does, look-alike names of popular packages, signs of a hijacked release</td><td data-label="Network">npm registry, OSV.dev (name and version only)</td></tr>
-        <tr><td data-label="Tool"><code>scan_address</code></td><td data-label="Call it before">paying, approving or buying a token</td><td data-label="Checks">Honeypot patterns, owner powers, sell restrictions (GoPlus Security data); sanctions screening for EVM wallets. 14 EVM chains, Solana, Sui, TRON</td><td data-label="Network">GoPlus, our Worker (address and chain only)</td></tr>
+        <tr><td data-label="Tool"><code>scan_address</code></td><td data-label="Call it before">paying, approving or buying a token</td><td data-label="Checks">Honeypot patterns, owner powers, sell restrictions (GoPlus Security data); sanctions screening for EVM wallets (Chainalysis oracle) and Solana wallets (US Treasury OFAC list); for Solana wallets, also what kind of account the address is. 14 EVM chains, Solana, Sui, TRON</td><td data-label="Network">GoPlus, our Worker (address and chain only)</td></tr>
         <tr><td data-label="Tool"><code>compare_addresses</code></td><td data-label="Call it before">sending to an address copied from history</td><td data-label="Checks">Every character, and the address-poisoning pattern (same start and end, different middle)</td><td data-label="Network">None: runs locally</td></tr>
       </tbody>
     </table>

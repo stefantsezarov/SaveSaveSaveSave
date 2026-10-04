@@ -666,7 +666,7 @@ section('Address result escapes provider and pasted text');
 
   check('the shipped page offers Solana wallet scans as on-chain checks',
     inPage('SolanaAdapter.capabilities.walletScreening') === true &&
-    /on-chain/.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')),
+    /on-chain/.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')) && /OFAC/.test(inPage('(SolanaAdapter.capabilityNotes||{}).walletScreening || ""')),
     'the note must say these are account checks, not reputation');
 
   await (async () => {

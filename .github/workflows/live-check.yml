@@ -40,6 +40,11 @@ jobs:
       - name: Check what is actually being served
         run: node live.test.js https://savesavesavesave.xyz
 
+      # The OFAC sanctions list moves. A red run here means a Solana
+      # address was added or removed: run node build-ofac.js and push.
+      - name: The OFAC Solana sanctions list is current
+        run: node build-ofac.js --check
+
       # Only after the checks above have passed, and only on a push:
       # telling a search engine to come and look at a deploy that is
       # broken is worse than saying nothing. Google has no equivalent

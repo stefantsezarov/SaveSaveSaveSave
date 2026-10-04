@@ -63,6 +63,7 @@ apply-ads.js
 embed.js
 verify_embedded.js
 build-sitemap.js
+build-ofac.js
 build-suffixes.js
 seo.js
 indexnow.js

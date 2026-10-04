@@ -187,7 +187,7 @@ section('Capabilities the adapter lacks are shown as NOT performed');
   // screening switched off must say so rather than omit the row.
   const solWallet = run("addressScanStages(SolanaAdapter, 'wallet', 'solana').map(s => ({id:s.id, state:s.state, note:s.note}))");
   const ws = solWallet.find(s => s.id === 'cap_reputation');
-  check('Solana wallet: scam and sanctions lists appear as an explicit not-performed row', !!ws && ws.state === 'skipped');
+  check('Solana wallet: scam and fraud reports appear as an explicit not-performed row', !!ws && ws.state === 'skipped');
   check('...carrying the reason, not a generic one',
     !!ws && /no provider answers for Solana wallets/i.test(ws.note || ''), ws && ws.note);
 }
@@ -291,7 +291,7 @@ async function afterFirstScan() {
     return { ok: true, status: 200, json: async () => ({ code: 5000, message: 'system error', result: null }) };
   };
   nodes['addrInput'] = makeEl('addrInput');
-  nodes['addrInput'].value = '42RLPACwZPx3vYYmxSueqsogfynBDqXK298EDsNoyoHi';
+  nodes['addrInput'].value = 'vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg';
   nodes['chainSelect'] = makeEl('chainSelect');
   nodes['chainSelect'].value = 'solana';
   run("setEcosystem('solana'); mode = 'wallet';");
@@ -301,8 +301,8 @@ async function afterFirstScan() {
     check('the account was read from the Solana RPC node', solUrls.some(u => /publicnode/.test(u)), solUrls.join(' '));
     check('the verdict is CAUTION, never a clean PASS, while the lists are unchecked',
       /CAUTION/.test(nodes['consoleStateText']._text), nodes['consoleStateText']._text);
-    check('the lists row says not performed',
-      stageRows().some(r => /Scam and sanctions lists/.test(r.text) && r.state === 'is-skipped'));
+    check('the scam-reports row says not performed',
+      stageRows().some(r => /Scam and fraud reports/.test(r.text) && r.state === 'is-skipped'));
     check('no error banner: the scan worked', nodes['scanError'].style.display !== 'block');
   }
 

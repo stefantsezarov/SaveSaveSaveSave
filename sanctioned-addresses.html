@@ -82,7 +82,7 @@
         }
       },
       "inLanguage": "en",
-      "wordCount": 2359,
+      "wordCount": 2369,
       "isAccessibleForFree": true,
       "articleSection": "Address risk",
       "isPartOf": {
@@ -223,7 +223,8 @@
           <tr><td data-label="Check">Has this wallet recently dealt with a listed address?</td><td data-label="What happens">On eight EVM chains, recent token transfers are read and counterparties are checked against the Chainalysis sanctions oracle. The look-back window is short: a little under seven hours on Ethereum, and from about eight minutes to just over an hour on faster chains. A match is <strong>CAUTION</strong>, not FAIL. Exposure is not the same as designation.</td></tr>
           <tr><td data-label="Check">Plain ETH moving between wallets</td><td data-label="What happens">Not seen. The recent-counterparty check reads token transfers only.</td></tr>
           <tr><td data-label="Check">The wallet's full history</td><td data-label="What happens">Not checked. The scan does not reconstruct everything the wallet has ever done.</td></tr>
-          <tr><td data-label="Check">Solana, Sui and TRON wallets</td><td data-label="What happens">Not screened against sanctions lists. The scanner has no sanctions source for those chains, and says so rather than pretending otherwise. Solana wallet scans read the account on chain (what kind of account it is, whether it was ever funded) and report the lists as not checked.</td></tr>
+          <tr><td data-label="Check">Solana wallets</td><td data-label="What happens">Checked against the Solana addresses on the US Treasury OFAC list, refreshed from OFAC's published data and checked daily. A listed address is FAIL. Other countries' lists, and scam reports, are not checked, and the result says so.</td></tr>
+          <tr><td data-label="Check">Sui and TRON wallets</td><td data-label="What happens">Not screened. The scanner has no sanctions source for those chains, and says so rather than pretending otherwise.</td></tr>
           <tr><td data-label="Check">Token contracts</td><td data-label="What happens">Not checked against sanctions lists. A token scan looks at what the contract can do, not at the identity of whoever may control or use it.</td></tr>
         </tbody>
       </table>

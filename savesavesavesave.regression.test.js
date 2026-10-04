@@ -12,7 +12,8 @@ const {
   EVM_TOKEN_CHECK_DEFS, EVM_CHAINS, EVM_WALLET_CHECK_DEFS, normalizeEvmRecord, EvmAdapter,
   normalizeSolanaRecord, normalizeSolanaWalletRecord, SolanaAdapter,
   normalizeSuiRecord, suiFlagState, SuiAdapter, TronAdapter, detectEcosystem,
-  fetchCounterpartyChecks, COUNTERPARTY_CHECK_SUPPORTED_CHAINS
+  fetchCounterpartyChecks, COUNTERPARTY_CHECK_SUPPORTED_CHAINS,
+  OFAC_SOLANA_ADDRESSES,
 } = require(path.join(__dirname, 'core.js'));
 
 let passed = 0, failed = 0;
@@ -211,7 +212,7 @@ const ADDR_SOL = 'SomeAddress1111111111111111111111111111111';
 { // 18. the capability is on, and its note says what kind of check it is
   const on = SolanaAdapter.capabilities.walletScreening === true;
   const note = (SolanaAdapter.capabilityNotes || {}).walletScreening || '';
-  const ok = on && /on-chain/i.test(note) && /no reputation provider/i.test(note);
+  const ok = on && /on-chain/i.test(note) && /no scam-report provider/i.test(note) && /OFAC/.test(note);
   console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet scans are on, described as on-chain checks without reputation -> "' + note + '"');
   ok ? passed++ : failed++;
 }
@@ -234,6 +235,23 @@ const ADDR_SOL = 'SomeAddress1111111111111111111111111111111';
     console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: a ' + kind + ' is flagged as not a wallet -> ' + v.verdict);
     ok ? passed++ : failed++;
   }
+}
+{ // 18c5. OFAC: a Solana address on the US Treasury SDN list is a FAIL,
+  // named as a sanctions hit; an unlisted one passes that check only.
+  const out = await SolanaAdapter.fetchChecks('42RLPACwZPx3vYYmxSueqsogfynBDqXK298EDsNoyoHi', 'wallet', 'solana', solMock('wallet'));
+  const v = VerdictEngine.evaluate(out.checks, out.expected, 'test', out.criticalDefsTotal);
+  const sc = out.checks.find(c => c.id === 'sanctioned');
+  const ok = v.verdict === 'fail' && sc && sc.status === 'RISK' && sc.critical && /OFAC/.test(sc.detail);
+  console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: an OFAC-listed address is FAIL, named as a sanctions hit -> ' + v.verdict);
+  ok ? passed++ : failed++;
+  const out2 = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('wallet'));
+  const sc2 = out2.checks.find(c => c.id === 'sanctioned');
+  const ok2 = sc2 && sc2.status === 'PASS' && /as of \d{4}-\d{2}-\d{2}/.test(sc2.detail);
+  console.log((ok2 ? 'PASS' : 'FAIL') + ' Solana wallet: an unlisted address passes the OFAC check, with the list date');
+  ok2 ? passed++ : failed++;
+  const all = [...OFAC_SOLANA_ADDRESSES].every(x => SolanaAdapter.validateAddress(x));
+  console.log((all && OFAC_SOLANA_ADDRESSES.size >= 4 ? 'PASS' : 'FAIL') + ' OFAC Solana list: ' + OFAC_SOLANA_ADDRESSES.size + ' entries, all valid Solana addresses');
+  all ? passed++ : failed++;
 }
 { // 18c3. never funded: flagged, not passed.
   const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('missing'));
@@ -272,7 +290,7 @@ const ADDR_SOL = 'SomeAddress1111111111111111111111111111111';
       ['empty record', { code: 1, message: 'ok', result: Object.fromEntries([...EVM_WALLET_CHECK_DEFS.map(d => [d.key, '0']), ['data_source', '']]) }]]){
     const out = await SolanaAdapter.fetchChecks(ADDR_SOL, 'wallet', 'solana', solMock('wallet', gp));
     const rep = out.checks.find(c => c.id === 'sol_reputation');
-    const noFlagPasses = !out.checks.some(c => EVM_WALLET_CHECK_DEFS.some(d => d.key === c.id));
+    const noFlagPasses = !out.checks.some(c => /GoPlus Security \(Solana\)/.test(c.source || ''));
     const ok = rep && rep.status === 'UNKNOWN' && noFlagPasses;
     console.log((ok ? 'PASS' : 'FAIL') + ' Solana wallet: GoPlus ' + name + ' leaves reputation unchecked, never PASS');
     ok ? passed++ : failed++;
