@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 16, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 17, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 16 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 17 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -490,7 +490,7 @@ if (fs.existsSync(guidePath)) {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -584,7 +584,7 @@ if (fs.existsSync(guidePath)) {
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -643,7 +643,7 @@ if (fs.existsSync(guidePath)) {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);

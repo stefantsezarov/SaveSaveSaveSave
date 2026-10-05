@@ -75,6 +75,7 @@ const AD_POLICY = {
   'terms.html':                 { enabled: false, reason: 'Same as privacy: the terms are a commitment, not a surface.' },
   'agents.html':                { enabled: false, reason: 'Developer reference with install commands: no ads next to things people paste into their machines. Same rule as tools.html.' },
   'tools.html':                 { enabled: false, reason: 'Install instructions and copyable code: no ads next to things people paste into their machines. Decided 2 October 2026.' },
+  'about.html':                 { enabled: false, reason: 'A page about a person, not a content page. Decided 5 October 2026.' },
   'support.html':               { enabled: false, reason: 'The page that asks for money must not also sell attention. Decided 26 September 2026.' },
 
   'invisible-characters.html':  { enabled: false, reason: 'Message-deception content. The reader is being taught to distrust what a message shows them; a commercial unit on the same screen works against that.' },

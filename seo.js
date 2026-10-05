@@ -62,6 +62,7 @@ const PAGES = {
   'tools.html':              { type: 'page',    crumb: 'Tools' },
   'agents.html':             { type: 'page',    crumb: 'For agents' },
   'terms.html':              { type: 'page',    crumb: 'Terms' },
+  'about.html':              { type: 'page',    crumb: 'About the author' },
 };
 
 const GUIDE_ORDER = [
@@ -238,7 +239,7 @@ function buildBlock(file, cfg, all) {
     '@type': 'Person',
     '@id': SITE + '/#author',
     name: AUTHOR,
-    url: SITE + '/whitepaper',
+    url: SITE + '/about',
     jobTitle: 'Data analyst and Web3 research specialist',
     description: 'Data analyst and Web3 research specialist with more than seven years of experience evaluating blockchain startups for institutional investors, venture capital firms and crypto exchange listing teams.',
     knowsAbout: ['Blockchain due diligence', 'Tokenomics', 'On-chain analysis', 'Compliance signals', 'Quantitative scoring models', 'Crypto scams and phishing'],

@@ -52,6 +52,7 @@ const PAGES = [
   { file: 'support.html',    loc: '/support',    changefreq: 'monthly', priority: '0.3' },
   { file: 'tools.html',      loc: '/tools',      changefreq: 'monthly', priority: '0.6' },
   { file: 'agents.html',     loc: '/agents',     changefreq: 'monthly', priority: '0.6' },
+  { file: 'about.html',      loc: '/about',      changefreq: 'yearly',  priority: '0.3' },
 ];
 
 function lastCommitDate(file) {
