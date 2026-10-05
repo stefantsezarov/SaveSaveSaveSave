@@ -68,7 +68,9 @@ async function get(path, depth) {
       }
       let body = '';
       res.setEncoding('utf8');
-      res.on('data', c => { if (body.length < 400000) body += c; });
+      // Bounded, but well above the home page (about 420 KB): a cap below
+      // the page size silently cut off the ad rails at the end of it.
+      res.on('data', c => { if (body.length < 2000000) body += c; });
       res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers, redirects: 0, finalUrl: u.href }));
     });
     req.on('timeout', () => { req.destroy(); resolve({ status: 0, body: '', headers: {}, redirects: 0, error: 'timeout' }); });
