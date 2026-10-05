@@ -690,6 +690,15 @@ section('Address result escapes provider and pasted text');
       r.verdict === 'caution' && r.rep === 'UNKNOWN', JSON.stringify(r));
   })();
 
+  // AI-assistant leftovers: named in the tool description, shown as its own
+  // coverage cell and console stage, and never presented as AI detection.
+  check('leftovers: the message tool description names AI-assistant leftovers',
+    html.includes('<span class="tool-desc">Hidden instructions, disguised links, requests for secrets, AI-assistant leftovers.</span>'));
+  check('leftovers: the result coverage grid has its own cell',
+    html.includes("coverageCell('leftovers', 'AI-assistant leftovers'"));
+  check('leftovers: the scan console stage says it cannot tell AI from human',
+    html.includes("text:'Looking for AI-assistant leftovers'") && html.includes('cannot tell AI from human'));
+
   console.log('\n' + '='.repeat(60));
   console.log(`${pass}/${pass + fail} UI/integration tests passed`);
   if (failures.length) { console.log('\nFailures:'); failures.forEach(f => console.log('  - ' + f)); }

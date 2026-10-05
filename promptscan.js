@@ -1203,6 +1203,80 @@ function analyseEncoding(text) {
 }
 
 // --------------------------------------------------------------- stage 6
+// AI-assistant leftovers. This does NOT judge whether a person or an AI
+// wrote the text: no method does that reliably, and a style-based guess
+// would mislabel careful human writers (often non-native speakers) while
+// a lightly edited AI text would pass. What it reports instead is
+// residue that only exists when chatbot output was pasted unchanged: the
+// assistant talking about itself, its chat preamble or sign-off, and
+// template slots nobody filled in. Every finding is INFO and never
+// counts toward the verdict on its own.
+const AI_LEFTOVER_RULES = [
+  {
+    id: 'AI_LEFTOVER_SELFREF_001',
+    re: /\bas an (?:AI|artificial intelligence)(?: language)? (?:model|assistant|chatbot)\b|\bI(?:'m| am) (?:just )?an AI(?: language)? (?:model|assistant|chatbot)\b|\bas of my (?:last )?(?:knowledge|training) (?:cutoff|cut-off|update)\b|\bI (?:do not|don't|cannot|can't) (?:browse the internet|access real-time (?:data|information))\b/i,
+    title: 'The text contains an AI assistant talking about itself',
+    plain: 'A phrase like this is what a chatbot writes about itself. It usually means a chatbot\'s answer was pasted in without being read.',
+  },
+  {
+    id: 'AI_LEFTOVER_PREAMBLE_001',
+    re: /^[ \t]*(?:(?:certainly|sure|absolutely|of course)[!,.]?[ \t]+)?(?:here(?:'s| is| are)|below is)[ \t]+(?:a|an|the|your|some)[ \t]+(?:[\w-]+[ \t]+){0,5}(?:message|e-?mail|draft|reply|response|post|letter|template|version|text)s?\b[^\n]{0,80}:[ \t]*$/im,
+    title: 'A chatbot\'s introduction line was left in',
+    plain: 'Lines like "Here is a message you can send:" are how a chat assistant introduces a draft. Whoever sent this copied the assistant\'s whole answer, introduction included.',
+  },
+  {
+    id: 'AI_LEFTOVER_SIGNOFF_001',
+    re: /\b(?:let me know if you(?:'d| would)? (?:like|want|need) (?:me to (?:make |adjust |change )?)?(?:any )?(?:changes|adjustments|tweaks|edits|a (?:different|shorter|longer|more \w+) (?:version|tone))|feel free to (?:adjust|customi[sz]e|modify|tweak|personali[sz]e) (?:it|this|the (?:message|wording|tone|draft|template))|you can (?:adjust|customi[sz]e|personali[sz]e) (?:the|this) (?:tone|wording|message|draft|template))\b/i,
+    title: 'A chatbot\'s closing offer was left in',
+    plain: 'An offer to "adjust the tone" or "make changes" is addressed to the person who asked the chatbot, not to you. It was pasted along with the message.',
+  },
+  {
+    id: 'AI_LEFTOVER_TEMPLATE_001',
+    // Capitalised, as templates write them, and not glued to an identifier,
+    // so code like arr[index] or map[name] and lowercase notes like
+    // "the [link]" never match.
+    re: /(?<![\w\]])\[(?:Your|YOUR|Recipient(?:'s)?|Insert|INSERT|Company|Client|Customer|First|Last|Full|Sender(?:'s)?|Contact|Name|NAME|Date|Amount|Link|URL|Phone|E-?mail [Aa]ddress|Platform|Exchange|Wallet)\b[^\[\]\n]{0,40}\](?!\()|\{\{\s*(?:first_?name|last_?name|name|recipient|company|link|amount)\s*\}\}/,
+    title: 'An unfilled template placeholder',
+    plain: 'A slot such as "[Your Name]" was never filled in. Generated drafts and mass-sent messages leave these behind; a person writing to you directly does not.',
+  },
+];
+const AI_MARKDOWN_RESIDUE = /\*\*[^*\n]{1,60}\*\*|^#{2,4}[ \t]+\S/m;
+
+function analyseAiLeftovers(text) {
+  const findings = [];
+  for (const rule of AI_LEFTOVER_RULES) {
+    const m = rule.re.exec(text);
+    if (!m) continue;
+    findings.push(makeFinding({
+      ruleId: rule.id, category: 'AI_ASSISTANT_LEFTOVER', severity: 'INFO', confidence: 0.6,
+      title: rule.title,
+      plain: rule.plain + ' This does not prove an AI wrote the text, and finding nothing would not prove a person did.',
+      technical: `Rule ${rule.id} matched "${m[0].slice(0, 80)}" at offset ${m.index}. Informational only; not counted toward the verdict.`,
+      evidence: { excerpt: clampExcerpt(text, m.index, m.index + m[0].length), start: m.index, end: m.index + m[0].length, fromNormalized: false },
+      action: 'Treat this as context: the sender used a generated or template text. Judge the message by what it asks you to do.',
+      source: 'deterministic',
+    }));
+  }
+  // Stray chat formatting is common in honest text too (READMEs, notes),
+  // so it is reported only as support for a leftover found above.
+  if (findings.length) {
+    const m = AI_MARKDOWN_RESIDUE.exec(text);
+    if (m) {
+      findings.push(makeFinding({
+        ruleId: 'AI_LEFTOVER_MARKDOWN_001', category: 'AI_ASSISTANT_LEFTOVER', severity: 'INFO', confidence: 0.4,
+        title: 'Chat-style formatting marks left in the text',
+        plain: 'Markers like **bold** or ### headings show as plain symbols in most chat apps and emails. Together with the leftover above, they suggest the text was copied from a chat assistant. This does not prove an AI wrote the text.',
+        technical: `Matched "${m[0].slice(0, 80)}" at offset ${m.index}. Reported only alongside another leftover. Informational only.`,
+        evidence: { excerpt: clampExcerpt(text, m.index, m.index + m[0].length), start: m.index, end: m.index + m[0].length, fromNormalized: false },
+        action: 'No action needed on its own.',
+        source: 'deterministic',
+      }));
+    }
+  }
+  return { findings };
+}
+
+// --------------------------------------------------------------- stage 6
 // Attack chains. A request for a secret is bad. A request for a secret
 // PLUS somewhere to send it is a different thing entirely, and the policy
 // has to see the combination, not just the parts.
@@ -1216,6 +1290,18 @@ function detectChains(findings) {
   const concealment = has('TOOL_ABUSE') || has('UNICODE_OBFUSCATION') || has('HIDDEN_MARKUP') || has('ENCODED_PAYLOAD');
   const execution = has('DANGEROUS_COMMAND') || has('CODE_EXECUTION');
 
+  const leftover = findings.some(f => f.category === 'AI_ASSISTANT_LEFTOVER');
+  const lure = secret || has('WALLET_ACTION') || has('PHISHING_INDICATOR') || has('SUSPICIOUS_URL') || has('BRAND_IMPERSONATION');
+  if (leftover && lure) {
+    chains.push(makeFinding({
+      ruleId: 'CHAIN_AI_LURE_001', category: 'SOCIAL_ENGINEERING', severity: 'MEDIUM', confidence: 0.75,
+      title: 'A generated or template text that also carries a scam signal',
+      plain: 'This message shows leftovers of a chatbot draft or a mass-mail template AND asks for something risky. Scammers generate messages in bulk; a real contact writing to you personally rarely leaves these traces.',
+      technical: 'Chain rule: AI_ASSISTANT_LEFTOVER co-occurs with a secret-request, wallet-action, phishing or suspicious-link category at MEDIUM or above.',
+      action: 'Do not act on this message. If it claims to come from a company, contact that company through its official website or app.',
+      source: 'deterministic',
+    }));
+  }
   if (secret && exfil) {
     chains.push(makeFinding({
       ruleId: 'CHAIN_EXFIL_001', category: 'DATA_EXFILTRATION', severity: 'CRITICAL', confidence: 0.95,
@@ -1503,7 +1589,7 @@ function scanPrompt(input, opts) {
       verdict: 'unknown', label: 'INSUFFICIENT DATA',
       sub: 'Nothing readable was submitted.',
       findings: [], urls: [], decoded: [], addresses: [],
-      coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
+      coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', leftovers: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
       limitations: [{ text: 'Input was not text.', material: true }],
       input: { characters: 0, truncated: false },
       scannerVersion: SCANNER_VERSION,
@@ -1523,7 +1609,7 @@ function scanPrompt(input, opts) {
       verdict: 'unknown', label: 'INSUFFICIENT DATA',
       sub: 'Nothing to analyse — the prompt was empty.',
       findings: [], urls: [], decoded: [], addresses: [],
-      coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
+      coverage: { unicode: 'unavailable', markup: 'unavailable', encoding: 'unavailable', urls: 'unavailable', leftovers: 'unavailable', semantic: 'unavailable', reputation: 'not_checked' },
       limitations: [{ text: 'No text was submitted.', material: true }],
       input: { characters: 0, truncated: false },
       scannerVersion: SCANNER_VERSION,
@@ -1531,7 +1617,7 @@ function scanPrompt(input, opts) {
   }
 
   const findings = [];
-  const coverage = { unicode: 'complete', markup: 'complete', encoding: 'complete', urls: 'complete', semantic: 'unavailable', reputation: 'not_checked' };
+  const coverage = { unicode: 'complete', markup: 'complete', encoding: 'complete', urls: 'complete', leftovers: 'complete', semantic: 'unavailable', reputation: 'not_checked' };
 
   // Unicode
   const uni = analyseUnicode(text);
@@ -1580,6 +1666,9 @@ function scanPrompt(input, opts) {
     limitations.push({ text: 'Encoded-content analysis was switched off for this scan.', material: true });
   }
 
+  // AI-assistant leftovers — informational context, never a verdict on its own.
+  findings.push(...analyseAiLeftovers(uni.visible).findings);
+
   // Addresses — the bridge to the chain scanner.
   const addresses = extractAddresses(uni.visible);
   findings.push(...addressFindings(addresses));
@@ -1592,6 +1681,7 @@ function scanPrompt(input, opts) {
     { text: 'This scan never ran the prompt. It reads it the way a spell-checker does.', material: false },
     { text: 'Links were inspected by their structure only. No address in the prompt was visited, and no reputation service was consulted.', material: false },
     { text: 'A prompt that looks harmless on its own can still be dangerous once an AI system has your files, your browser, a wallet, or the ability to act.', material: false },
+    { text: 'This scan cannot tell whether a person or an AI wrote the text. It only reports leftovers a chat assistant or template leaves behind; finding none does not mean a person wrote it.', material: false },
     { text: 'Meaning-level analysis is not part of this scan. Detection is pattern-based, so a technique written in an unusual way may pass unnoticed.', material: false },
   );
 
@@ -1628,7 +1718,7 @@ const SCANNER_VERSION = '0.2.0';
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     scanPrompt, analyseUnicode, analyseMarkup, analyseUrls, analyseEncoding,
-    runRules, detectChains, decideVerdict, directiveScore, registrable, sameSite,
+    runRules, detectChains, analyseAiLeftovers, AI_LEFTOVER_RULES, decideVerdict, directiveScore, registrable, sameSite,
     ownerLabel, suffixCertain, domainParts, deconfusions, MULTI_LABEL_SUFFIXES,
     extractAddresses, addressFindings, looksLikeSolanaAddress,
     contextExcerpt, explorerUrl, EXPLORERS,
