@@ -69,6 +69,7 @@ const AD_POLICY = {
   'whitepaper.html':            { enabled: true,  mode: 'contextual', reason: 'General explanation of what the product is and how it is paid for.' },
   'technical-appendix.html':    { enabled: true,  mode: 'contextual', reason: 'Technical transparency document. Read by people checking claims, not by people in trouble.' },
   'honeypot-tokens.html':       { enabled: true,  mode: 'contextual', reason: 'Token mechanics. Educational, and not about a message someone has just received.' },
+  'ai-leftovers.html':          { enabled: true,  mode: 'contextual', reason: 'Writing hygiene, not a page for someone in trouble. Enabled by Stefan, 5 October 2026.' },
   'address-poisoning.html':     { enabled: true,  mode: 'contextual', reason: 'Education before a payment, not a page for someone in trouble. Enabled by Stefan, 26 September 2026.' },
 
   'privacy.html':               { enabled: false, reason: 'A policy document should read as a policy document. Advertising beside the page that describes our advertising undermines both.' },

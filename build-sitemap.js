@@ -47,6 +47,7 @@ const PAGES = [
   { file: 'disguised-links.html', loc: '/disguised-links', changefreq: 'monthly', priority: '0.7' },
   { file: 'sanctioned-addresses.html', loc: '/sanctioned-addresses', changefreq: 'monthly', priority: '0.7' },
   { file: 'address-poisoning.html', loc: '/address-poisoning', changefreq: 'monthly', priority: '0.7' },
+  { file: 'ai-leftovers.html', loc: '/ai-leftovers', changefreq: 'monthly', priority: '0.7' },
   { file: 'privacy.html',    loc: '/privacy',    changefreq: 'monthly', priority: '0.3' },
   { file: 'terms.html',      loc: '/terms',      changefreq: 'monthly', priority: '0.3' },
   { file: 'support.html',    loc: '/support',    changefreq: 'monthly', priority: '0.3' },

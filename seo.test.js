@@ -26,10 +26,10 @@ const SITE = 'https://savesavesavesave.xyz';
 const PAGES = [
   'index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
   'honeypot-tokens.html', 'invisible-characters.html', 'prompt-injection.html',
-  'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html', 'address-poisoning.html', 'privacy.html', 'terms.html', 'support.html', 'tools.html', 'agents.html', 'about.html',
+  'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'privacy.html', 'terms.html', 'support.html', 'tools.html', 'agents.html', 'about.html',
 ];
 const GUIDES = ['honeypot-tokens.html', 'invisible-characters.html', 'prompt-injection.html',
-                'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html', 'address-poisoning.html'];
+                'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html'];
 
 let pass = 0, fail = 0;
 const failures = [];

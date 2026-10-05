@@ -1220,13 +1220,13 @@ const AI_LEFTOVER_RULES = [
   },
   {
     id: 'AI_LEFTOVER_PREAMBLE_001',
-    re: /^[ \t]*(?:(?:certainly|sure|absolutely|of course)[!,.]?[ \t]+)?(?:here(?:'s| is| are)|below is)[ \t]+(?:a|an|the|your|some)[ \t]+(?:[\w-]+[ \t]+){0,5}(?:message|e-?mail|draft|reply|response|post|letter|template|version|text)s?\b[^\n]{0,80}:[ \t]*$/im,
+    re: /^[ \t]*(?:(?:certainly|sure|absolutely|of course)[ \t]*[!,.—–-]?[ \t]+)?(?:here(?:'s| is| are)|below is)[ \t]+(?:a|an|the|your|some)[ \t]+(?:[\w-]+[ \t]+){0,5}(?:message|e-?mail|draft|reply|response|post|letter|template|version|text)s?\b[^\n]{0,80}:[ \t]*$/im,
     title: 'A chatbot\'s introduction line was left in',
     plain: 'Lines like "Here is a message you can send:" are how a chat assistant introduces a draft. Whoever sent this copied the assistant\'s whole answer, introduction included.',
   },
   {
     id: 'AI_LEFTOVER_SIGNOFF_001',
-    re: /\b(?:let me know if you(?:'d| would)? (?:like|want|need) (?:me to (?:make |adjust |change )?)?(?:any )?(?:changes|adjustments|tweaks|edits|a (?:different|shorter|longer|more \w+) (?:version|tone))|feel free to (?:adjust|customi[sz]e|modify|tweak|personali[sz]e) (?:it|this|the (?:message|wording|tone|draft|template))|you can (?:adjust|customi[sz]e|personali[sz]e) (?:the|this) (?:tone|wording|message|draft|template))\b/i,
+    re: /\b(?:let me know if you(?:'d| would)? (?:like|want|need) (?:me to (?:make |adjust |change )?)?(?:any )?(?:changes|adjustments|tweaks|edits|a (?:different|shorter|longer|more \w+) (?:version|tone))|(?:let me know if you(?:'d| would)? (?:like|want)|would you like) me to (?:make|rewrite|shorten|adjust|change|rephrase|tweak) (?:it|this|the (?:message|email|e-mail|draft|reply|tone))|feel free to (?:adjust|customi[sz]e|modify|tweak|personali[sz]e) (?:it|this|the (?:message|wording|tone|draft|template))|you can (?:adjust|customi[sz]e|personali[sz]e) (?:the|this) (?:tone|wording|message|draft|template))\b/i,
     title: 'A chatbot\'s closing offer was left in',
     plain: 'An offer to "adjust the tone" or "make changes" is addressed to the person who asked the chatbot, not to you. It was pasted along with the message.',
   },
