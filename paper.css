@@ -336,6 +336,10 @@
   hr.sep{border:none; border-top:1px solid var(--paper-border); margin:36px 0;}
   .living-note{font-style:italic; color:var(--paper-muted); font-size:1rem;}
 
+  /* Author bio at the end of each guide. */
+  .author-box{margin:36px 0 0; padding:18px 20px; border:1px solid var(--paper-border); background:var(--paper-tint); color:var(--paper-text);}
+  .author-box p{margin:0; font-size:0.98rem; line-height:1.6;}
+  .author-box p + p{margin-top:6px;}
   .keep-reading{margin-top:40px; padding-top:24px; border-top:1px solid var(--paper-border);}
   .keep-reading ul{list-style:none; margin:10px 0 0; padding:0;}
   .keep-reading li{margin:0 0 10px; font-size:1.02rem;}
