@@ -720,6 +720,60 @@ check('early-return results still carry an addresses array',
     !isLure(S.scanPrompt('Attackers posing as recruiters send a take-home test on GitHub and ask the candidate to run npm install; the install script then steals wallets.')));
 }
 
+// ---- AI-assistant leftovers -------------------------------------------
+// Reports residue of pasted chatbot output. It must never claim to tell
+// AI from human, never move a verdict on its own, and never fire on
+// ordinary human writing.
+{
+  const left = r => r.findings.filter(f => f.category === 'AI_ASSISTANT_LEFTOVER');
+  const ids = r => left(r).map(f => f.ruleId);
+
+  const selfref = S.scanPrompt('As an AI language model, I cannot share personal opinions, but here is the summary.');
+  check('leftovers: assistant self-reference is reported', ids(selfref).includes('AI_LEFTOVER_SELFREF_001'));
+  const pre = S.scanPrompt('Certainly! Here is a friendly message you can send to your client:\n\nHi Tom, the invoice is attached.');
+  check('leftovers: chat preamble is reported', ids(pre).includes('AI_LEFTOVER_PREAMBLE_001'));
+  const sign = S.scanPrompt('Hi Tom, the invoice is attached.\n\nLet me know if you\'d like any changes to the tone.');
+  check('leftovers: chat sign-off is reported', ids(sign).includes('AI_LEFTOVER_SIGNOFF_001'));
+  const tpl = S.scanPrompt('Dear [Recipient Name], thank you for your order. Best, [Your Name]');
+  check('leftovers: unfilled placeholder is reported', ids(tpl).includes('AI_LEFTOVER_TEMPLATE_001'));
+  const md = S.scanPrompt('Here is a short message you can send:\n\n**Hello!** The meeting moved to Friday.');
+  check('leftovers: markdown residue is reported alongside another leftover', ids(md).includes('AI_LEFTOVER_MARKDOWN_001'));
+
+  check('leftovers: every leftover finding is INFO', [selfref, pre, sign, tpl, md].every(r => left(r).every(f => f.severity === 'INFO')));
+  check('leftovers: leftovers alone keep a PASS', [selfref, pre, sign, tpl, md].every(r => r.label === 'PASS'),
+    [selfref, pre, sign, tpl, md].map(r => r.label).join(','));
+  check('leftovers: no finding claims the text was written by an AI',
+    [selfref, pre, sign, tpl, md].every(r => left(r).every(f => /does not prove/.test(f.plain))));
+  check('leftovers: coverage reports the pass', selfref.coverage.leftovers === 'complete');
+  check('leftovers: the limitation says it cannot tell AI from human',
+    selfref.limitations.some(l => /cannot tell whether a person or an AI wrote/.test(l.text)));
+
+  // False alarms: ordinary human text.
+  const human = [
+    'Hi Anna, the team lunch moved to Thursday at 12:30. See you there.',
+    'As an AI researcher I spend most days reading papers about language models.',
+    'See the [docs](https://example.com/docs) and the [link] in the footnote.',
+    '## Setup\n\nRun **npm install** and then **npm start**.',
+    'Here is the report: revenue grew 4% in Q3.',
+    'Let me know if you can make it on Friday.',
+    'Use arr[index] and map[name] in the loop.',
+  ];
+  human.forEach((t, i) => check('leftovers: no false alarm on human text #' + (i + 1), left(S.scanPrompt(t)).length === 0,
+    ids(S.scanPrompt(t)).join(',')));
+
+  // Combined with a scam signal, a chain finding explains the pairing.
+  const lureMsg = S.scanPrompt('Certainly! Here is a message you can send:\n\nDear [Customer Name], your wallet is locked. Reply with your 12-word recovery phrase to restore access.');
+  check('leftovers: with a secret request, the generated-lure chain fires', hasRule(lureMsg, 'CHAIN_AI_LURE_001'));
+  check('leftovers: a generated lure is not a PASS', lureMsg.label !== 'PASS', lureMsg.label);
+  const benignTpl = S.scanPrompt('Dear [Customer Name], your order has shipped.');
+  check('leftovers: no chain without a scam signal', !hasRule(benignTpl, 'CHAIN_AI_LURE_001'));
+
+  // Performance at the input cap.
+  const t0 = Date.now();
+  S.scanPrompt('[your '.repeat(40000) + '{{ '.repeat(20000) + '**a'.repeat(20000));
+  check('leftovers: adversarial input at the cap scans in under 2 s', Date.now() - t0 < 2000, (Date.now() - t0) + ' ms');
+}
+
 // ----------------------------------------------------------------- done
 console.log('\n' + '='.repeat(60));
 console.log(`${pass}/${pass + fail} prompt-scan tests passed`);
