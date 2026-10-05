@@ -71,6 +71,7 @@ const AD_POLICY = {
   'honeypot-tokens.html':       { enabled: true,  mode: 'contextual', reason: 'Token mechanics. Educational, and not about a message someone has just received.' },
   'address-poisoning.html':     { enabled: true,  mode: 'contextual', reason: 'Education before a payment, not a page for someone in trouble. Enabled by Stefan, 26 September 2026.' },
 
+  'ai-leftovers.html':          { enabled: false, reason: 'New guide: ad-free by default until Stefan decides. Added 5 October 2026.' },
   'privacy.html':               { enabled: false, reason: 'A policy document should read as a policy document. Advertising beside the page that describes our advertising undermines both.' },
   'terms.html':                 { enabled: false, reason: 'Same as privacy: the terms are a commitment, not a surface.' },
   'agents.html':                { enabled: false, reason: 'Developer reference with install commands: no ads next to things people paste into their machines. Same rule as tools.html.' },

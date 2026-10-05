@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 17, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 18, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 17 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 18 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -372,6 +372,30 @@ if (fs.existsSync(guidePath)) {
     pair.length === 2 && short(pair[0]) === '0x7a3F…9E2c' && short(pair[1]) === '0x7a3F…9E2c');
 }
 
+
+// ---- guide 9: AI leftovers — every example agrees with the engine --------
+{
+  const PS = require('./promptscan.js');
+  const g9 = fs.readFileSync(path.join(__dirname, 'ai-leftovers.html'), 'utf8');
+  const unesc = t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const blocks = [...g9.matchAll(/<div class="msg"( id="(\w+)")?>([\s\S]*?)<\/div>/g)].map(m => ({ id: m[2] || '', text: unesc(m[3]) }));
+  const left = t => PS.scanPrompt(t).findings.filter(f => f.category === 'AI_ASSISTANT_LEFTOVER').map(f => f.ruleId);
+  const leftoverBlocks = blocks.filter(b => b.id !== 'exClean');
+  check('guide 9: has its example blocks', blocks.length >= 7, 'found ' + blocks.length);
+  for (const b of leftoverBlocks) {
+    check('guide 9: the scanner flags the example "' + b.text.split('\n')[0].slice(0, 40) + '"', left(b.text).length > 0);
+  }
+  const copied = blocks.find(b => b.id === 'exCopied');
+  const ids = copied ? left(copied.text) : [];
+  check('guide 9: the "as copied" example shows all three leftovers the guide names',
+    ['AI_LEFTOVER_PREAMBLE_001', 'AI_LEFTOVER_SIGNOFF_001', 'AI_LEFTOVER_TEMPLATE_001'].every(i => ids.includes(i)), ids.join(','));
+  const clean = blocks.find(b => b.id === 'exClean');
+  check('guide 9: the cleaned version shows no leftovers', !!clean && left(clean.text).length === 0);
+  check('guide 9: leftovers alone keep a PASS, as the guide says', !!copied && PS.scanPrompt(copied.text).label === 'PASS');
+  check('guide 9: never calls the check an AI detector', !/AI detector|detects AI|detect whether/i.test(g9.replace(/<!--[\s\S]*?-->/g, '')));
+  check('guide 9: points at the result label the page actually uses',
+    g9.includes('"AI-assistant leftovers"') && fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').includes("'AI-assistant leftovers'"));
+}
 
 // ---- verdict cards: warnings only, fixed wording, no message text -------
 {
@@ -490,7 +514,7 @@ if (fs.existsSync(guidePath)) {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -584,7 +608,7 @@ if (fs.existsSync(guidePath)) {
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -643,7 +667,7 @@ if (fs.existsSync(guidePath)) {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);

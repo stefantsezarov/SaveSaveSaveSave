@@ -88,7 +88,7 @@ const ADS_ON  = ['/index.html', '/guides.html', '/whitepaper.html',
                  '/technical-appendix.html', '/honeypot-tokens.html', '/address-poisoning.html'];
 const ADS_OFF = ['/about.html', '/privacy.html', '/terms.html', '/support.html', '/tools.html', '/agents.html', '/invisible-characters.html',
                  '/prompt-injection.html', '/seed-phrase-phishing.html',
-                 '/disguised-links.html', '/sanctioned-addresses.html'];
+                 '/disguised-links.html', '/sanctioned-addresses.html', '/ai-leftovers.html'];
 
 // Must not be reachable. The .git paths are the ones that made an
 // exclusion list decorative; the rest are documents and source that the

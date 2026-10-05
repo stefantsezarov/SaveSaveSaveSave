@@ -858,7 +858,7 @@ async function afterSweep() {
 
     const guideLinks = { 'disguised-links.html': 'message', 'honeypot-tokens.html': 'token', 'invisible-characters.html': 'message',
       'prompt-injection.html': 'message', 'sanctioned-addresses.html': 'pay', 'seed-phrase-phishing.html': 'message',
-      'address-poisoning.html': 'pay' };
+      'address-poisoning.html': 'pay', 'ai-leftovers.html': 'message' };
     for (const [f, sit] of Object.entries(guideLinks)) {
       const g = fs.readFileSync(path.join(__dirname, f), 'utf8');
       check(f + ': its closing button opens the scanner at #check=' + sit,
