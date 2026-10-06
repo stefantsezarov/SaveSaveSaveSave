@@ -2,7 +2,8 @@
 """
 Regenerate the icon set in the new identity: hard squares, purple → blue.
 
-Writes favicon.svg, apple-touch-icon.png (180) and og-image.png (1200x630).
+Writes favicon.svg and apple-touch-icon.png (180).
+og-image.png is rendered separately: node og-image.js
 Nothing here is hand-edited afterwards; re-run it to change the mark.
 """
 from PIL import Image, ImageDraw, ImageFont
@@ -86,60 +87,5 @@ touch = Image.new("RGB", (180, 180), INK)
 touch.paste(mark(132), (24, 24))
 touch.save(REPO / "apple-touch-icon.png")
 
-# ------------------------------------------------------------- og-image
-W, H = 1200, 630
-og = Image.new("RGB", (W, H), INK)
-og = radial_glow(og, (150, -40), 520, (153, 69, 255), 0.30)
-og = radial_glow(og, (1180, -20), 460, (0, 209, 255), 0.14)
-d = ImageDraw.Draw(og)
-
-f_brand = ImageFont.truetype(POPPINS_B, 38)
-f_h1 = ImageFont.truetype(POPPINS_B, 62)
-f_sub = ImageFont.truetype(POPPINS_R, 26)
-f_badge = ImageFont.truetype(MONO_B, 21)
-f_foot = ImageFont.truetype(MONO_R, 19)
-f_chains = ImageFont.truetype(MONO_R, 24)
-
-# brand row
-og.paste(mark(46), (76, 56))
-x = 138
-for word, colour in [("Save", TEXT), ("Save", (150, 150, 162)), ("Save", (104, 104, 118)), ("Save", ACCENT_TEXT)]:
-    d.text((x, 54), word, font=f_brand, fill=colour)
-    x += d.textlength(word, font=f_brand) + 2
-
-chains = "EVM · Solana · Sui · TRON"
-d.text((W - 76 - d.textlength(chains, font=f_chains), 66), chains, font=f_chains, fill=MUTED)
-
-# gradient hairline, same device as the site header
-line = diagonal_gradient((W - 152, 2), PURPLE, (24, 24, 32))
-og.paste(line, (76, 124))
-
-# headline
-d.text((76, 176), "Is this a scam?", font=f_h1, fill=TEXT)
-part1 = "Check the message "
-d.text((76, 250), part1, font=f_h1, fill=TEXT)
-d.text((76 + d.textlength(part1, font=f_h1), 250), "and", font=f_h1, fill=ACCENT_TEXT)
-d.text((76, 324), "the address.", font=f_h1, fill=ACCENT_TEXT)
-
-# subtitle
-for i, line_text in enumerate([
-    "Hidden instructions, prompt injections and disguised links — plus",
-    "honeypots, mint authority and sanctioned addresses. Free. In your browser.",
-]):
-    d.text((76, 414 + i * 36), line_text, font=f_sub, fill=MUTED)
-
-# verdict badges
-bx = 76
-for label, colour in [("PASS", SAFE), ("CAUTION", CAUTION), ("FAIL", DANGER), ("INSUFFICIENT DATA", MUTED)]:
-    tw = d.textlength(label, font=f_badge)
-    d.rectangle([bx, 500, bx + tw + 34, 544], outline=colour, width=2)
-    d.text((bx + 17, 510), label, font=f_badge, fill=colour)
-    bx += tw + 34 + 14
-
-d.line([(76, 570), (W - 76, 570)], fill=(38, 38, 48), width=1)
-d.text((76, 588), "savesavesavesave.xyz", font=f_foot, fill=ACCENT_TEXT)
-tag = "Save your funds. Save your time. Save your trust. Save the regret."
-d.text((W - 76 - d.textlength(tag, font=f_foot), 588), tag, font=f_foot, fill=(120, 120, 134))
-
-og.save(REPO / "og-image.png")
-print("wrote favicon.svg, apple-touch-icon.png, og-image.png")
+# og-image.png is rendered from og-image.html by og-image.js.
+print("wrote favicon.svg, apple-touch-icon.png")
