@@ -530,9 +530,12 @@ if (fs.existsSync(guidePath)) {
   }
 
   const home = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-  check('index.html does NOT link the logo',
-    !/<a class="brand"/.test(home),
-    'on the scanner the logo would reload the page and discard whatever was pasted');
+  // The logo is the Home control: it returns to the three-check menu
+  // without reloading, so whatever was pasted is still there afterwards.
+  check('index.html: the logo returns to the menu without reloading the page',
+    /<a class="brand"[^>]*onclick="return goHome\(event\)"/.test(home)
+      && /function goHome\(e\)\{[\s\S]*?e\.preventDefault\(\)/.test(home),
+    'a plain link would reload the page and discard whatever was pasted');
 }
 
 
