@@ -201,7 +201,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .nav-link{color:var(--text-muted); font-size:0.85rem; font-family:'IBM Plex Sans', sans-serif; text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--border);}
   .nav-link:hover{color:var(--accent); text-decoration-color:var(--accent);}
 
-  .hero{padding:26px 0 10px; text-align:center;}
+  .hero{padding:6px 0 10px; text-align:center;}
   .eyebrow{display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.08em; color:var(--accent); text-transform:uppercase; margin-bottom:18px; border:1px solid var(--border); padding:5px 12px; border-radius:0; background:var(--surface);}
   .eyebrow .dot{width:6px; height:6px; border-radius:50%; background:var(--safe); box-shadow:0 0 8px var(--safe); animation:pulse 2s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
@@ -888,8 +888,10 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   a.brand:focus-visible{outline:2px solid var(--accent-2); outline-offset:4px;}
   .home-menu{display:none;}
   body.home .home-menu{display:block;}
-  body.home .wrap > :not(.home-menu){display:none !important;}
-  .home-menu{padding:40px 0 56px;}
+  body.home .wrap > :not(.home-menu):not(.page-title){display:none !important;}
+  .page-title{text-align:center; margin:26px 0 0;}
+  body.home .page-title{margin-top:36px;}
+  .home-menu{padding:28px 0 56px;}
   .home-cards{display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:20px; align-items:stretch;}
   .home-card{position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:20px;
     min-height:400px; padding:26px 24px 24px; text-align:left; cursor:pointer; overflow:hidden;
@@ -962,6 +964,9 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 <div class="top-rule"></div>
 
 <div class="wrap">
+  <!-- The one heading on the page: visible on the menu and above the
+       chosen check, so search engines never see it hidden. -->
+  <h1 class="page-title">Check it before you trust it.</h1>
   <!-- Main menu: the first thing a visitor sees. Shown only while
        <body> has class "home"; every section below stays in the page,
        unchanged, and appears once a check is chosen. -->
@@ -1020,7 +1025,6 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   </section>
 
   <section class="hero">
-    <h1>Check it before you trust it.</h1>
     <p class="sub">Three free security checks. Pick the one that matches what is in front of you.</p>
 
     <div class="scanner">
