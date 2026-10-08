@@ -251,8 +251,9 @@ const MUST_404 = [
   // would discard a message somebody had just pasted.
   const guide = await get('/disguised-links.html');
   check('the logo links home from a guide', /<a class="brand" href="index\.html"/.test(guide.body));
-  check('the logo does NOT link on the scanner', !/<a class="brand"/.test(idx.body),
-    'clicking it there would reload the page and lose a pasted message');
+  check('the logo on the scanner returns to the menu without reloading',
+    /<a class="brand"[^>]*onclick="return goHome\(event\)"/.test(idx.body),
+    'a plain link would reload the page and lose a pasted message');
 
   // A contact route that does not depend on a platform account. This one
   // broke in production the moment the repository changed visibility.
