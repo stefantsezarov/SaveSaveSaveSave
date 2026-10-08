@@ -881,12 +881,77 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:optional;src:url(fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:optional;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:optional;src:url(fonts/ibm-plex-mono-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+
+  /* ---- Main menu (home state) ---- */
+  a.brand{text-decoration:none; color:inherit; border-radius:var(--radius-control);}
+  a.brand:hover .brand-mark{filter:brightness(1.15);}
+  a.brand:focus-visible{outline:2px solid var(--accent-2); outline-offset:4px;}
+  .home-menu{display:none;}
+  body.home .home-menu{display:block;}
+  body.home .wrap > :not(.home-menu){display:none !important;}
+  .home-menu{padding:40px 0 56px;}
+  .home-cards{display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:20px; align-items:stretch;}
+  .home-card{position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:20px;
+    min-height:400px; padding:26px 24px 24px; text-align:left; cursor:pointer; overflow:hidden;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-control);
+    color:var(--text); font:inherit; transition:border-color .15s, transform .15s, background .15s;}
+  .home-card::before{content:""; position:absolute; inset:0 0 auto 0; height:3px; background:var(--hc-c, var(--accent));}
+  .home-card:hover{border-color:var(--hc-c, var(--accent)); background:var(--surface-2); transform:translateY(-2px);}
+  .home-card:focus-visible{outline:3px solid var(--accent-2); outline-offset:3px;}
+  .home-card:active{transform:none;}
+  .hc-address{--hc-c:var(--accent-2);
+    background-image:radial-gradient(circle at 1px 1px, rgba(0,209,255,0.10) 1px, transparent 0); background-size:18px 18px;}
+  .hc-prompt{--hc-c:var(--accent); border-color:var(--accent-solid);
+    background:linear-gradient(180deg, var(--accent-dim), transparent 70%), var(--surface);
+    box-shadow:0 0 0 1px rgba(153,69,255,0.25), 0 18px 48px -24px rgba(153,69,255,0.55);}
+  .hc-prompt:hover{background:linear-gradient(180deg, rgba(153,69,255,0.24), transparent 75%), var(--surface-2);}
+  .hc-package{--hc-c:var(--caution);
+    background-image:repeating-linear-gradient(135deg, rgba(255,176,32,0.05) 0 1px, transparent 1px 14px);}
+  .hc-art{width:100%; max-width:240px; height:auto; align-self:center; fill:none; stroke-linecap:round; stroke-linejoin:round;}
+  .hc-art .hc-line{stroke:var(--hc-c); stroke-width:2;}
+  .hc-art .hc-line2{stroke:var(--text-muted); stroke-width:1.5; opacity:.7;}
+  .hc-art .hc-node2{fill:var(--surface-2); stroke:var(--hc-c); stroke-width:1.5;}
+  .hc-art .hc-faint{stroke:var(--border); stroke-width:1; stroke-dasharray:2 6;}
+  .hc-art .hc-text{stroke:var(--text-muted); stroke-width:3;}
+  .hc-art .hc-hidden{stroke:var(--danger); stroke-width:3; stroke-dasharray:3 4;}
+  .hc-art .hc-warn{stroke:var(--caution); stroke-width:2;}
+  .hc-art .hc-spark{fill:var(--accent-2); stroke:none;}
+  .hc-art .hc-term{stroke:var(--safe); stroke-width:1.6;}
+  .hc-art .hc-mono{fill:var(--text-muted); stroke:none; font-family:'IBM Plex Mono', monospace; font-size:10px;}
+  .hc-body{display:flex; flex-direction:column; gap:10px;}
+  .hc-num{font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.1em; color:var(--hc-c);}
+  .hc-title{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:clamp(1.45rem, 2.6vw, 1.85rem); line-height:1.15; color:var(--text);}
+  .hc-prompt .hc-title{font-size:clamp(1.6rem, 3vw, 2.1rem);}
+  .hc-desc{color:var(--text-muted); font-size:0.98rem; line-height:1.5;}
+  .hc-cta{display:inline-flex; align-items:center; gap:8px; align-self:flex-start; margin-top:6px; padding:11px 16px; min-height:44px;
+    font-weight:600; font-size:0.95rem; border:1px solid var(--hc-c); color:var(--text); border-radius:var(--radius-control);}
+  .hc-prompt .hc-cta{background:var(--accent-solid); border-color:var(--accent-solid); color:var(--on-accent);}
+  .home-card:hover .hc-cta{background:var(--hc-c); color:var(--ink);}
+  .hc-prompt:hover .hc-cta{background:var(--accent-solid); color:var(--on-accent);}
+  @media (max-width:900px){
+    .home-cards{grid-template-columns:1fr;}
+    .home-card{min-height:0; flex-direction:row; align-items:center; padding:24px 20px;}
+    .hc-art{width:38%; max-width:180px; flex:none; order:2;}
+    .home-menu{padding:24px 0 40px;}
+  }
+  @media (max-width:520px){
+    .home-card{flex-direction:column; align-items:stretch; gap:14px; min-height:260px;}
+    .hc-art{width:60%; max-width:170px; order:0;}
+    .hc-cta{align-self:stretch; justify-content:center;}
+  }
+  @media (prefers-reduced-motion:reduce){ .home-card{transition:none;} .home-card:hover{transform:none;} }
 </style>
 </head>
 <body>
+<script>
+/* Start on the three-choice menu, unless this visit already asks for a
+   check (#check= from a guide, #bookmarklet, or text from the bookmark).
+   Without JavaScript the class is never set and the full page shows. */
+(function(){try{if(!window.__s4Selected&&!/^#(check=|bookmarklet)/.test(location.hash))document.body.classList.add('home');}catch(_){}})();
+</script>
 
 <header class="top">
-  <div class="brand"><div class="brand-mark"></div><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></div>
+  <a class="brand" href="index.html" id="homeLink" aria-label="SaveSaveSaveSave home: choose a check" onclick="return goHome(event)"><span class="brand-mark"></span><span class="wordmark"><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span><span class="wm">Save</span></span></a>
   <div class="top-nav">
     <a class="nav-link" href="guides.html">Guides</a>
     <a class="nav-link" href="whitepaper.html">Before You Act</a>
@@ -897,6 +962,63 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 <div class="top-rule"></div>
 
 <div class="wrap">
+  <!-- Main menu: the first thing a visitor sees. Shown only while
+       <body> has class "home"; every section below stays in the page,
+       unchanged, and appears once a check is chosen. -->
+  <section class="home-menu" id="homeMenu" aria-labelledby="homeMenuHead">
+    <h2 id="homeMenuHead" class="sr-only">Choose a check</h2>
+    <div class="home-cards">
+    <button type="button" class="home-card hc-address" onclick="openTool('address')" aria-describedby="hc-address-desc">
+      <svg class="hc-art" viewBox="0 0 160 110" aria-hidden="true" focusable="false">
+<g class="hc-faint"><path d="M14 92h132M14 74h132M14 56h132M14 38h132M14 20h132"/></g>
+<g class="hc-line2"><path d="M40 30L80 18L120 34M40 30L58 70M120 34L104 72M58 70L104 72"/></g>
+<g class="hc-node2"><circle cx="40" cy="30" r="5"/><circle cx="80" cy="18" r="4"/><circle cx="120" cy="34" r="5"/><circle cx="58" cy="70" r="4"/><circle cx="104" cy="72" r="4"/></g>
+<g class="hc-line"><circle cx="62" cy="52" r="22"/><circle cx="62" cy="52" r="15"/><path d="M62 42l7 10-7 10-7-10z"/></g>
+<g class="hc-line"><rect x="94" y="48" width="48" height="34" rx="3"/><path d="M94 58h40a8 8 0 0 1 8 8v0"/><rect x="126" y="60" width="16" height="10" rx="2"/></g>
+<text x="14" y="104" class="hc-mono">0x7a2f…c91e</text>
+</svg>
+      <span class="hc-body">
+        <span class="hc-num" aria-hidden="true">01</span>
+        <span class="hc-title">Token or wallet</span>
+        <span class="hc-desc" id="hc-address-desc">Check a crypto token or wallet address before you buy, receive or pay. EVM, Solana, Sui and TRON.</span>
+        <span class="hc-cta">Scan a token or wallet <span aria-hidden="true">&rarr;</span></span>
+      </span>
+    </button>
+    <button type="button" class="home-card hc-prompt" onclick="openTool('prompt')" aria-describedby="hc-prompt-desc">
+      <svg class="hc-art" viewBox="0 0 160 110" aria-hidden="true" focusable="false">
+<g class="hc-line"><path d="M14 16h86a6 6 0 0 1 6 6v34a6 6 0 0 1-6 6H44l-14 12V62H20a6 6 0 0 1-6-6V22a6 6 0 0 1 6-6z"/></g>
+<g class="hc-text"><path d="M26 30h66M26 40h52"/></g>
+<g class="hc-hidden"><path d="M26 50h18M50 50h36"/></g>
+<g class="hc-line2"><path d="M60 72h80a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6H60a6 6 0 0 1-6-6V78a6 6 0 0 1 6-6z"/><path d="M66 87h4M74 81v12"/></g>
+<g class="hc-warn"><path d="M128 18l14 24h-28z"/><path d="M128 27v7M128 37v1"/></g>
+<g class="hc-spark"><path d="M128 52l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M112 56l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/></g>
+</svg>
+      <span class="hc-body">
+        <span class="hc-num" aria-hidden="true">02</span>
+        <span class="hc-title">Message or prompt</span>
+        <span class="hc-desc" id="hc-prompt-desc">Check a message, prompt or AI-written text for hidden instructions, fake links, requests for secrets and AI leftovers.</span>
+        <span class="hc-cta">Scan a message or prompt <span aria-hidden="true">&rarr;</span></span>
+      </span>
+    </button>
+    <button type="button" class="home-card hc-package" onclick="openTool('package')" aria-describedby="hc-package-desc">
+      <svg class="hc-art" viewBox="0 0 160 110" aria-hidden="true" focusable="false">
+<g class="hc-line"><path d="M44 28l26-12 26 12v30L70 70 44 58z"/><path d="M44 28l26 12 26-12M70 40v30"/></g>
+<g class="hc-line2"><path d="M70 70v10M70 80L36 92M70 80l34 12M70 80v12"/></g>
+<g class="hc-node2"><circle cx="36" cy="94" r="5"/><circle cx="70" cy="96" r="5"/><circle cx="104" cy="94" r="5"/></g>
+<g class="hc-term"><rect x="108" y="16" width="44" height="30" rx="2"/><path d="M114 26l5 4-5 4M122 36h10"/></g>
+<g class="hc-line2"><path d="M20 22v26M13 41l7 7 7-7"/></g>
+<g class="hc-warn"><path d="M128 66l12 21h-24z"/><path d="M128 74v6M128 83v1"/></g>
+</svg>
+      <span class="hc-body">
+        <span class="hc-num" aria-hidden="true">03</span>
+        <span class="hc-title">npm package</span>
+        <span class="hc-desc" id="hc-package-desc">Check an npm package before you install it: malware reports, removals, look-alike names and install scripts.</span>
+        <span class="hc-cta">Check an npm package <span aria-hidden="true">&rarr;</span></span>
+      </span>
+    </button>
+    </div>
+  </section>
+
   <section class="hero">
     <h1>Check it before you trust it.</h1>
     <p class="sub">Three free security checks. Pick the one that matches what is in front of you.</p>
@@ -5307,6 +5429,25 @@ function showToolAgain(){
   const again = document.getElementById('toolAgain');
   if(again) again.style.display = 'flex';
 }
+// ---- Main menu --------------------------------------------------------
+// Presentation only: the menu is a class on <body>. Choosing a check (from
+// a card, a situation, a guide link or the bookmark) goes through
+// setScanMode(), which leaves the menu; the logo brings it back.
+function leaveHome(){ const b = document.body; if(b && b.classList) b.classList.remove('home'); }
+function openTool(m){
+  leaveHome();
+  switchTool(m);
+}
+function goHome(e){
+  if(e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button > 0)) return true;
+  if(e) e.preventDefault();
+  document.body.classList.add('home');
+  try { if(location.hash) history.replaceState(null, '', location.pathname); } catch(_) {}
+  window.scrollTo(0, 0);
+  const first = document.querySelector('.home-card');
+  if(first && first.focus) first.focus({ preventScroll: true });
+  return false;
+}
 function switchTool(m){
   setScanMode(m);
   let coarse = false, still = false;
@@ -5716,6 +5857,7 @@ async function runPackageScan(){
 }
 
 function setScanMode(m) {
+  leaveHome();
   const addr = document.getElementById('addressPanel');
   const prompt = document.getElementById('promptPanel');
   const bAddr = document.getElementById('smode-address');
