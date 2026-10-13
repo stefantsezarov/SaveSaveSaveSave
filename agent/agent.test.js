@@ -79,6 +79,49 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     check('address: chain is ignored for a ' + eco + ' address, as the tool description says', !/Unknown chain/.test(msg), msg);
   }
 
+  // ---- result contract 1.0 ----------------------------------------------
+  {
+    const RISK = ['high', 'medium', 'none_found', 'unknown'], COV = ['full', 'partial', 'none'], STATUS = ['completed', 'insufficient_evidence'];
+    const valid = (r) => r.contract && r.contract.contract_version === S.CONTRACT_VERSION && STATUS.includes(r.contract.status)
+      && RISK.includes(r.contract.assessment.risk_level) && COV.includes(r.contract.assessment.coverage)
+      && Array.isArray(r.contract.not_checked) && r.contract.not_checked.length > 0
+      && typeof r.contract.provenance.engine_version === 'string';
+    const noDecision = (r) => !/"(?:decision|allow|allowed|deny|denied|safe|is_safe)"\s*:/.test(JSON.stringify(r.contract));
+    const pkgMock = (unknownOsv) => async (url) => {
+      if (url.includes('api.osv.dev')) { if (unknownOsv) throw new Error('offline'); return reply(200, {}); }
+      if (url.includes('api.npmjs.org')) return reply(200, { downloads: 5000000 });
+      return reply(200, { name: 'demo', 'dist-tags': { latest: '1.0.0' }, time: { created: '2015-01-01T00:00:00Z', '1.0.0': '2015-01-01T00:00:00Z' },
+        versions: { '1.0.0': { version: '1.0.0', scripts: {}, repository: 'github:a/demo' } } });
+    };
+    const results = {
+      'message fail': S.scanMessage('URGENT: reply with your 12-word recovery phrase now. - Support'),
+      'message pass': S.scanMessage('Lunch moved to Thursday.'),
+      'compare same': S.compareAddresses('0x1234567890abcdef1234567890abcdef12345678', '0x1234567890abcdef1234567890abcdef12345678'),
+      'compare poisoned': S.compareAddresses('0x1234567890abcdef1234567890abcdef12345678', '0x1234ffffffffffffffffffffffffffffffff5678'),
+      'package look-alike': await S.checkPackage('lodaѕh', async () => { throw new Error('network used'); }),
+      'package not found': await S.checkPackage('demo-x', async (u) => reply(u.includes('registry') ? 404 : 200, {})),
+      'package OSV offline': await S.checkPackage('demo', pkgMock(true)),
+      'package full': await S.checkPackage('demo', pkgMock(false)),
+    };
+    for (const [k, r] of Object.entries(results)) {
+      check('contract: ' + k + ' carries a valid 1.0 block', valid(r), JSON.stringify(r.contract));
+      check('contract: ' + k + ' carries no allow/deny decision', noDecision(r));
+      check('contract: ' + k + ' keeps verdict and label', typeof r.verdict === 'string' && typeof r.label === 'string');
+    }
+    const pmPass = results['message pass'].contract;
+    check('contract: PASS maps to none_found and says it is not "safe"', pmPass.assessment.risk_level === 'none_found' && /not a statement that the item is safe/.test(pmPass.assessment.meaning));
+    check('contract: FAIL maps to high', results['message fail'].contract.assessment.risk_level === 'high');
+    check('contract: a missing package is insufficient_evidence, not completed', results['package not found'].contract.status === 'insufficient_evidence'
+      && results['package not found'].contract.assessment.coverage === 'none', JSON.stringify(results['package not found'].contract));
+    const off = results['package OSV offline'];
+    check('contract: an unreachable source shows as partial coverage', off.contract.assessment.coverage === 'partial', off.contract.assessment.coverage + ' ' + JSON.stringify(off.coverage));
+    check('contract: local results have no timestamp, remote ones do', results['message pass'].contract.provenance.as_of === null
+      && /^\d{4}-\d\d-\d\dT/.test(results['package full'].contract.provenance.as_of));
+    check('contract: local results say so', results['compare same'].contract.provenance.processed_locally && !results['package full'].contract.provenance.processed_locally);
+    const a = S.scanMessage('Lunch moved to Thursday.'), b = S.scanMessage('Lunch moved to Thursday.');
+    check('contract: a local scan is deterministic', JSON.stringify(a) === JSON.stringify(b));
+  }
+
   const lines = [
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
     { jsonrpc: '2.0', method: 'notifications/initialized' },

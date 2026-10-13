@@ -71,6 +71,30 @@ await s.scanAddress(addr, { chain: '1', mode: 'token' });
 s.compareAddresses(expected, actual);
 ```
 
+## Result contract (1.0)
+
+Every result keeps its existing fields (`verdict`, `label`, `summary`, `checks`, `not_checked` and so on) and adds one `contract` block:
+
+```json
+"contract": {
+  "contract_version": "1.0",
+  "status": "completed",
+  "assessment": { "risk_level": "none_found", "coverage": "partial", "meaning": "No covered risk was found. This is not a statement that the item is safe." },
+  "not_checked": ["The package code was not downloaded or analysed.", "..."],
+  "provenance": { "tool_package_version": "0.1.4", "engine_version": "0.2.0", "processed_locally": false, "as_of": "2026-10-14T00:00:00.000Z" }
+}
+```
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| `status` | `completed`, `insufficient_evidence` | Whether the check produced an assessment at all |
+| `assessment.risk_level` | `high`, `medium`, `none_found`, `unknown` | FAIL, CAUTION, PASS, INSUFFICIENT DATA. There is no `safe` value |
+| `assessment.coverage` | `full`, `partial`, `none` | Share of this tool's own checks that returned usable data |
+| `not_checked` | list of strings | What the check could not see. Never empty |
+| `provenance.as_of` | ISO time or `null` | When remote data was read; `null` for local checks |
+
+The contract carries **no allow/deny decision**. Whether an action may go ahead is a policy you control, applied on your machine: see `guard` below.
+
 ## Security model
 
 - **Read-only.** No tool writes files, runs commands, or holds keys or secrets. There is nothing here that can change the website or its repository.
