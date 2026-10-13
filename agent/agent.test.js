@@ -136,6 +136,10 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     check('guard: npx runs a package, so it is checked', G.parseInstalls('npx -y create-thing my-app')[0].packages.join() === 'create-thing');
     check('guard: env prefixes and sudo do not hide an install', p('CI=1 sudo npm i evil-pkg').join() === 'evil-pkg');
     check('guard: quoted text is not an install', G.parseInstalls('git commit -m "npm install x"').length === 0 && G.parseInstalls('echo npm install x').length === 0);
+    for (const l of ['echo `npm i evil`', 'bash -c "npm i evil"', 'sh -lc "cd x && npm i evil"', 'npm --prefix x install evil',
+      'npm -g i evil', '$(npm i evil)', 'echo "run `npm i evil` now"', 'echo "$(npm i evil)"', 'zsh -c \'yarn add evil\''])
+      check('guard: no bypass via ' + l, p(l).join() === 'evil', p(l).join() || 'missed');
+    check('guard: a dollar sign in a string is not a command', G.parseInstalls('echo "price: $5"').length === 0 && G.parseInstalls('npm --version').length === 0);
 
     // Policy matrix
     const item = (verdict, coverage, extra) => Object.assign({ target: 'x', verdict, coverage: coverage || 'full', status: verdict === 'unknown' ? 'insufficient_evidence' : 'completed' }, extra || {});

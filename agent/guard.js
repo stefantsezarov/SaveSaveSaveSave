@@ -48,10 +48,19 @@ function splitCommands(line) {
   const s = String(line || '');
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
+    // Command substitution runs even inside double quotes: parse its
+    // contents as commands of their own, then carry on inside the string.
+    if (q === '"' && (c === '`' || (c === '$' && s[i + 1] === '('))) {
+      const close = c === '`' ? s.indexOf('`', i + 1) : s.indexOf(')', i + 2);
+      const inner = s.slice(i + (c === '`' ? 1 : 2), close === -1 ? s.length : close);
+      cmds.push(...splitCommands(inner));
+      i = close === -1 ? s.length : close;
+      continue;
+    }
     if (q) { if (c === q) q = null; else if (c === '\\' && q === '"' && i + 1 < s.length) tok += s[++i]; else tok += c; continue; }
     if (c === '"' || c === "'") { q = c; has = true; continue; }
     if (c === '\\' && i + 1 < s.length) { tok += s[++i]; has = true; continue; }
-    if (c === ';' || c === '\n' || c === '|' || c === '&' || c === '(' || c === ')') { end(); continue; }
+    if (c === ';' || c === '\n' || c === '|' || c === '&' || c === '(' || c === ')' || c === '`') { end(); continue; }
     if (/\s/.test(c)) { push(); continue; }
     tok += c; has = true;
   }
@@ -61,13 +70,27 @@ function splitCommands(line) {
 
 // Find every install in a command line.
 // Returns [{ manager, packages: [spec...], fromManifest: bool, nonRegistry: [spec...], raw }]
-function parseInstalls(line) {
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish']);
+function parseInstalls(line, depth) {
   const out = [];
+  const d = depth || 0;
   for (let argv of splitCommands(line)) {
     // Skip leading env assignments and common wrappers.
     while (argv.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(argv[0]) || ['sudo', 'env', 'command', 'exec', 'time', 'nohup'].includes(argv[0]))) argv = argv.slice(1);
     if (!argv.length) continue;
     const bin = argv[0].split('/').pop();
+    // sh -c "…", bash -lc "…": the script is one argument; parse inside it.
+    if (SHELLS.has(bin) && d < 3) {
+      const ci = argv.findIndex((a, i) => i > 0 && /^-[a-z]*c[a-z]*$/.test(a));
+      if (ci > 0 && argv[ci + 1] !== undefined) out.push(...parseInstalls(argv[ci + 1], d + 1));
+      continue;
+    }
+    // Global flags before the subcommand: npm --prefix x install, npm -g i.
+    if (INSTALL[bin]) {
+      let k = 1;
+      while (k < argv.length && argv[k].startsWith('-')) { if (FLAGS_WITH_VALUE.has(argv[k])) k++; k++; }
+      if (k > 1 && k < argv.length) argv = [argv[0]].concat(argv.slice(k, k + 1), argv.slice(1, k), argv.slice(k + 1));
+    }
     let manager = null, rest = null;
     if (bin === 'npx' || bin === 'pnpx' || bin === 'bunx' || (bin === 'pnpm' && argv[1] === 'dlx') || (bin === 'yarn' && argv[1] === 'dlx')) {
       // Runs a package without installing it into the project: same risk.
