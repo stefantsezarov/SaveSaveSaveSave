@@ -774,6 +774,20 @@ check('early-return results still carry an addresses array',
   check('leftovers: adversarial input at the cap scans in under 2 s', Date.now() - t0 < 2000, (Date.now() - t0) + ' ms');
 }
 
+// ------------------------------------------------- performance budget
+// One long run of a single marker character used to take minutes (a
+// quadratic regex in FAKE_SYSTEM_MESSAGE_001). A scam message padded with
+// '#' or '*' froze the page and every MCP request behind it. Each case must
+// finish well inside the budget at the full input cap.
+section('performance budget at the input cap');
+for (const c of ['#', '*', '[', '<', '`', '=', '-', '_', '~', '>', '|', ':', '/', '.', ' ', '\n', '#*', '# ', '* ', '**a']) {
+  const s = c.repeat(Math.ceil(S.LIMITS.MAX_INPUT_CHARS / c.length)).slice(0, S.LIMITS.MAX_INPUT_CHARS);
+  const t = Date.now(); S.scanPrompt(s); const ms = Date.now() - t;
+  check(`perf: ${JSON.stringify(c)} x ${S.LIMITS.MAX_INPUT_CHARS} scans in under 1 s`, ms < 1000, ms + ' ms');
+}
+for (const t of ['### SYSTEM OVERRIDE ###', '##########SYSTEM:', '**ADMIN MESSAGE**', 'text **SYSTEM** text', '[SYSTEM]'])
+  check('perf fix keeps detection: ' + t, hasRule(S.scanPrompt(t), 'FAKE_SYSTEM_MESSAGE_001'));
+
 // ----------------------------------------------------------------- done
 console.log('\n' + '='.repeat(60));
 console.log(`${pass}/${pass + fail} prompt-scan tests passed`);

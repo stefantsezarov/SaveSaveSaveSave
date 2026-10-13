@@ -110,6 +110,30 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     check('deps: summary is a readable table with the limits stated', /\| `crossenv` \|/.test(md) && /Transitive dependencies are not checked/.test(md) && /not that a package is safe/.test(md));
     const noDev = await D.checkDeps(dir, { includeDev: false }, fake);
     check('deps: devDependencies can be left out', !noDev.results.some(r => r.name === 'lodahs'));
+    // The check must examine what npm will INSTALL, not the package.json key.
+    {
+      const mk = (pkg, lock) => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 's4deps-')); fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify(pkg)); if (lock) fs.writeFileSync(path.join(d, 'package-lock.json'), JSON.stringify(lock)); return d; };
+      const seen = []; const rec = async spec => { seen.push(spec); return { verdict: 'pass', label: 'PASS', checks: [] }; };
+      const aliasRep = await D.checkDeps(mk({ dependencies: { lodash: 'npm:evil-pkg@1.0.0' } },
+        { lockfileVersion: 3, packages: { 'node_modules/lodash': { name: 'evil-pkg', version: '1.0.0', resolved: 'https://registry.npmjs.org/evil-pkg/-/evil-pkg-1.0.0.tgz' } } }), {}, rec);
+      check('deps: an npm: alias is checked as the real package (lockfile v3)', seen.includes('evil-pkg@1.0.0') && !seen.some(x => x.startsWith('lodash')), JSON.stringify(seen));
+      const aliasFail = await D.checkDeps(mk({ dependencies: { lodash: 'npm:evil-pkg@1.0.0' } }), {}, async () => ({ verdict: 'fail', label: 'MALICIOUS', checks: [] }));
+      check('deps: the alias is shown in the summary', /alias of evil-pkg/.test(D.markdown(aliasFail, 'fail')) && aliasRep.results[0].findings.some(f => /evil-pkg/.test(f)));
+      seen.length = 0;
+      await D.checkDeps(mk({ dependencies: { x: 'npm:@scope/real@2.1.0' } }), {}, rec);
+      check('deps: a scoped alias without a lockfile is checked at its pinned version', seen.includes('@scope/real@2.1.0'), JSON.stringify(seen));
+      seen.length = 0;
+      await D.checkDeps(mk({ dependencies: { 'ua-parser-js': '^0.7.0' } },
+        { lockfileVersion: 1, dependencies: { 'ua-parser-js': { version: '0.7.29', resolved: 'https://registry.npmjs.org/ua-parser-js/-/ua-parser-js-0.7.29.tgz' } } }), {}, rec);
+      check('deps: lockfile v1 versions are used', seen.includes('ua-parser-js@0.7.29'), JSON.stringify(seen));
+      seen.length = 0;
+      await D.checkDeps(mk({ dependencies: { 'ua-parser-js': '0.7.29' } }), {}, rec);
+      check('deps: an exact pin without a lockfile is checked at that version', seen.includes('ua-parser-js@0.7.29'), JSON.stringify(seen));
+      const rangeRep = await D.checkDeps(mk({ dependencies: { react: '^18.2.0' } }), {}, rec);
+      check('deps: an unresolved range never reads as PASS', rangeRep.results[0].verdict === 'caution' && rangeRep.results[0].label === 'VERSION NOT RESOLVED');
+      const tick = await D.checkDeps(mk({ dependencies: { 'a`![x](https://e.example/p.png)': '1.0.0' } }), {}, async () => ({ verdict: 'fail', label: 'FAIL', checks: [] }));
+      check('deps: package names cannot inject markdown into the job summary', !/!\[x\]\(/.test(D.markdown(tick, 'fail')) && !/a`!/.test(D.markdown(tick, 'fail')));
+    }
     // The Action's entry point, run for real. Offline, every registry check
     // fails to connect: those must be reported, not silently passed.
     const env = Object.assign({}, process.env, { S4_PATH: dir, S4_FAIL_ON: 'caution', GITHUB_STEP_SUMMARY: path.join(dir, 'summary.md') });

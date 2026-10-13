@@ -24,7 +24,7 @@ After a FAIL or CAUTION result you can **share the warning as an image**. It's d
 An **MCP server**, **CLI** and **Node library** in [`agent/`](agent/) give agents the same four checks as read-only tools: `scan_message`, `check_package`, `scan_address`, `compare_addresses`. Zero dependencies, a hard-coded network allowlist, and CI keeps it identical to the site's engine. [`llms.txt`](https://savesavesavesave.xyz/llms.txt) describes the site for AI assistants.
 
 - **Install the MCP server:** `claude mcp add savesavesavesave -- npx -y savesavesavesave mcp` (other clients: see [savesavesavesave.xyz/agents](https://savesavesavesave.xyz/agents)).
-- **GitHub Action** for your npm dependencies: `uses: stefantsezarov/SaveSaveSaveSave@v0.1.3` ([setup](https://savesavesavesave.xyz/tools)).
+- **GitHub Action** for your npm dependencies: `uses: stefantsezarov/SaveSaveSaveSave@v0.1.4` ([setup](https://savesavesavesave.xyz/tools)).
 - **Scan selected text** on any web page with a one-click bookmark ([install](https://savesavesavesave.xyz/tools)).
 
 ## The rules it keeps

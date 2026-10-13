@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: stefantsezarov/SaveSaveSaveSave@v0.1.3
+      - uses: stefantsezarov/SaveSaveSaveSave@v0.1.4
 ```
 
 Transitive dependencies are not checked. Only names and versions are sent, to npm and OSV.dev.

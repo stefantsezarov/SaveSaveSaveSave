@@ -599,7 +599,7 @@ const RULES = [
     // A fake system-message marker. Real system instructions never arrive
     // inside text a user pasted.
     id: 'FAKE_SYSTEM_MESSAGE_001', category: 'PROMPT_INJECTION', severity: 'HIGH', confidence: 0.88,
-    re: /(?:\[|<|#{2,}|\*{2,})\s*(?:SYSTEM|ADMIN|DEVELOPER|ROOT|OVERRIDE|SYSTEM\s+OVERRIDE|NEW\s+(?:DIRECTIVE|INSTRUCTIONS?)|IMPORTANT\s+SYSTEM)\s*(?:OVERRIDE|MESSAGE|PROMPT|NOTE|DIRECTIVE)?\s*(?:\]|>|#{2,}|\*{2,}|:)|<\|im_start\|>\s*system|<\|system\|>|^\s*system\s*:/im,
+    re: /(?:\[|<|(?<!#)#{2,}|(?<!\*)\*{2,})\s*(?:SYSTEM|ADMIN|DEVELOPER|ROOT|OVERRIDE|SYSTEM\s+OVERRIDE|NEW\s+(?:DIRECTIVE|INSTRUCTIONS?)|IMPORTANT\s+SYSTEM)\s*(?:OVERRIDE|MESSAGE|PROMPT|NOTE|DIRECTIVE)?\s*(?:\]|>|#{2,}|\*{2,}|:)|<\|im_start\|>\s*system|<\|system\|>|^\s*system\s*:/im,
     title: 'Imitates a system or developer message',
     plain: 'Part of this prompt is dressed up to look like a privileged instruction from the software itself. It is not — it is ordinary text you pasted, with no more authority than the rest.',
     action: 'Ignore the claimed authority. Judge the prompt by what it actually asks for.',
