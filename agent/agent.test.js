@@ -29,6 +29,29 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
   }
   check('network: only allowlisted HTTPS hosts can be reached', blocked === 3);
 
+  // The deadline covers the body, not only the headers, and the body is capped.
+  {
+    const streamRes = (pull) => ({ ok: true, status: 200, headers: new Map(), body: new ReadableStream({ pull }) });
+    const stalled = S.guardedFetch(async () => streamRes(() => new Promise(() => {})), { timeoutMs: 300 });
+    const t0 = Date.now(); let err = '';
+    try { await stalled('https://registry.npmjs.org/x'); } catch (e) { err = e.message; }
+    check('network: a body that stalls is abandoned at the deadline', /Timed out/.test(err) && Date.now() - t0 < 3000, err + ' after ' + (Date.now() - t0) + ' ms');
+
+    const big = S.guardedFetch(async () => streamRes((c) => c.enqueue(new Uint8Array(64 * 1024))), { maxBytes: 1024 * 1024 });
+    err = '';
+    try { await big('https://registry.npmjs.org/x'); } catch (e) { err = e.message; }
+    check('network: a body past the size cap is refused', /larger than/.test(err), err);
+
+    const okRes = S.guardedFetch(async () => new Response(JSON.stringify({ name: 'demo' }), { status: 200 }));
+    const r = await okRes('https://registry.npmjs.org/demo');
+    check('network: a normal streamed body still parses', r.ok && (await r.json()).name === 'demo');
+
+    const slowJson = S.guardedFetch(async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }), { timeoutMs: 300 });
+    err = '';
+    try { await slowJson('https://registry.npmjs.org/x'); } catch (e) { err = e.message; }
+    check('network: a stream-less response that never resolves also times out', /Timed out/.test(err), err);
+  }
+
   const seen = [];
   const mock = async (url) => {
     seen.push(new URL(url).host);
