@@ -81,7 +81,7 @@ Every result keeps its existing fields (`verdict`, `label`, `summary`, `checks`,
   "status": "completed",
   "assessment": { "risk_level": "none_found", "coverage": "partial", "meaning": "No covered risk was found. This is not a statement that the item is safe." },
   "not_checked": ["The package code was not downloaded or analysed.", "..."],
-  "provenance": { "tool_package_version": "0.1.4", "engine_version": "0.2.0", "processed_locally": false, "as_of": "2026-10-14T00:00:00.000Z" }
+  "provenance": { "tool_package_version": "0.1.5", "engine_version": "0.2.0", "processed_locally": false, "as_of": "2026-10-14T00:00:00.000Z" }
 }
 ```
 
@@ -94,6 +94,43 @@ Every result keeps its existing fields (`verdict`, `label`, `summary`, `checks`,
 | `provenance.as_of` | ISO time or `null` | When remote data was read; `null` for local checks |
 
 The contract carries **no allow/deny decision**. Whether an action may go ahead is a policy you control, applied on your machine: see `guard` below.
+
+## Pre-install guard
+
+`guard` checks what an install command would bring in and applies a policy **you** choose. The scan supplies evidence; the decision is made on your machine and cannot be changed by anything a package, a registry or a web page says.
+
+```sh
+npx savesavesavesave@0.1.5 guard --mode guard -- npm install some-package
+# exit 0 allow, 1 review, 2 deny, 3 usage error
+```
+
+| Mode | FAIL | CAUTION or not enough data | Check failed or timed out | Not from the registry (git, URL, path) | PASS with partial coverage |
+| --- | --- | --- | --- | --- | --- |
+| `observe` | allow (reports deny) | allow | allow | allow | allow |
+| `guard` (default) | deny | review | review | review | allow |
+| `strict` | deny | deny | deny | deny | deny |
+
+It understands `npm`, `pnpm`, `yarn` and `bun` installs, `npm ci` and a bare `npm install` (it then checks package.json and the lockfile), `npx`/`pnpm dlx`/`yarn dlx`/`bunx`, and installs chained with `&&`, `;` or `|`. The mode can also be set with `SAVESAVESAVESAVE_GUARD_MODE`.
+
+### Claude Code hook
+
+Add to `.claude/settings.json` in your project (pin the version you reviewed):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "npx -y savesavesavesave@0.1.5 hook claude-code --mode guard" } ] }
+    ]
+  }
+}
+```
+
+The hook only ever answers `deny` (FAIL) or `ask` (review). It never answers `allow`, so a clean result cannot skip your own permission prompt. Commands without an install pass through untouched.
+
+### What it does not do
+
+The guard sees the commands it is shown. An agent that installs through a route the hook does not inspect, such as a shell script file, a package manager it does not know, or a downloaded binary, is not stopped by it. For hard enforcement, add network or filesystem controls on the host. It never downloads or runs package code.
 
 ## Security model
 

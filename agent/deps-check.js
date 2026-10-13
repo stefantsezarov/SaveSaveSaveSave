@@ -99,7 +99,7 @@ async function checkDeps(dir, opts, checkFn) {
         let verdict = r.verdict, label = r.label, summary = r.summary || '';
         // An unknown installed version must never read as a clean PASS.
         if (d.versionNote) { findings.unshift(d.versionNote); if (verdict === 'pass') { verdict = 'caution'; label = 'VERSION NOT RESOLVED'; } }
-        results.push({ ...d, checked: spec, verdict, label, summary, findings });
+        results.push({ ...d, checked: spec, verdict, label, summary, findings, contract: r.contract });
       } catch (e) {
         results.push({ ...d, verdict: 'unknown', label: 'NOT CHECKED', summary: String((e && e.message) || e) });
       }
