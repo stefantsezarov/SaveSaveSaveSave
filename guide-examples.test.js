@@ -434,15 +434,20 @@ if (fs.existsSync(guidePath)) {
   }
   // Text claims that must stay true of the code.
   const text = g10.replace(/<!--[\s\S]*?-->/g, '');
-  check('guide 10: never calls an install "safe" or the guard a sandbox',
-    !/\b(?:is|are|makes?\s+\w+)\s+safe\b|guarantees?\s+safe|\bsandbox(?:es|ed)?\b(?! ).*/i.test(text.replace(/"No objection" is not "safe"/, '')), '');
+  const sentences = text.replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').split(/(?<=[.!?:])\s+/);
+  const safeClaims = sentences.filter(x => /\bsafe\b/i.test(x) && !/n['’]t|\bnot\b|\bnever\b|\bno\b/i.test(x));
+  check('guide 10: every mention of "safe" is a negation, never a promise', safeClaims.length === 0, safeClaims.join(' / '));
+  check('guide 10: never calls the guard a sandbox', !/sandbox/i.test(text));
   check('guide 10: the pinned version in the guide is the published package version',
     (text.match(/savesavesavesave@(\d+\.\d+\.\d+)/g) || []).every(v => v.endsWith('@' + require('./agent/package.json').version)));
   check('guide 10: the hook command in the guide is one the CLI accepts',
     /hook claude-code --mode guard/.test(text) && fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8').includes("cmd === 'hook'"));
   check('guide 10: the exit codes in the guide match the CLI',
-    /exits <code>0<\/code> to allow, <code>1<\/code> to ask a human, <code>2<\/code> to deny/.test(text)
+    /<code>0<\/code>: allow/.test(text) && /<code>1<\/code>: request human review/.test(text) && /<code>2<\/code>: deny/.test(text)
       && /\{ allow: 0, review: 1, deny: 2 \}/.test(fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8')));
+  check('guide 10: the article is free of AI-assistant leftovers',
+    require('./promptscan.js').scanPrompt(text.replace(/<pre[\s\S]*?<\/pre>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&')).findings
+      .filter(f => f.category === 'AI_ASSISTANT_LEFTOVER').length === 0);
   check('guide 10: carries no advertising', !/adsbygoogle|googlesyndication/.test(g10));
   globalThis.__asyncChecks = (globalThis.__asyncChecks || []).concat(pending);
 }
