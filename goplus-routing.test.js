@@ -85,6 +85,33 @@ function ok(cond, name) {
   ok(cx.own(T, '1') === 'https://x' && ['constructor', '__proto__', 'toString', 'hasOwnProperty'].every(k => cx.own(T, k) === undefined),
     'chain lookup ignores inherited names such as constructor and __proto__');
   ok(/caches\.default/.test(src) && /handleStats\(env, ctx\)/.test(src), 'weekly stats are served from the edge cache');
+
+  // Lookup routes: open to non-browser callers, but rate-limited per IP.
+  const la = src.indexOf('// ---- lookup rate limit'), lb = src.indexOf('// ---- end of lookup rate limit');
+  const lx = { corsHeaders: () => ({}), Response: class { constructor(b, i) { this.status = i.status; } } };
+  vm.createContext(lx);
+  vm.runInContext(src.slice(la, lb) + ';this.limited = lookupLimited; this.L = LOOKUP_LIMITS; this.ROUTES = LOOKUP_ROUTES;', lx);
+  const rq = (ip) => ({ headers: { get: (h) => (h === 'CF-Connecting-IP' ? ip : null) } });
+  const P = (k) => new URLSearchParams(k + '=x');
+  const t1 = 1790000000000;
+  let n429 = 0;
+  for (let i = 0; i < lx.L.default + 3; i++) if (lx.limited(rq('203.0.113.1'), P('wallet_address'), t1)) n429++;
+  ok(n429 === 3, 'lookup routes allow ' + lx.L.default + ' lookups a minute from one address, then answer 429');
+  n429 = 0;
+  for (let i = 0; i < lx.L.counterparty_check + 2; i++) if (lx.limited(rq('203.0.113.2'), P('counterparty_check'), t1)) n429++;
+  ok(n429 === 2, 'the expensive counterparty route has its own lower limit (' + lx.L.counterparty_check + ' a minute)');
+  ok(!lx.limited(rq('203.0.113.2'), P('sanctions_check'), t1), 'hitting the counterparty limit does not block other lookups');
+  ok(!lx.limited(rq('203.0.113.1'), P('wallet_address'), t1 + 60000), 'the lookup limit resets the next minute');
+  ok(!lx.limited(rq('203.0.113.9'), new URLSearchParams('stats=week'), t1), 'non-lookup requests are not counted');
+  const routesRead = [...src.matchAll(/searchParams\.get\('([a-z_]+)'\)/g)].map(m => m[1]).filter(r => r !== 'chain' && r !== 'stats' && r !== 'count');
+  ok(routesRead.every(r => lx.ROUTES.includes(r)), 'every lookup route the Worker reads is rate-limited: ' + routesRead.join(','));
+  ok(!/lookupWindow[\s\S]{0,300}(?:COUNTS|cache\.put)/.test(src), 'the lookup limiter never writes the client address anywhere');
+
+  ok(!/goplus_status/.test(src), 'the open GoPlus diagnostic route is gone');
+  ok(/TOKEN_TIMEOUT_MS[\s\S]{0,400}AbortController|AbortController[\s\S]{0,200}TOKEN_TIMEOUT_MS/.test(src), 'GoPlus sign-in has its own timeout');
+  const header = src.slice(0, src.indexOf('*/'));
+  ok(routesRead.concat(['count', 'stats']).every(r => header.includes('?' + r)), 'the Worker header documents every route');
+  ok(!/REPLACE-WITH-VERIFIED-RPC|every entry in\s+\*\s+CHAIN_RPC_ENDPOINTS below is a placeholder/.test(header), 'the Worker header no longer calls the RPC table a placeholder');
 }
 
 // A fetch stub that records every URL it is asked for.

@@ -17,13 +17,20 @@
  * called with chain_id=tron, and the Chainalysis Sanctions Oracle smart
  * contract via a raw JSON-RPC eth_call.
  *
- * Six request shapes are supported, one per route:
+ * Lookup routes (GET, one per request; each validates its address first):
  *   ?contract_addresses=<addr>            -> Solana token security lookup
  *   ?wallet_address=<addr>                -> malicious-address (wallet) lookup
  *   ?sui_contract_addresses=<addr>        -> Sui token security lookup
  *   ?tron_contract_addresses=<addr>       -> TRON token security lookup
  *   ?sanctions_check=<addr>&chain=<id>    -> Chainalysis oracle isSanctioned() check
  *   ?counterparty_check=<addr>&chain=<id> -> recent token-transfer counterparty check
+ * Site routes:
+ *   POST ?count=<key>                     -> anonymous daily scan total (fixed words only)
+ *   GET  ?stats=week                      -> public seven-day totals, edge-cached
+ *
+ * Every lookup route is rate-limited per caller IP, in memory only (see
+ * "lookup rate limit" below). The routes stay open to callers without an
+ * Origin header on purpose: the CLI and MCP server use them from Node.
  *
  * The counterparty_check route is deliberately narrow, and its response
  * says so: it finds ERC-20/721 Transfer events involving the address in a
@@ -45,18 +52,14 @@
  * a smart-contract call, not a REST API, so it never had a "try direct
  * from the browser" option in the first place — this is the only path.
  *
- * THE SANCTIONS ROUTE NEEDS ONE THING BEFORE IT WORKS: every entry in
- * CHAIN_RPC_ENDPOINTS below is a placeholder. RPC reliability has not
- * been independently verified yet (search tooling was unavailable when
- * this was written) — replace each placeholder with a specific, checked
- * RPC endpoint before relying on this route. Until then, it correctly
- * returns { available: false, reason: 'RPC endpoint not yet configured...' }
- * rather than silently failing or guessing.
+ * RPC endpoints for the sanctions and counterparty routes are listed in
+ * CHAIN_RPC_ENDPOINTS below, each verified; a chain without one answers
+ * { available: false, reason: ... } rather than guessing.
  *
  * SETUP:
  * 1. Add your site's origin to ALLOWED_ORIGINS below if it is not listed.
- * 2. Replace every REPLACE-WITH-VERIFIED-RPC-* placeholder with a real,
- *    checked RPC endpoint for that chain.
+ * 2. Optional: set GOPLUS_APP_KEY and GOPLUS_APP_SECRET as secrets to send
+ *    keyed requests to GoPlus.
  * 3. Paste this whole file into the Cloudflare Worker "Edit code" editor.
  * 4. Click Save and Deploy.
  *
@@ -255,6 +258,7 @@ function jsonResponse(obj, status) {
 // sent bare in the Authorization header. Tested 4 Oct 2026: with a
 // "Bearer " prefix GoPlus answers 4012 "Wrong Signature"; bare, it is
 // accepted (EVM probe below answers code 1).
+const TOKEN_TIMEOUT_MS = 5000;
 let goplusToken = { value: '', expires: 0 };
 async function goplusAccessToken(env) {
   if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return '';
@@ -263,11 +267,18 @@ async function goplusAccessToken(env) {
   const time = String(now);
   const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(env.GOPLUS_APP_KEY + time + env.GOPLUS_APP_SECRET));
   const sign = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
-  const res = await fetch('https://api.gopluslabs.io/api/v1/token', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_key: env.GOPLUS_APP_KEY, time: Number(time), sign }),
-  });
-  const data = await res.json().catch(() => null);
+  // 5 s, then fall back to an anonymous request: a stalled sign-in must not
+  // hold every keyed lookup until the runtime limit.
+  const ctl = new AbortController();
+  const tid = setTimeout(() => ctl.abort(), TOKEN_TIMEOUT_MS);
+  let data = null;
+  try {
+    const res = await fetch('https://api.gopluslabs.io/api/v1/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
+      body: JSON.stringify({ app_key: env.GOPLUS_APP_KEY, time: Number(time), sign }),
+    });
+    data = await res.json().catch(() => null);
+  } catch (_) { return ''; } finally { clearTimeout(tid); }
   const tok = data && data.code === 1 && data.result && data.result.access_token;
   if (!tok) return '';
   goplusToken = { value: String(tok), expires: now + Math.max(300, Number(data.result.expires_in) || 3600) };
@@ -640,6 +651,36 @@ async function buildStats(env) {
 }
 // ---- end of counting ----------------------------------------------------
 
+// ---- lookup rate limit -----------------------------------------------
+// Every lookup route spends upstream quota (GoPlus, PublicNode RPC), and
+// one counterparty_check can make about 20 upstream calls. Same design as
+// the count limit: per caller IP, per minute, in this instance's memory
+// only, never written anywhere. Best effort per Cloudflare location.
+const LOOKUP_LIMITS = { counterparty_check: 6, default: 30 };
+const LOOKUP_ROUTES = ['contract_addresses', 'wallet_address', 'sui_contract_addresses',
+  'tron_contract_addresses', 'sanctions_check', 'counterparty_check'];
+const LOOKUP_MAX_KEYS = 10000;
+let lookupWindow = { minute: -1, hits: new Map() };
+function lookupAllowed(request, route, now) {
+  const minute = Math.floor((now === undefined ? Date.now() : now) / 60000);
+  if (lookupWindow.minute !== minute) lookupWindow = { minute, hits: new Map() };
+  const limit = LOOKUP_LIMITS[route] || LOOKUP_LIMITS.default;
+  const bucket = route === 'counterparty_check' ? 'cp' : 'lk';
+  const key = bucket + '|' + (request.headers.get('CF-Connecting-IP') || 'unknown');
+  const n = (lookupWindow.hits.get(key) || 0) + 1;
+  if (n > limit) return false;
+  if (lookupWindow.hits.size >= LOOKUP_MAX_KEYS && !lookupWindow.hits.has(key)) return false;
+  lookupWindow.hits.set(key, n);
+  return true;
+}
+function lookupLimited(request, params, now) {
+  const route = LOOKUP_ROUTES.find(r => params.has(r));
+  if (!route || lookupAllowed(request, route, now)) return null;
+  return new Response(JSON.stringify({ error: 'Too many lookups from this address; try again in a minute.' }),
+    { status: 429, headers: { ...corsHeaders(), 'Content-Type': 'application/json', 'Retry-After': '60' } });
+}
+// ---- end of lookup rate limit -----------------------------------------
+
 async function handleRequest(request, env, ctx) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders() });
@@ -650,34 +691,13 @@ async function handleRequest(request, env, ctx) {
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Only GET is supported' }, 405);
   }
-  // ?goplus_status=1 -- is a GoPlus key configured, does sign-in work, and
-  // what does GoPlus answer for a Solana address with it? Returns codes
-  // only: never the key, the secret or the token.
-  if (new URL(request.url).searchParams.get('goplus_status') === '1') {
-    const keyConfigured = !!(env && env.GOPLUS_APP_KEY && env.GOPLUS_APP_SECRET);
-    let token = '';
-    try { token = await goplusAccessToken(env); } catch (_) { token = ''; }
-    let solanaCode = null;
-    try {
-      const r = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg?chain_id=solana`,
-        token ? { headers: { Authorization: token } } : {});
-      const j = await r.json(); solanaCode = j && j.code;
-    } catch (_) { solanaCode = 'no answer'; }
-    // Control: the same keyed request for an EVM address. Code 1 here and
-    // 5000 above means the key works and Solana is what GoPlus refuses.
-    let evmCode = null;
-    try {
-      const r2 = await fetch(`${ADDRESS_SECURITY_UPSTREAM}/0x098B716B8Aaf21512996dC57EB0615e2383E2f96?chain_id=1`,
-        token ? { headers: { Authorization: token } } : {});
-      const j2 = await r2.json(); evmCode = j2 && j2.code;
-    } catch (_) { evmCode = 'no answer'; }
-    return jsonResponse({ keyConfigured, signInOk: !!token, solanaAddressCode: solanaCode, evmControlCode: evmCode }, 200);
-  }
   if (new URL(request.url).searchParams.get('stats') === 'week') {
     return handleStats(env, ctx);
   }
 
   const url = new URL(request.url);
+  const limited = lookupLimited(request, url.searchParams);
+  if (limited) return limited;
   const contractAddress = url.searchParams.get('contract_addresses');
   const walletAddress = url.searchParams.get('wallet_address');
   const suiAddress = url.searchParams.get('sui_contract_addresses');

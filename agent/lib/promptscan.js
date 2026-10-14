@@ -511,11 +511,19 @@ const SECRET_SOLICIT_RE = new RegExp(
   '\\b(?:' + SOLICIT_VERBS + ')\\b[^.!?]{0,44}\\byour\\b[^.!?]{0,34}\\b(?:' + WALLET_SECRET + ')\\b',
   'i');
 
+function collapseWhitespace(t) {
+  return t.replace(/\s+/g, w => (/[\n\r]/.test(w) ? '\n' : ' '));
+}
+
 function directiveScore(fragment) {
   const f = String(fragment);
   const referential = REFERENTIAL.test(f);
   const addressesAssistant = /\b(you are|you must|you should|you will|your (?:instructions|system prompt|rules|policy|guidelines)|as an ai|assistant[,:]|chatgpt|claude|gemini|copilot)\b/i.test(f);
-  const bareImperative = IMPERATIVE_RE.test(f);
+  // Whitespace runs are collapsed first (a run containing a line break
+  // becomes one line break). IMPERATIVE_RE treats every line break as an
+  // anchor followed by \s*, so on raw text a long run of blank lines was
+  // rescanned from each break: quadratic, about 40 s at the input cap.
+  const bareImperative = IMPERATIVE_RE.test(collapseWhitespace(f));
   // Asking the reader for something is also directive, even without a
   // leading verb: "your seed phrase below" is a request, not a lecture.
   const solicits = SOLICIT_RE.test(f);
@@ -599,7 +607,7 @@ const RULES = [
     // A fake system-message marker. Real system instructions never arrive
     // inside text a user pasted.
     id: 'FAKE_SYSTEM_MESSAGE_001', category: 'PROMPT_INJECTION', severity: 'HIGH', confidence: 0.88,
-    re: /(?:\[|<|(?<!#)#{2,}|(?<!\*)\*{2,})\s*(?:SYSTEM|ADMIN|DEVELOPER|ROOT|OVERRIDE|SYSTEM\s+OVERRIDE|NEW\s+(?:DIRECTIVE|INSTRUCTIONS?)|IMPORTANT\s+SYSTEM)\s*(?:OVERRIDE|MESSAGE|PROMPT|NOTE|DIRECTIVE)?\s*(?:\]|>|#{2,}|\*{2,}|:)|<\|im_start\|>\s*system|<\|system\|>|^\s*system\s*:/im,
+    re: /(?:\[|<|(?<!#)#{2,}|(?<!\*)\*{2,})\s*(?:SYSTEM|ADMIN|DEVELOPER|ROOT|OVERRIDE|SYSTEM\s+OVERRIDE|NEW\s+(?:DIRECTIVE|INSTRUCTIONS?)|IMPORTANT\s+SYSTEM)\s*(?:OVERRIDE|MESSAGE|PROMPT|NOTE|DIRECTIVE)?\s*(?:\]|>|#{2,}|\*{2,}|:)|<\|im_start\|>\s*system|<\|system\|>|^[^\S\n]*system[^\S\n]*:/im,
     title: 'Imitates a system or developer message',
     plain: 'Part of this prompt is dressed up to look like a privileged instruction from the software itself. It is not — it is ordinary text you pasted, with no more authority than the rest.',
     action: 'Ignore the claimed authority. Judge the prompt by what it actually asks for.',
@@ -627,7 +635,7 @@ const RULES = [
     // Data appended to a URL — the image-pixel exfiltration pattern. The
     // request is never "send data"; it is "load this picture".
     id: 'URL_APPEND_EXFIL_001', category: 'DATA_EXFILTRATION', severity: 'HIGH', confidence: 0.85,
-    re: /\b(?:append|add|include|attach|concatenate|put|encode)\s+(?:the\s+)?[^.!?\n]{0,60}?\b(?:to|into|in|onto)\s+(?:the\s+)?(?:image\s+)?(?:url|link|address|src|query|parameter|endpoint)\b|\b(?:image|img|pixel|gif|png)\s+(?:url|src|link)[^.!?\n]{0,40}\?\w{1,20}=\s*$|!\[[^\]]*\]\(https?:\/\/[^)\s]{0,200}\?\w{1,20}=/i,
+    re: /\b(?:append|add|include|attach|concatenate|put|encode)\s+(?:the\s+)?[^.!?\n]{0,60}?\b(?:to|into|in|onto)\s+(?:the\s+)?(?:image\s+)?(?:url|link|address|src|query|parameter|endpoint)\b|\b(?:image|img|pixel|gif|png)\s+(?:url|src|link)[^.!?\n]{0,40}\?\w{1,20}=\s*$|!\[[^\[\]\n]{0,500}\]\(https?:\/\/[^)\s]{0,200}\?\w{1,20}=/i,
     title: 'Data is being smuggled out through a link or image address',
     plain: 'The prompt attaches information to the end of a web address. When the AI or your browser loads that address, the data goes to whoever owns it — no obvious "send" step required.',
     action: 'Do not use this prompt. This is exfiltration disguised as loading an image.',
@@ -817,16 +825,31 @@ const RULES = [
 function runRules(text) {
   const findings = [];
   for (const rule of RULES) {
-    const m = text.match(rule.re);
+    let m = text.match(rule.re);
     if (!m) continue;
     // A rule may also require other patterns somewhere in the same text,
     // for lures that are only suspicious in combination.
     if (rule.context && !rule.context.every(c => c.test(text))) continue;
-    const idx = m.index;
     // Judge intent from the sentence the match sits in, not the whole text.
-    const sentStart = Math.max(0, text.lastIndexOf('.', idx) + 1);
-    const sentEnd = (() => { const e = text.indexOf('.', idx + m[0].length); return e === -1 ? Math.min(text.length, idx + 300) : e + 1; })();
-    const sentence = text.slice(sentStart, sentEnd);
+    const sentenceAt = (mm) => {
+      const s0 = Math.max(0, text.lastIndexOf('.', mm.index) + 1);
+      const e = text.indexOf('.', mm.index + mm[0].length);
+      return text.slice(s0, e === -1 ? Math.min(text.length, mm.index + 300) : e + 1);
+    };
+    // A warning in front must not hide a request behind it: "Never share
+    // your seed phrase. Send me your seed phrase now." used to be judged
+    // only by its first, advisory sentence, and scored PASS. Look at up to
+    // 50 later matches for one that is not advisory.
+    if (rule.requiresDirective && ADVISORY_NEGATION.test(sentenceAt(m))) {
+      const g = new RegExp(rule.re.source, rule.re.flags.replace('g', '') + 'g');
+      g.lastIndex = m.index + Math.max(1, m[0].length);
+      for (let i = 0, n; i < 50 && (n = g.exec(text)); i++) {
+        if (n[0].length === 0) g.lastIndex++;
+        if (!ADVISORY_NEGATION.test(sentenceAt(n))) { m = n; break; }
+      }
+    }
+    const idx = m.index;
+    const sentence = sentenceAt(m);
     const d = directiveScore(sentence);
 
     let severity = rule.severity;
@@ -1153,7 +1176,7 @@ function analyseEncoding(text) {
   };
 
   const candidates = [];
-  for (const m of [...text.matchAll(/\b[A-Za-z0-9+/]{24,4000}={0,2}\b/g)].slice(0, LIMITS.MAX_DECODE_CANDIDATES)) {
+  for (const m of [...text.matchAll(/\b[A-Za-z0-9+/]{24,4000}={0,2}(?![A-Za-z0-9+/=])/g)].slice(0, LIMITS.MAX_DECODE_CANDIDATES)) {
     if (m[0].length % 4 === 0) candidates.push({ kind: 'base64', raw: m[0], offset: m.index });
   }
   for (const m of [...text.matchAll(/\b(?:0x)?[0-9a-f]{40,4000}\b/gi)].slice(0, 10)) {
