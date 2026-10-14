@@ -215,6 +215,10 @@ const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, js
     const cli = (a, input) => spawnSync(process.execPath, [path.join(__dirname, 'cli.js')].concat(a), { input, encoding: 'utf8' });
     check('cli guard: no install command exits 0', cli(['guard', '--', 'ls', '-la']).status === 0);
     check('cli guard: usage error exits 3', cli(['guard']).status === 3);
+    check('cli hook: unreadable stdin in strict still exits 0 with a deny', (() => { const r = cli(['hook', 'claude-code', '--mode', 'strict'], '{bad');
+      return r.status === 0 && JSON.parse(r.stdout).hookSpecificOutput.permissionDecision === 'deny'; })());
+    check('cli hook: a bad mode exits 0 with a deny, never a crash', (() => { const r = cli(['hook', 'claude-code', '--mode', 'off'], ev('npm i x'));
+      return r.status === 0 && JSON.parse(r.stdout).hookSpecificOutput.permissionDecision === 'deny'; })());
     check('cli hook: a non-Bash event exits 0 with no output', (() => { const r = cli(['hook', 'claude-code'], ev('npm i x', 'Read')); return r.status === 0 && r.stdout.trim() === ''; })());
   }
 

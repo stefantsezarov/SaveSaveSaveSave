@@ -10,10 +10,12 @@
 // person's own permission prompt: the guard can only add friction ("ask")
 // or block ("deny"), never remove it.
 //
-// VERIFY BEFORE RELYING ON IT: written against the PreToolUse format as
-// documented when this was built (tool_name, tool_input.command in;
-// hookSpecificOutput.permissionDecision out). Check the current Claude Code
-// hooks documentation, and run the scenario in demo/ against a real session.
+// Format checked against https://code.claude.com/docs/en/hooks on
+// 14 Oct 2026: stdin carries tool_name and tool_input.command; stdout is one
+// JSON object with hookSpecificOutput.{hookEventName, permissionDecision,
+// permissionDecisionReason}; exit 0 with no output means "no decision".
+// A hook that crashes or times out does NOT block the call, so the CLI
+// always answers in JSON, and strict users should set "onFailure": "block".
 const G = require('./guard.js');
 
 async function claudeCodePreToolUse(stdinText, argvMode, env, opts) {

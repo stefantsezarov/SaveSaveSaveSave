@@ -126,6 +126,8 @@ Add to `.claude/settings.json` in your project (pin the version you reviewed):
 }
 ```
 
+For `strict`, also add `"timeout": 120` and `"onFailure": "block"` to the hook entry (Claude Code 2.1.295 or later). Without `onFailure`, Claude Code runs the command if the hook itself times out or cannot start, for example when npx cannot download the package.
+
 The hook only ever answers `deny` (FAIL) or `ask` (review). It never answers `allow`, so a clean result cannot skip your own permission prompt. Commands without an install pass through untouched.
 
 ### What it does not do

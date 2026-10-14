@@ -24,7 +24,19 @@ const code = r => r.verdict === 'pass' ? 0 : r.verdict === 'fail' ? 2 : 1;
   if (cmd === 'hook') {                                         // savesavesavesave hook claude-code [--mode ...]  (reads the hook event on stdin)
     const H = require('./hook.js');
     const at = args.indexOf('--mode');
-    const out = await H.claudeCodePreToolUse(require('fs').readFileSync(0, 'utf8'), at >= 0 ? args[at + 1] : null, process.env);
+    // Claude Code treats a hook that exits non-zero (other than 2) as a
+    // non-blocking error and runs the command. So every failure here still
+    // answers with JSON: deny in strict, ask in guard, nothing in observe.
+    let out;
+    try {
+      out = await H.claudeCodePreToolUse(require('fs').readFileSync(0, 'utf8'), at >= 0 ? args[at + 1] : null, process.env);
+    } catch (e) {
+      let m = 'guard';
+      try { m = require('./guard.js').modeFrom(at >= 0 ? args[at + 1] : null, process.env); } catch (_) { m = 'strict'; }
+      out = m === 'observe' ? null : { hookSpecificOutput: { hookEventName: 'PreToolUse',
+        permissionDecision: m === 'strict' ? 'deny' : 'ask',
+        permissionDecisionReason: 'SaveSaveSaveSave guard failed (' + String((e && e.message) || e).slice(0, 200) + ').' } };
+    }
     if (out) process.stdout.write(JSON.stringify(out) + '\n');
     process.exit(0);
   }
