@@ -441,7 +441,7 @@ if (fs.existsSync(guidePath)) {
   check('guide 10: the pinned version in the guide is the published package version',
     (text.match(/savesavesavesave@(\d+\.\d+\.\d+)/g) || []).every(v => v.endsWith('@' + require('./agent/package.json').version)));
   check('guide 10: the hook command in the guide is one the CLI accepts',
-    /hook claude-code --mode guard/.test(text) && fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8').includes("cmd === 'hook'"));
+    /hook claude-code --mode observe/.test(text) && fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8').includes("cmd === 'hook'"));
   check('guide 10: the exit codes in the guide match the CLI',
     /<code>0<\/code>: allow/.test(text) && /<code>1<\/code>: request human review/.test(text) && /<code>2<\/code>: deny/.test(text)
       && /\{ allow: 0, review: 1, deny: 2 \}/.test(fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8')));
