@@ -75,6 +75,7 @@ const AD_POLICY = {
   'privacy.html':               { enabled: false, reason: 'A policy document should read as a policy document. Advertising beside the page that describes our advertising undermines both.' },
   'terms.html':                 { enabled: false, reason: 'Same as privacy: the terms are a commitment, not a surface.' },
   'agents.html':                { enabled: false, reason: 'Developer reference with install commands: no ads next to things people paste into their machines. Same rule as tools.html.' },
+  'agent-second-opinion.html':  { enabled: false, reason: 'Install commands and hook settings people paste into their machines. Same rule as tools.html and agents.html. Decided 14 October 2026.' },
   'tools.html':                 { enabled: false, reason: 'Install instructions and copyable code: no ads next to things people paste into their machines. Decided 2 October 2026.' },
   'about.html':                 { enabled: false, reason: 'A page about a person, not a content page. Decided 5 October 2026.' },
   'support.html':               { enabled: false, reason: 'The page that asks for money must not also sell attention. Decided 26 September 2026.' },

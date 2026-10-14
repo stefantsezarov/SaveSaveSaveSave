@@ -16,7 +16,7 @@
 - [Scanner](https://savesavesavesave.xyz/): message, address, package and address-comparison checks in the browser
 - [For agents](https://savesavesavesave.xyz/agents): MCP install, what each tool checks, result format, what it does not claim
 - [Tools](https://savesavesavesave.xyz/tools): scan-selected-text bookmark, GitHub Action, CLI
-- [Guides](https://savesavesavesave.xyz/guides): address poisoning, seed-phrase phishing, honeypot tokens, disguised links, invisible characters, prompt injection, sanctioned addresses
+- [Guides](https://savesavesavesave.xyz/guides): address poisoning, seed-phrase phishing, honeypot tokens, disguised links, invisible characters, prompt injection, sanctioned addresses, a second opinion for AI agents before npm install
 - [Technical transparency](https://savesavesavesave.xyz/technical-appendix): how verdicts are formed
 - [Privacy](https://savesavesavesave.xyz/privacy): what leaves the browser and where it goes
 

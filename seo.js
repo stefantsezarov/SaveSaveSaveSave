@@ -58,6 +58,7 @@ const PAGES = {
   'sanctioned-addresses.html': { type: 'guide', crumb: 'Sanctioned addresses', section: 'Address risk' },
   'address-poisoning.html':  { type: 'guide',   crumb: 'Address poisoning', section: 'Address risk' },
   'ai-leftovers.html':       { type: 'guide',   crumb: 'AI leftovers', section: 'AI writing' },
+  'agent-second-opinion.html': { type: 'guide', crumb: 'Agent second opinion', section: 'AI agents' },
   'privacy.html':            { type: 'page',    crumb: 'Privacy' },
   'support.html':            { type: 'page',    crumb: 'Support' },
   'tools.html':              { type: 'page',    crumb: 'Tools' },
@@ -69,7 +70,7 @@ const PAGES = {
 const GUIDE_ORDER = [
   'honeypot-tokens.html', 'invisible-characters.html', 'prompt-injection.html',
   'seed-phrase-phishing.html', 'disguised-links.html', 'sanctioned-addresses.html',
-  'address-poisoning.html', 'ai-leftovers.html',
+  'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html',
 ];
 
 // ---------------------------------------------------------------------
