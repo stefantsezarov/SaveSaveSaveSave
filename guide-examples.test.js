@@ -267,13 +267,13 @@ if (fs.existsSync(guidePath)) {
   }
 
   check('the advertising route policy is readable and covers every page',
-    Object.keys(policy).length === 18, 'found ' + Object.keys(policy).length);
+    Object.keys(policy).length === 19, 'found ' + Object.keys(policy).length);
 
   // Every disabled entry must carry a reason. A silent exclusion is a
   // decision nobody can argue with later.
   const entries = [...block.matchAll(/'([a-z0-9-]+\.html)':\s*\{([^}]*)\}/g)];
   check('every route in the policy states a reason',
-    entries.length === 18 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
+    entries.length === 19 && entries.every(e => /reason:\s*'[^']{20,}'/.test(e[2])));
 
   const AD_MARKERS = /adsbygoogle|data-ad-client|data-ad-slot|class="ad-rail/;
   const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice\.google|doubleclick|fundingchoices/;
@@ -397,6 +397,61 @@ if (fs.existsSync(guidePath)) {
     g9.includes('"AI-assistant leftovers"') && fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').includes("'AI-assistant leftovers'"));
 }
 
+// ---- guide 10: a second opinion for your agent — every command agrees with the guard
+// The registry is a fixed stand-in (no network): cross-env clean, crossenv
+// reported malicious, as both really are. What is under test is the guide's
+// promise about each DECISION, and that the guard parses the command as
+// written on the page, cd and all.
+{
+  const G = require('./agent/guard.js');
+  const H = require('./agent/hook.js');
+  const g10 = fs.readFileSync(path.join(__dirname, 'agent-second-opinion.html'), 'utf8');
+  const unesc = t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const cmd = id => { const m = g10.match(new RegExp('<pre id="' + id + '"><code>([\\s\\S]*?)</code></pre>')); return m ? unesc(m[1]) : null; };
+  const reply = (status, body) => ({ ok: status < 300, status, json: async () => body });
+  const PKGS = { 'cross-env': {}, crossenv: { malicious: true } };
+  const registry = async (url, init) => {
+    if (url.includes('api.osv.dev')) { const n = JSON.parse(init.body).package.name; return reply(200, PKGS[n] && PKGS[n].malicious ? { vulns: [{ id: 'MAL-2017-0001' }] } : {}); }
+    if (url.includes('api.npmjs.org')) return reply(200, { downloads: 9000000 });
+    const name = decodeURIComponent(new URL(url).pathname.slice(1));
+    if (!PKGS[name]) return reply(404, {});
+    return reply(200, { name, 'dist-tags': { latest: '7.0.3' }, time: { created: '2016-06-01T00:00:00Z', '7.0.3': '2020-11-01T00:00:00Z' },
+      versions: { '7.0.3': { version: '7.0.3', scripts: {}, repository: 'github:kentcdodds/' + name } } });
+  };
+  const want = { cmdAllow: [null, 'allow'], cmdDeny: ['deny', 'deny'], cmdReview: ['ask', 'review'] };
+  const pending = [];
+  for (const [id, [hookWant, guardWant]] of Object.entries(want)) {
+    const c = cmd(id);
+    check('guide 10: has the ' + id + ' command block', !!c);
+    if (!c) continue;
+    pending.push((async () => {
+      const g = await G.guardCommand(c, 'guard', { fetchImpl: registry });
+      const h = await H.claudeCodePreToolUse(JSON.stringify({ tool_name: 'Bash', tool_input: { command: c } }), 'guard', {}, { fetchImpl: registry });
+      const hd = h ? h.hookSpecificOutput.permissionDecision : null;
+      check('guide 10: "' + c + '" is ' + guardWant + ' in guard mode, as the guide says', g.decision === guardWant, g.decision);
+      check('guide 10: the Claude Code hook answers ' + (hookWant || 'nothing') + ' for "' + c + '"', hd === hookWant, String(hd));
+    })());
+  }
+  // Text claims that must stay true of the code.
+  const text = g10.replace(/<!--[\s\S]*?-->/g, '');
+  const sentences = text.replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').split(/(?<=[.!?:])\s+/);
+  const safeClaims = sentences.filter(x => /\bsafe\b/i.test(x) && !/n['’]t|\bnot\b|\bnever\b|\bno\b/i.test(x));
+  check('guide 10: every mention of "safe" is a negation, never a promise', safeClaims.length === 0, safeClaims.join(' / '));
+  check('guide 10: never calls the guard a sandbox', !/sandbox/i.test(text));
+  check('guide 10: the pinned version in the guide is the published package version',
+    (text.match(/savesavesavesave@(\d+\.\d+\.\d+)/g) || []).every(v => v.endsWith('@' + require('./agent/package.json').version)));
+  check('guide 10: the hook command in the guide is one the CLI accepts',
+    /hook claude-code --mode guard/.test(text) && fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8').includes("cmd === 'hook'"));
+  check('guide 10: the exit codes in the guide match the CLI',
+    /<code>0<\/code>: allow/.test(text) && /<code>1<\/code>: request human review/.test(text) && /<code>2<\/code>: deny/.test(text)
+      && /\{ allow: 0, review: 1, deny: 2 \}/.test(fs.readFileSync(path.join(__dirname, 'agent', 'cli.js'), 'utf8')));
+  check('guide 10: the article is free of AI-assistant leftovers',
+    require('./promptscan.js').scanPrompt(text.replace(/<pre[\s\S]*?<\/pre>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&')).findings
+      .filter(f => f.category === 'AI_ASSISTANT_LEFTOVER').length === 0);
+  check('guide 10: carries no advertising', !/adsbygoogle|googlesyndication/.test(g10));
+  globalThis.__asyncChecks = (globalThis.__asyncChecks || []).concat(pending);
+}
+
 // ---- verdict cards: warnings only, fixed wording, no message text -------
 {
   const idx = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -514,7 +569,7 @@ if (fs.existsSync(guidePath)) {
   const SUBPAGES = ['guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -611,7 +666,7 @@ if (fs.existsSync(guidePath)) {
     const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -670,7 +725,7 @@ if (fs.existsSync(guidePath)) {
   const PAGES = ['index.html', 'guides.html', 'whitepaper.html', 'technical-appendix.html',
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
-    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
+    'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);
@@ -691,6 +746,7 @@ if (fs.existsSync(guidePath)) {
   }
 }
 
+Promise.all(globalThis.__asyncChecks || []).then(() => {
 console.log('\n' + '='.repeat(60));
 if (fail) {
   console.log(`${fail} FAILED, ${pass} passed`);
@@ -700,3 +756,4 @@ if (fail) {
 }
 console.log(`${pass}/${pass} guide-example checks passed`);
 console.log('='.repeat(60));
+}, (e) => { console.log('FAIL async check crashed: ' + e); process.exit(1); });
