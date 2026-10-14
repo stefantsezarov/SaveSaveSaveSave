@@ -83,7 +83,6 @@ const ALLOWED_ORIGINS = new Set([
   'https://savesavesavesave.xyz',       // the real domain
   'https://savesavesavesave.stefan-tsezarov82.workers.dev',
   'https://savesavesavesavecrypto.stefan-tsezarov82.workers.dev',
-  'https://savesavesavesave.pages.dev', // dead, harmless
   // 'https://savesavesavesave.com',    // never registered; .com was taken
 ]);
 
