@@ -282,8 +282,8 @@ sandbox.fillPrompt('hidden');
 sandbox.runPromptScan();
 check('the hidden-instruction example is caught', /verdict-badge (fail|caution)/.test(nodes.results.innerHTML));
 
-check('coverage grid reports semantic analysis as unavailable',
-  /Meaning analysis/.test(nodes.results.innerHTML) && /unavailable/.test(nodes.results.innerHTML));
+check('coverage lists meaning as not checked',
+  /Meaning of the text/.test(nodes.results.innerHTML) && /Not checked — this scan matches patterns only/.test(nodes.results.innerHTML));
 
 // ---- crash safety -----------------------------------------------------
 section('Failure never reads as a pass');
@@ -352,7 +352,7 @@ function stubScans(map) {
     'a message containing an address nobody has checked cannot be a PASS');
   check('the chain is offered, not assumed', /chain not stated in the text/.test(out));
   check('a chain picker is rendered for EVM addresses', /<select aria-label="Chain for this address"/.test(out));
-  check('coverage reports 0 of 2 addresses checked', /Addresses \(0\/2\)/.test(out));
+  check('coverage reports 2 addresses extracted, none checked', /Address extraction \(2 identified\)/.test(out) && /Addresses in this text \(2 · 0 checked\)/.test(out));
 
   // --- one clean, one honeypot ---
   stubScans({ [USDC]: cleanChecks(), [USDT]: honeypotChecks() });
@@ -370,7 +370,7 @@ function stubScans(map) {
     /Do not send funds to, or approve spending for, this address/.test(out));
   check('the overall summary refuses to call the rest of it safe',
     /The rest of the text passing does not make this part safe/.test(out));
-  check('coverage now reports 2 of 2 checked', /Addresses \(2\/2\)/.test(out));
+  check('the address section now reports 2 checked', /Addresses in this text \(2 · 2 checked\)/.test(out));
 
   // --- a failed lookup is not a pass ---
   const one = `Approve ${USDT} to continue.`;
@@ -727,12 +727,54 @@ section('Address result escapes provider and pasted text');
   check('A1: a finding\'s technical detail carries no confidence value',
     !/' · confidence ' \+ f\.confidence/.test(html));
 
+  section('Before you act: coverage and notices');
+  const NEVER_ROWS = ['Where links lead and who owns them', 'Who sent this message',
+    'Whether a payment or login request is genuine', 'Meaning of the text'];
+  Object.keys(FX).forEach(k => {
+    const h = renderFx(FX[k]);
+    check('C1/' + k + ': the four rows the scan cannot answer are listed', NEVER_ROWS.every(t => h.includes('<dt>' + t + '</dt>')));
+  });
+  // F1: a check the engine was told not to run is "disabled", not "failed".
+  const F1 = FX.S3 + ' https://binance.support-help.example/unlock';
+  let h = renderFx(F1, { analyzeUrls: false });
+  check('C3/F1: verdict stays FAIL', badgeOf(h) === 'FAIL');
+  check('C3/F1: link row reads "Not checked — disabled for this scan"',
+    /data-cov="urls"><dt>[^<]*<\/dt><dd>Not checked — disabled for this scan</.test(h));
+  check('C3/F1: no "could not complete" notice for a disabled check', !/Some checks could not complete/.test(h));
+  // F2 and U1 are presentation fixtures: result objects injected at the
+  // rendering boundary. No production option or bypass exists for them.
+  const f2 = sandbox.scanPrompt(FX.S5);
+  f2.coverage = Object.assign({}, f2.coverage, { encoding: 'failed' });
+  sandbox.startMessageScan(f2, FX.S5, false); h = nodes.results.innerHTML;
+  check('C2/F2: serious finding keeps FAIL', badgeOf(h) === 'FAIL');
+  check('C2/F2: every finding is still shown', f2.findings.filter(f => f.severity !== 'INFO').every(f => h.includes(sandbox.escapeHtml(f.title))));
+  check('C2/F2: the notice names exactly the failed row',
+    /Some checks could not complete:<\/strong> Encoded content\./.test(h));
+  const u1 = sandbox.scanPrompt(FX.L6);
+  Object.assign(u1, { verdict: 'unknown', label: 'INSUFFICIENT DATA' });
+  u1.limitations = u1.limitations.concat([{ text: 'Fixture: incomplete.', material: true }]);
+  sandbox.startMessageScan(u1, FX.L6, false); h = nodes.results.innerHTML;
+  check('U1: an unknown result shows INSUFFICIENT DATA and its headline',
+    badgeOf(h) === 'INSUFFICIENT DATA' && /Not enough could be checked/.test(h) && /Part of this text could not be analysed/.test(h));
+  // Truncation: the limit counts UTF-16 units, as text.length does.
+  const X1 = FX.L6.repeat(6000).slice(0, 200001);
+  const X2 = '\u{1F600}'.repeat(100001);
+  const X3 = (FX.S3 + ' ' + FX.L6.repeat(6000)).slice(0, 200001);
+  [['X1', X1, 'INSUFFICIENT DATA'], ['X2', X2, 'INSUFFICIENT DATA'], ['X3', X3, 'FAIL']].forEach(([id, t, badge]) => {
+    const hx = renderFx(t);
+    check('C4/' + id + ': badge is ' + badge, badgeOf(hx) === badge, badgeOf(hx));
+    check('C4/' + id + ': partial-coverage notice shown', /Only part of your message was checked\.<\/strong> No result applies to the remaining text\./.test(hx));
+    check('C4/' + id + ': rows that ran say they stopped at the limit',
+      /<dd>Could not complete — checked the first 200,000 characters<\/dd>/.test(hx) && !/<dd>Checked<\/dd>/.test(hx));
+  });
+  check('C4: an emoji counts as two units (X2 is truncated)', sandbox.scanPrompt(X2).input.truncated === true);
+
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
   check('leftovers: the message tool description names AI-assistant leftovers',
     html.includes('<span class="tool-desc">Hidden instructions, disguised links, requests for secrets, AI-assistant leftovers.</span>'));
-  check('leftovers: the result coverage grid has its own cell',
-    html.includes("coverageCell('leftovers', 'AI-assistant leftovers'"));
+  check('leftovers: the result coverage list has its own row',
+    html.includes("['leftovers', 'AI-assistant leftovers', stateOf(cov.leftovers)]"));
   check('leftovers: the scan console stage says it cannot tell AI from human',
     html.includes("text:'Looking for AI-assistant leftovers'") && html.includes('cannot tell AI from human'));
 

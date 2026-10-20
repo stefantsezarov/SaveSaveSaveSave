@@ -803,12 +803,14 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .tech-toggle{margin-top:8px; background:none; border:none; color:var(--text-muted); font-family:'IBM Plex Mono', monospace; font-size:0.68rem; cursor:pointer; padding:0; text-decoration:underline dotted;}
   .tech-toggle:hover{color:var(--accent);}
 
-  .cov-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:16px;}
-  .cov-cell{background:var(--surface-2); border:1px solid var(--border); border-radius:0; padding:9px 11px; font-family:'IBM Plex Mono', monospace; font-size:0.72rem;}
-  .cov-cell .k{color:var(--text-muted); display:block;}
-  .cov-cell .v{font-weight:600;}
-  .cov-complete .v{color:var(--safe);} .cov-partial .v{color:var(--caution);}
-  .cov-unavailable .v{color:var(--unknown);} .cov-na .v{color:var(--text-muted);}
+  .cov-list{margin:0 0 12px; padding:0;}
+  .cov-row{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:4px 16px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.82rem;}
+  .cov-row dt{color:var(--text); margin:0;}
+  .cov-row dd{margin:0; font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--text-muted);}
+  .cov-checked dd{color:var(--text);} .cov-failed dd, .cov-partial dd{color:var(--caution);}
+  .cov-defs{margin:8px 0 0; padding-left:18px; font-size:0.76rem; color:var(--text-muted); line-height:1.5;}
+  .cov-notice{margin:12px 0 0; padding:10px 12px; border:1px solid var(--caution); background:var(--caution-dim); font-size:0.85rem; line-height:1.5;}
+  @media (max-width:560px){ .cov-row{grid-template-columns:1fr;} }
   .limits{margin-top:18px; padding:14px; background:var(--surface-2); border:1px solid var(--border); border-radius:0;}
   .limits h4{font-family:'Space Grotesk', sans-serif; font-size:0.82rem; margin:0 0 8px;}
   .limits ul{margin:0; padding-left:18px;}
@@ -6275,16 +6277,6 @@ function findingHtml(f, original) {
     + '</div>';
 }
 
-function coverageCell(key, label, value) {
-  const cls = value === 'complete' ? 'cov-complete'
-    : value === 'partial' ? 'cov-partial'
-    : (value === 'not_applicable' || value === 'not_found' || value === 'not_checked') ? 'cov-na'
-    : 'cov-unavailable';
-  const shown = String(value).replace(/_/g, ' ');
-  return '<div class="cov-cell ' + cls + '"><span class="k">' + escapeHtml(label) + '</span>'
-    + '<span class="v">' + escapeHtml(shown) + '</span></div>';
-}
-
 // ---- Composite message scan ----------------------------------------
 // A pasted message is not one thing. It is text, plus links, plus
 // addresses, and each gets a different check with different coverage.
@@ -6537,6 +6529,78 @@ function messageHeadline(composite, promptVerdict) {
     line: 'We checked hidden instructions, requests for secrets and link structure. We did not establish whether the sender, payment request or destination is legitimate.' };
 }
 
+// Coverage rows. "Checked" means the check completed within its documented
+// scope and limits — never that the content is legitimate. Rows the scan
+// cannot answer are always listed, because they are the questions a
+// visitor most often assumes were answered.
+const COV_WORDS = {
+  checked: 'Checked',
+  na: 'Not applicable',
+  disabled: 'Not checked — disabled for this scan',
+  failed: 'Could not complete',
+};
+function messageCoverageRows(r, addrCount) {
+  const cov = r.coverage || {};
+  const trunc = !!(r.input && r.input.truncated);
+  const limit = Number(LIMITS.MAX_INPUT_CHARS).toLocaleString('en-US');
+  const nLinks = (r.urls || []).length;
+  // 'unavailable' is what the engine reports for a check it was told not to
+  // run; 'failed' is reserved for a check that started and failed.
+  const stateOf = (v) => v === 'failed' ? 'failed'
+    : v === 'unavailable' ? 'disabled'
+    : (v === 'not_applicable' || v === 'not_found') ? 'na'
+    : 'checked';
+  const ran = [
+    ['secrets', 'Requests for secrets (recovery phrase, keys, passwords, codes)', stateOf(cov.rules)],
+    ['instructions', 'Hidden instructions aimed at AI assistants', stateOf(cov.rules)],
+    ['unicode', 'Invisible and look-alike characters', stateOf(cov.unicode)],
+    ['markup', 'Hidden markup', stateOf(cov.markup)],
+    ['encoding', 'Encoded content', stateOf(cov.encoding)],
+    ['urls', 'Link structure (' + plural(nLinks, 'link') + ')', stateOf(cov.urls)],
+    ['leftovers', 'AI-assistant leftovers', stateOf(cov.leftovers)],
+    ['addresses', 'Address extraction (' + addrCount + ' identified)', addrCount ? 'checked' : 'na'],
+  ].map(([key, label, state]) => {
+    // Only part of the text was examined: no row that ran can claim the
+    // whole of it.
+    if (trunc && (state === 'checked' || state === 'na')) {
+      return { key, label, state: 'partial', words: 'Could not complete — checked the first ' + limit + ' characters' };
+    }
+    return { key, label, state, words: COV_WORDS[state] };
+  });
+  const never = [
+    ['owner', 'Where links lead and who owns them', 'Not checked — links are never opened'],
+    ['sender', 'Who sent this message', 'Not checked — cannot be established from text'],
+    ['genuine', 'Whether a payment or login request is genuine', 'Not checked — outside this scan'],
+    ['meaning', 'Meaning of the text', 'Not checked — this scan matches patterns only'],
+  ].map(([key, label, words]) => ({ key, label, state: 'not_checked', words, always: true }));
+  return ran.concat(never);
+}
+function coverageListHtml(rows, extraRow) {
+  const row = (x) => '<div class="cov-row cov-' + x.state + '" data-cov="' + escapeHtml(x.key) + '">'
+    + '<dt>' + escapeHtml(x.label) + '</dt><dd>' + escapeHtml(x.words) + '</dd></div>';
+  return '<dl class="cov-list">' + rows.map(row).join('') + (extraRow ? row(extraRow) : '') + '</dl>'
+    + '<ul class="cov-defs">'
+    + '<li><strong>Checked</strong> — this check completed within its documented scope and processing limits. It does not establish that the content is legitimate.</li>'
+    + '<li><strong>Not applicable</strong> — no input requiring this check was identified within the supported scope.</li>'
+    + '<li><strong>Not checked</strong> — this scan does not do it, or it was disabled for this scan; the reason follows the dash.</li>'
+    + '<li><strong>Could not complete</strong> — the check started and then failed, or reached a limit that prevented it from covering the whole text.</li>'
+    + '</ul>';
+}
+// Notices sit under the headline whatever the badge. They never replace a
+// detected finding; they say what the result does not cover.
+function coverageNoticesHtml(rows) {
+  let h = '';
+  if (rows.some(x => x.state === 'partial')) {
+    h += '<p class="cov-notice"><strong>Only part of your message was checked.</strong> No result applies to the remaining text.</p>';
+  }
+  const failed = rows.filter(x => x.state === 'failed').map(x => x.label);
+  if (failed.length) {
+    h += '<p class="cov-notice"><strong>Some checks could not complete:</strong> ' + escapeHtml(failed.join(', '))
+      + '. Findings shown below still apply; anything those checks would have found is unknown.</p>';
+  }
+  return h;
+}
+
 function renderComposite(scroll) {
   const composite = buildComposite();
   if (!composite) return;
@@ -6556,7 +6620,7 @@ function renderComposite(scroll) {
       + list.map(f => findingHtml(f, MSG.text)).join('') + '</div>';
   }
   if (!msgScan.findings.length) {
-    groups = '<div class="finding"><div class="finding-plain">No covered risk pattern matched anywhere in this text. That is not the same as the message being safe — see what this scan did not do, below.</div></div>';
+    groups = '<div class="finding"><div class="finding-plain">Nothing matched the patterns listed under Coverage.</div></div>';
   }
   const c = r.counts;
   const countsLine = '<div class="counts-line">'
@@ -6568,7 +6632,7 @@ function renderComposite(scroll) {
   const checked = MSG.addresses.filter(a => a.state === 'done').length;
   const addrSection = MSG.addresses.length
     ? sectionShell(
-        'Crypto addresses found (' + MSG.addresses.length + ')',
+        'Addresses in this text (' + MSG.addresses.length + ' · ' + checked + ' checked)',
         null, null,
         (MSG.addresses.length > 1
           ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()">Check all ' + MSG.addresses.length + '</button>'
@@ -6583,21 +6647,8 @@ function renderComposite(scroll) {
         ).join('') + '</ul>')
     : '';
 
-  const addrCoverage = !MSG.addresses.length ? 'not_found'
-    : checked === 0 ? 'not_checked'
-    : checked === MSG.addresses.length ? 'complete'
-    : 'partial';
-  const cov = '<div class="cov-grid">'
-    + coverageCell('unicode', 'Invisible characters', msgScan.coverage.unicode)
-    + coverageCell('markup', 'Hidden markup', msgScan.coverage.markup)
-    + coverageCell('encoding', 'Encoded content', msgScan.coverage.encoding)
-    + coverageCell('urls', 'Links', msgScan.coverage.urls)
-    + coverageCell('leftovers', 'AI-assistant leftovers', msgScan.coverage.leftovers || 'unavailable')
-    + coverageCell('semantic', 'Meaning analysis', msgScan.coverage.semantic)
-    + coverageCell('addresses',
-        MSG.addresses.length ? 'Addresses (' + checked + '/' + MSG.addresses.length + ')' : 'Addresses',
-        addrCoverage)
-    + '</div>';
+  const covRows = messageCoverageRows(r, MSG.addresses.length);
+  const cov = coverageListHtml(covRows);
 
   const limits = '<ul class="limit-list">'
     + composite.limitations.map(l =>
@@ -6608,15 +6659,15 @@ function renderComposite(scroll) {
     + '<div class="pass-top"><div class="verdict">'
       + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(head.badge) + '</div>'
       + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
-    + '</div><div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
+    + '</div>' + coverageNoticesHtml(covRows) + '<div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
       + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
     + '</div></div>'
     + '<div class="pass-body">'
       + sectionShell('Message content', MSG_BADGE[msgScan.verdict] || msgScan.label, msgScan.verdict, countsLine + groups)
       + urlSectionHtml(r.urls || [], msgScan.findings)
       + addrSection
-      + acts
       + sectionShell('Coverage', null, null, cov)
+      + acts
       + sectionShell('What this scan did not do', null, null, limits)
     + '</div>'
     + '<div class="pass-footer">'
