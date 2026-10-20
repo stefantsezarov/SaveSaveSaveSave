@@ -857,13 +857,13 @@ section('Address result escapes provider and pasted text');
   nodes.promptInput.value = FX.S6 + ' edited';
   sandbox.syncMessageFreshness(); h = nodes.results.innerHTML;
   check('H1: an edit marks the result out of date', /Out of date — scan again\./.test(h));
-  check('H1: and disables the address buttons', /onclick="checkAddress\(0\)" disabled>/.test(h));
+  check('H1: and disables the address buttons', /onclick="checkAddress\(0\)" aria-describedby="addr-disc-0" disabled>/.test(h));
   let attempted = 0;
   sandbox.attemptScan = async () => { attempted++; return cleanChecks(); };
   await sandbox.checkAddress(0);
   check('H1: a stale result cannot start an address check', attempted === 0);
   nodes.promptInput.value = FX.S6; sandbox.syncMessageFreshness(); h = nodes.results.innerHTML;
-  check('H1: undoing the edit makes it current again', !/Out of date/.test(h) && !/onclick="checkAddress\(0\)" disabled>/.test(h));
+  check('H1: undoing the edit makes it current again', !/Out of date/.test(h) && !/onclick="checkAddress\(0\)" aria-describedby="addr-disc-0" disabled>/.test(h));
   // H2: the four invalidating actions (reload is a fresh page).
   scanS6(); sandbox.setByaAnswer('crypto');
   sandbox.clearPrompt(); sandbox.setByaAnswer('pay');
@@ -902,7 +902,7 @@ section('Address result escapes provider and pasted text');
   let release3; const gate3 = new Promise(r => { release3 = r; });
   sandbox.attemptScan = async () => { attempted++; await gate3; return cleanChecks(); };
   const p1 = sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0);
-  check('H6: the button is disabled while pending', /onclick="checkAddress\(0\)" disabled>Checking/.test(nodes.results.innerHTML));
+  check('H6: the button is disabled while pending', /onclick="checkAddress\(0\)" aria-describedby="addr-disc-0" disabled>Checking/.test(nodes.results.innerHTML));
   release3(); await p1;
   check('H6: five clicks, one request', attempted === 1);
   // Suspend and restore around another check.
@@ -917,6 +917,51 @@ section('Address result escapes provider and pasted text');
   nodes.promptInput.value = 'something else';
   sandbox.setScanMode('package'); nodes.results.innerHTML = 'PACKAGE RESULT'; sandbox.setScanMode('prompt');
   check('restore: not when the box holds different text', nodes.results.innerHTML === 'PACKAGE RESULT' || nodes.results.style.display === 'none');
+
+  section('Before you act: hand-offs and disclosures');
+  nodes.promptInput.value = FX.S7; h = renderFx(FX.S7);
+  check('C5/S7: extraction row reads 3 identified', /<dt>Address extraction \(3 identified\)<\/dt><dd>Checked</.test(h));
+  check('C5/S7: three address rows, each unchecked', (h.match(/class="addr-row"/g) || []).length === 3 && (h.match(/Not checked yet/g) || []).length === 3);
+  check('C5/S7: each row discloses its network and recipients before the button',
+    /id="addr-disc-0">Checking sends this address and the network \(Ethereum\) — not your message — to GoPlus Security\./.test(h)
+    && /id="addr-disc-2">Checking sends this address and the network \(Solana\)[^<]*PublicNode[^<]*up to 15 minutes\./.test(h));
+  check('C5/S7: the button is described by the disclosure', /onclick="checkAddress\(1\)" aria-describedby="addr-disc-1"/.test(h));
+  check('C5/S7: badge is INSUFFICIENT DATA while addresses are unchecked', badgeOf(h) === 'INSUFFICIENT DATA');
+  sandbox.setAddressChain(0, '56');
+  check('C6: changing the network updates the disclosure', /id="addr-disc-0">[^<]*\(BNB Chain\)/.test(nodes.results.innerHTML));
+  // C7: a clean address result speaks for that address only.
+  nodes.promptInput.value = FX.S6; sandbox.startMessageScan(sandbox.scanPrompt(FX.S6), FX.S6, false);
+  sandbox.setByaAnswer('crypto');
+  stubScans({ [S6ADDR]: cleanChecks() });
+  await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('C7: clean address row says "About this address only"', /About this address only\./.test(h));
+  check('C7: no wording certifies the message', !/>PASS</.test(ownText(h)) && !/\bis safe\b/i.test(h) && NEVER_ROWS.every(t => h.includes('<dt>' + t + '</dt>')));
+  check('C7: the row records when it was checked', /checked \d/.test(h));
+  // H7: an interrupted check.
+  nodes.promptInput.value = FX.S6; sandbox.startMessageScan(sandbox.scanPrompt(FX.S6), FX.S6, false);
+  const beforeFail = badgeOf(nodes.results.innerHTML);
+  stubScans({ [S6ADDR]: { throws: 'The request timed out' } });
+  await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('H7: a failed check says "Could not complete" and offers to try again', /Could not complete — The request timed out/.test(h) && />Try again</.test(h));
+  check('H7: the message badge is unchanged by the failure', badgeOf(h) === beforeFail);
+  // Hand-off buttons.
+  sandbox.setByaAnswer('crypto'); h = nodes.results.innerHTML;
+  check('H8: "Send crypto" offers the compare tool', /data-bya-action="compare">Compare two addresses</.test(h));
+  check('hand-off buttons carry no inline handler', !/data-bya-action="[^"]*"[^>]*\son\w+=/.test(h));
+  sandbox.document.getElementById('twinA').value = ''; sandbox.document.getElementById('twinB').value = '';
+  sandbox.byaHandoff('compare');
+  check('H8: compare opens with both fields empty', sandbox.document.getElementById('twinA').value === '' && sandbox.document.getElementById('twinB').value === '' && sandbox.document.getElementById('twinCheck').open === true);
+  nodes.promptInput.value = FX.S6; sandbox.setScanMode('prompt');
+  sandbox.setByaAnswer('install');
+  check('H3: "Install" offers the npm check', /data-bya-action="npm">Open the npm package check</.test(nodes.results.innerHTML));
+  sandbox.document.getElementById('packageInput').value = '';
+  sandbox.byaHandoff('npm');
+  check('H3: the npm check opens with an empty field', sandbox.document.getElementById('packageInput').value === '');
+  nodes.results.innerHTML = 'PACKAGE RESULT';
+  sandbox.setScanMode('prompt'); h = nodes.results.innerHTML;
+  check('H3: returning restores the result, answer and advice', badgeOf(h) === beforeFail && advice(h).includes('What this software does remains unverified.'));
+  nodes.promptInput.value = FX.S6 + '!'; sandbox.syncMessageFreshness();
+  check('H1: a stale result disables its hand-off button', /data-bya-action="npm" disabled>/.test(nodes.results.innerHTML));
 
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.

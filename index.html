@@ -298,6 +298,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .verdict-meta{font-size:0.8rem; color:var(--text-muted); font-family:'IBM Plex Mono', monospace;}
   .verdict-meta strong{display:block; color:var(--text); font-family:'Space Grotesk', sans-serif; font-size:1rem; margin-bottom:4px;}
   .verdict-line{display:block; line-height:1.5;}
+  @media (max-width:560px){ .verdict{flex-wrap:wrap;} .verdict-meta{flex-basis:100%;} }
   .addr-scope{color:var(--text-muted); font-size:0.78rem; margin-right:6px;}
   .pass-id{text-align:right; font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:var(--text-muted);}
   .pass-id .addr{color:var(--text); font-size:0.8rem; word-break:break-all; max-width:260px; display:block;}
@@ -807,6 +808,9 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .ra-head{margin:4px 0 8px; font-size:0.85rem; font-weight:600; color:var(--text);}
   .ra-advice{font-size:0.88rem; line-height:1.55;}
   .ra-advice .ra-status{display:block; font-weight:600; margin-bottom:4px;}
+  .ra-handoff{display:block; margin-top:10px;}
+  .addr-disclose{margin:6px 0 0; font-size:0.76rem; line-height:1.5; color:var(--text-muted);}
+  .addr-ctl-below{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 4px;}
   .bya{margin:16px 0; padding:14px 16px; border:1px solid var(--border); background:var(--surface-2);}
   .bya legend{padding:0 6px; font-weight:600; font-size:0.92rem; color:var(--text);}
   .bya-help{margin:0 0 10px; font-size:0.8rem; color:var(--text-muted);}
@@ -6411,17 +6415,21 @@ async function checkAddress(i) {
     if (!adapter) throw new Error('there is no scanner for this chain yet.');
     if (!adapter.validateAddress(entry.address)) throw new Error('it failed the chain\'s own address validator.');
     let out;
+    const hosts = new Set();
+    const onNet = (ev, url) => { if (ev === 'request') { try { hosts.add(viaName(new URL(url).host)); } catch(_) {} } };
     try {
-      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000, onNet);
     } catch (firstErr) {
-      if (!isTransientFailure(firstErr)) throw firstErr;
+      if (!isCurrent() || !isTransientFailure(firstErr)) throw firstErr;
       await new Promise(r => setTimeout(r, 2000));
-      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000, onNet);
     }
+    entry.via = Array.from(hosts);
     if (!isCurrent()) return;
     const result = VerdictEngine.evaluate(out.checks, out.expected, adapter.name, out.criticalDefsTotal);
     entry.scan = fromAddressScan(result, entry.address, entry.chainId, 'token');
     entry.state = 'done';
+    entry.checkedAt = new Date();
   } catch (e) {
     if (!isCurrent()) return;
     // A failed check must never read as a clean one. It stays INSUFFICIENT
@@ -6483,6 +6491,24 @@ function urlSectionHtml(urls, findings) {
   return sectionShell('Links found (' + urls.length + ')', null, null, rows);
 }
 
+// What a "Check this address" press sends, and to whom. Message-extracted
+// addresses are checked as tokens; the recipients below are the ones each
+// chain's token path contacts (verified from the adapters, 20 Oct 2026).
+const VIA_NAMES = { 'api.gopluslabs.io': 'GoPlus Security', 'solana-rpc.publicnode.com': 'PublicNode (Solana)' };
+function viaName(host) {
+  if (VIA_NAMES[host]) return VIA_NAMES[host];
+  if (/\.workers\.dev$/.test(host)) return 'our server';
+  return host;
+}
+function addressDisclosure(entry) {
+  const net = entry.chain === 'evm' ? (EVM_CHAINS[entry.chainId] || entry.chainId) : (CHAIN_NAME[entry.chain] || entry.chain);
+  const head = 'Checking sends this address and the network (' + net + ') — not your message — to ';
+  if (entry.chain === 'evm') return head + 'GoPlus Security.';
+  const cache = ' If our server is used, it may keep the provider’s answer for up to 15 minutes.';
+  if (entry.chain === 'solana') return head + 'GoPlus Security, or through our server if a direct request fails. If the address is not a token, a public Solana node (PublicNode) is asked what kind of account it is.' + cache;
+  return head + 'GoPlus Security, or through our server if a direct request fails.' + cache;
+}
+
 function addressRowHtml(entry, i) {
   const chainName = CHAIN_NAME[entry.chain] || entry.chain;
   let picker = '';
@@ -6495,8 +6521,8 @@ function addressRowHtml(entry, i) {
   }
 
   const busy = entry.state === 'running';
-  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')"' + (busy || (MSG && MSG.stale) ? ' disabled' : '') + '>'
-    + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : 'Check this address')) + '</button>';
+  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')" aria-describedby="addr-disc-' + i + '"' + (busy || (MSG && MSG.stale) ? ' disabled' : '') + '>'
+    + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : (entry.state === 'error' ? 'Try again' : 'Check this address'))) + '</button>';
 
   let result = '';
   if (entry.state === 'done' && entry.scan) {
@@ -6509,12 +6535,14 @@ function addressRowHtml(entry, i) {
       + (top.length
           ? '<ul>' + top.map(f => '<li>' + escapeHtml(f.title) + '</li>').join('') + '</ul>'
           : '')
-      + '<div class="addr-meta">' + escapeHtml(s.coverage.indicators || '') + '</div>'
+      + '<div class="addr-meta">' + escapeHtml(s.coverage.indicators || '')
+      + (entry.checkedAt ? ' · checked ' + escapeHtml(entry.checkedAt.toLocaleTimeString()) : '')
+      + (entry.via && entry.via.length ? ' · via ' + escapeHtml(entry.via.join(', ')) : '') + '</div>'
       + '</div>';
   } else if (entry.state === 'error') {
     result = '<div class="addr-result"><div class="rline">'
       + '<span class="sect-verdict sv-unknown">INSUFFICIENT DATA</span>'
-      + '<span>This address could not be checked: ' + escapeHtml(String(entry.error).replace(/\.\s*$/, ''))
+      + '<span>Could not complete \u2014 ' + escapeHtml(String(entry.error).replace(/\.\s*$/, ''))
       + '. That is not a clean result — nothing is known about it either way.</span></div></div>';
   } else if (entry.state === 'idle') {
     result = '<div class="addr-unchecked">Not checked yet — counted as INSUFFICIENT DATA, not as safe.</div>';
@@ -6551,7 +6579,9 @@ function addressRowHtml(entry, i) {
     + '<div class="addr-mono">' + escapeHtml(entry.address) + '</div>'
     + '<div class="addr-meta">' + escapeHtml(chainName)
     + (entry.chain === 'evm' ? ' · chain not stated in the text' : '') + '</div>'
-    + '</div><div class="addr-ctl">' + picker + btn + '</div></div>'
+    + '</div></div>'
+    + '<p class="addr-disclose" id="addr-disc-' + i + '">' + escapeHtml(addressDisclosure(entry)) + '</p>'
+    + '<div class="addr-ctl addr-ctl-below">' + picker + btn + '</div>'
     + where
     + '<div class="addr-links">' + explorer + '</div>'
     + result + '</div>';
@@ -6759,11 +6789,45 @@ function byaAdvice(verdict, answerKey, aiKey) {
     const ai = byaAi(aiKey) || byaAi('unsure');
     return { status: a.status, lines: [ai.advice, BYA_AI_CAVEAT] };
   }
-  return { status: a.status, lines: [a.advice].concat(a.note ? [a.note] : []) };
+  const lines = [a.advice].concat(a.note ? [a.note] : []);
+  const n = MSG ? MSG.addresses.length : 0;
+  let handoff = null;
+  if (a.key === 'crypto' || a.key === 'sign') {
+    lines.push(n ? 'Use \u201cCheck this address\u201d on ' + (n === 1 ? 'the address' : 'each address') + ' above. A result there is about that address only.'
+                 : 'No crypto address was found in this text.');
+    if (a.key === 'crypto') handoff = { action: 'compare', label: 'Compare two addresses' };
+  }
+  if (a.key === 'install') handoff = { action: 'npm', label: 'Open the npm package check' };
+  return { status: a.status, lines, handoff };
 }
 function byaAdviceHtml(adv) {
   return (adv.status ? '<span class="ra-status">' + escapeHtml(adv.status) + '</span>' : '')
-    + adv.lines.map(l => '<span class="ra-line">' + escapeHtml(l) + '</span>').join(' ');
+    + adv.lines.map(l => '<span class="ra-line">' + escapeHtml(l) + '</span>').join(' ')
+    + (adv.handoff
+      ? '<span class="ra-handoff"><button type="button" class="btn-check" data-bya-action="' + adv.handoff.action + '"'
+        + (MSG && MSG.stale ? ' disabled' : '') + '>' + escapeHtml(adv.handoff.label) + '</button></span>'
+      : '');
+}
+// Hand-offs open an existing check and send nothing. The compare tool is
+// never prefilled: the trusted address must come from the visitor. The
+// package check opens without a name: the visitor types the exact one.
+function byaHandoff(action) {
+  if (!MSG || MSG.stale) return;
+  if (action === 'compare') {
+    setScanMode('address');
+    const t = document.getElementById('twinCheck');
+    if (t) t.open = true;
+    const a = document.getElementById('twinA');
+    if (a && a.focus) a.focus();
+  } else if (action === 'npm') {
+    setScanMode('package');
+    const p = document.getElementById('packageInput');
+    if (p && p.focus) p.focus();
+  }
+}
+function onResultsClick(e) {
+  const t = e && e.target && e.target.closest ? e.target.closest('[data-bya-action]') : null;
+  if (t && !t.disabled) byaHandoff(t.getAttribute('data-bya-action'));
 }
 function byaRadios(name, list, current, idPrefix) {
   return list.map(o => '<label class="bya-opt"><input type="radio" name="' + name + '" id="' + idPrefix + o.key
@@ -6905,7 +6969,10 @@ function renderComposite(scroll) {
 (function wireBya(){
   try {
     const el = document.getElementById('results');
-    if (el && el.addEventListener) el.addEventListener('change', onResultsChange);
+    if (el && el.addEventListener) {
+      el.addEventListener('change', onResultsChange);
+      el.addEventListener('click', onResultsClick);
+    }
   } catch(_) {}
 })();
 
