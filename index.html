@@ -292,6 +292,8 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .verdict{display:flex; align-items:center; gap:12px;}
   .verdict-badge{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.3rem; padding:8px 18px; border-radius:0; letter-spacing:0.03em; white-space:nowrap; flex-shrink:0;}
   .verdict-badge.pass{background:var(--safe-dim); color:var(--safe); border:1px solid var(--safe);}
+  /* NO MATCH is not a success state: neutral, outlined, no green. */
+  .verdict-badge.nomatch{background:transparent; color:var(--text); border:1px solid var(--text-muted);}
   .verdict-badge.caution{background:var(--caution-dim); color:var(--caution); border:1px solid var(--caution);}
   .verdict-badge.fail{background:var(--danger-dim); color:var(--danger); border:1px solid var(--danger);}
   .verdict-badge.unknown{background:var(--unknown-dim); color:var(--unknown); border:1px solid var(--unknown);}
@@ -646,6 +648,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .sect-verdict{font-family:'IBM Plex Mono',monospace; font-size:0.7rem; font-weight:600; letter-spacing:0.07em;
     padding:3px 9px; border-radius:0; white-space:nowrap;}
   .sv-pass{background:rgba(52,199,123,0.14); color:var(--safe);}
+  .sv-nomatch{background:transparent; color:var(--text); box-shadow:inset 0 0 0 1px var(--text-muted);}
   .sv-caution{background:rgba(240,180,41,0.14); color:var(--caution);}
   .sv-fail{background:rgba(232,79,79,0.14); color:var(--danger);}
   .sv-unknown{background:rgba(255,255,255,0.07); color:var(--text-muted);}
@@ -5165,7 +5168,7 @@ const ScanConsole = (function(){
     pendingHandoff = state === 'failed' ? 'var(--danger)' : state === 'warn' ? 'var(--caution)' : 'var(--safe)';
     box.classList.add('lock-' + (state === 'failed' || state === 'warn' ? state : 'done'));
     setHeadState(state, o.stateText || 'Complete');
-    setCurrent(o.stateText ? 'Pass complete \u00B7 ' + o.stateText : 'Pass complete', true);
+    setCurrent(o.stateText ? 'Check complete \u00B7 ' + o.stateText : 'Check complete', true);
     const right = [];
     if(typeof o.realMs === 'number') right.push('analysis ' + fmtMs(o.realMs));
     // Includes the hold that is about to happen, so the number is the
@@ -6432,7 +6435,8 @@ function setAddressChain(i, chainId) {
 }
 
 /* ------------------------------------------------------- rendering */
-const VCLASS = { pass: 'sv-pass', caution: 'sv-caution', fail: 'sv-fail', unknown: 'sv-unknown' };
+// Message results only: a clean code is shown as a neutral NO MATCH.
+const VCLASS = { pass: 'sv-nomatch', caution: 'sv-caution', fail: 'sv-fail', unknown: 'sv-unknown' };
 const CHAIN_NAME = { evm: 'EVM', solana: 'Solana', sui: 'Sui', tron: 'TRON' };
 
 function sectionShell(title, verdictLabel, verdictKey, bodyHtml) {
@@ -6926,7 +6930,7 @@ function renderComposite(scroll) {
 
   const html = '<div class="pass">'
     + '<div class="pass-top"><div class="verdict">'
-      + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(head.badge) + '</div>'
+      + '<div class="verdict-badge ' + (composite.verdict === 'pass' ? 'nomatch' : composite.verdict) + '">' + escapeHtml(head.badge) + '</div>'
       + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
     + '</div>' + (MSG.stale ? '<p class="cov-notice stale-notice"><strong>Out of date — scan again.</strong> The message was edited after this scan. This result and its buttons apply to the earlier text.</p>' : '')
     + (MSG.addresses.some(a => a.state === 'done' || a.state === 'error') && composite.verdict !== MSG.initialVerdict

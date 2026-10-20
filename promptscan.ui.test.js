@@ -271,7 +271,7 @@ check('the drainer example renders a FAIL banner', /verdict-badge fail/.test(nod
 
 sandbox.fillPrompt('safe');
 sandbox.runPromptScan();
-check('the safe example renders a PASS banner', /verdict-badge pass/.test(nodes.results.innerHTML));
+check('the safe example renders a neutral NO MATCH banner', /verdict-badge nomatch">NO MATCH</.test(nodes.results.innerHTML) && !/verdict-badge pass/.test(nodes.results.innerHTML));
 check('...and still shows limitations', /What this scan did not do/.test(nodes.results.innerHTML));
 check('...and still says what it did not establish', /did not establish whether the sender, payment request or destination is legitimate/.test(nodes.results.innerHTML));
 check('a clean code is shown as NO MATCH, never PASS', />NO MATCH</.test(nodes.results.innerHTML) && !/>PASS</.test(nodes.results.innerHTML));
@@ -365,7 +365,7 @@ function stubScans(map) {
   check('one clean address does not dilute one failing address',
     !/verdict-badge (pass|caution|unknown)/.test(out),
     'this is the whole reason the scan model exists');
-  check('the clean address still shows its own PASS', /sv-pass/.test(out));
+  check('the clean address still shows its own clean result, neutrally', /sv-nomatch">NO MATCH</.test(out) && !/sv-pass/.test(out));
   check('the failing address still shows its own FAIL', /sv-fail/.test(out));
   check('the honeypot finding is named', /Honeypot pattern/.test(out));
   check('the guidance points at the dangerous part, not the message tone',
@@ -381,7 +381,7 @@ function stubScans(map) {
   await sandbox.checkAddress(0);
   out = nodes.results.innerHTML;
   check('a lookup that fails renders INSUFFICIENT DATA, never PASS',
-    /INSUFFICIENT DATA/.test(out) && !/verdict-badge pass/.test(out));
+    /INSUFFICIENT DATA/.test(out) && !/verdict-badge (pass|nomatch)/.test(out));
   check('the failed lookup says what went wrong', /network unreachable/.test(out));
   check('and says plainly that this is not a clean result',
     /nothing is known about it either way/i.test(out));
@@ -392,7 +392,7 @@ function stubScans(map) {
   stubScans({ [USDC]: cleanChecks() });
   await sandbox.checkAddress(0);
   out = nodes.results.innerHTML;
-  check('a clean message with a clean address can reach PASS', /verdict-badge pass/.test(out));
+  check('a clean message with a clean address can reach NO MATCH (engine pass)', /verdict-badge nomatch/.test(out));
   check('...and still says what it did not establish', /We did not establish whether the sender/.test(out));
 
   // --- changing the chain invalidates the result ---
@@ -400,7 +400,7 @@ function stubScans(map) {
   out = nodes.results.innerHTML;
   check('changing the chain discards the old result', /Not checked yet/.test(out),
     'a result for Ethereum is not a result for BNB Chain');
-  check('...and drops the overall verdict off PASS', !/verdict-badge pass/.test(out));
+  check('...and drops the overall verdict off NO MATCH', !/verdict-badge (pass|nomatch)/.test(out));
 
   // --- XSS, in the address path this time ---
   section('XSS — the composite renderer');
@@ -1010,6 +1010,10 @@ section('Address result escapes provider and pasted text');
   stubScans({ [A0]: cleanChecks(), [A1]: cleanChecks(), [A2]: cleanChecks() });
   await sandbox.checkAllAddresses(); h = nodes.results.innerHTML;
   check('M-4: all three clean: NO MATCH with the notice, gap precaution gone', badgeOf(h) === 'NO MATCH' && h.includes(NOTICE) && !h.includes(GAP));
+
+  check('NO MATCH styling is neutral, not the green success style',
+    /\.verdict-badge\.nomatch\{background:transparent; color:var\(--text\); border:1px solid var\(--text-muted\);\}/.test(html)
+    && !/\.verdict-badge\.nomatch\{[^}]*--safe/.test(html));
 
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
