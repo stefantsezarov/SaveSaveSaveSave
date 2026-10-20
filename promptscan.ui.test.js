@@ -769,6 +769,20 @@ section('Address result escapes provider and pasted text');
   });
   check('C4: an emoji counts as two units (X2 is truncated)', sandbox.scanPrompt(X2).input.truncated === true);
 
+  section('Before you act: recommended action');
+  const advice = (hh) => ((/id="byaAdvice">([\s\S]*?)<\/div>/.exec(hh) || [])[1] || '');
+  h = renderFx(FX.S3);
+  const s3Action = sandbox.scanPrompt(FX.S3).findings.find(f => f.severity === 'CRITICAL').action;
+  check('part 1 on S3 carries the critical finding\'s precaution', h.includes(sandbox.escapeHtml(s3Action)));
+  check('part 2 on S3 defaults to the FAIL advice', advice(h) === 'Do not reply, pay or click anything in this message.');
+  h = renderFx(FX.S1);
+  check('NO MATCH with no findings has no part 1 block', !/Precautions from this result/.test(h));
+  check('part 2 on S1 defaults to the NO MATCH advice', /open the organisation’s own app or website yourself/.test(advice(h)));
+  check('part 2 on S4 defaults to the CAUTION advice', advice(renderFx(FX.S4)) === 'If you still need to act, contact the sender through a channel you already trust.');
+  sandbox.startMessageScan(u1, FX.L6, false); h = nodes.results.innerHTML;
+  check('U1: part 1 keeps the incomplete-scan precaution', /This scan is incomplete\. Verify the message independently before acting\./.test(h));
+  check('X1: part 1 keeps the incomplete-scan precaution', /This scan is incomplete\./.test(renderFx(X1)));
+
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
   check('leftovers: the message tool description names AI-assistant leftovers',

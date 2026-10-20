@@ -804,6 +804,9 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .tech-toggle:hover{color:var(--accent);}
 
   .cov-list{margin:0 0 12px; padding:0;}
+  .ra-head{margin:4px 0 8px; font-size:0.85rem; font-weight:600; color:var(--text);}
+  .ra-advice{font-size:0.88rem; line-height:1.55;}
+  .ra-advice .ra-status{display:block; font-weight:600; margin-bottom:4px;}
   .cov-row{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:4px 16px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.82rem;}
   .cov-row dt{color:var(--text); margin:0;}
   .cov-row dd{margin:0; font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--text-muted);}
@@ -6601,6 +6604,42 @@ function coverageNoticesHtml(rows) {
   return h;
 }
 
+// Recommended action, part 1: precautions that belong to this result.
+// Result-level lines first, then every CRITICAL, HIGH and MEDIUM finding's
+// own precaution, de-duplicated. Nothing a visitor answers later can
+// remove, reorder or soften this part.
+const SEV_ORDER = { CRITICAL: 3, HIGH: 2, MEDIUM: 1 };
+function resultPrecautions(composite) {
+  const out = [];
+  const seen = new Set();
+  const add = (action, because) => {
+    const key = String(action).trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({ action, because });
+  };
+  if (composite.verdict === 'unknown') add('This scan is incomplete. Verify the message independently before acting.', null);
+  compositeFindings(composite)
+    .filter(f => f.action && SEV_ORDER[f.severity])
+    .sort((a, b) => SEV_ORDER[b.severity] - SEV_ORDER[a.severity])
+    .forEach(f => add(f.action, f.title));
+  return out;
+}
+// Part 2 before any answer: the default for the engine code.
+const DEFAULT_ADVICE = {
+  pass: 'If this message asks you to pay, log in, share a code or install something, open the organisation’s own app or website yourself. Do not use the link or number in the message.',
+  caution: 'If you still need to act, contact the sender through a channel you already trust.',
+  fail: 'Do not reply, pay or click anything in this message.',
+  unknown: 'Treat this message as unchecked. Do not act on it until you have verified it another way.',
+};
+function precautionsHtml(list) {
+  if (!list.length) return '';
+  return '<h4 class="ra-head">Precautions from this result</h4><ul class="actions-list">'
+    + list.map(a => '<li>' + escapeHtml(a.action)
+      + (a.because ? '<span class="cause">because: ' + escapeHtml(a.because) + '</span>' : '') + '</li>').join('')
+    + '</ul>';
+}
+
 function renderComposite(scroll) {
   const composite = buildComposite();
   if (!composite) return;
@@ -6640,12 +6679,10 @@ function renderComposite(scroll) {
         + MSG.addresses.map(addressRowHtml).join(''))
     : '';
 
-  const acts = composite.recommended_actions.length
-    ? sectionShell('What to do', null, null,
-        '<ul class="actions-list">' + composite.recommended_actions.map(a =>
-          '<li>' + escapeHtml(a.action) + '<span class="cause">because: ' + escapeHtml(a.because) + '</span></li>'
-        ).join('') + '</ul>')
-    : '';
+  const acts = sectionShell('Recommended action', null, null,
+    precautionsHtml(resultPrecautions(composite))
+    + '<h4 class="ra-head">Advice for your situation</h4>'
+    + '<div class="ra-advice" id="byaAdvice">' + escapeHtml(DEFAULT_ADVICE[composite.verdict] || DEFAULT_ADVICE.unknown) + '</div>');
 
   const covRows = messageCoverageRows(r, MSG.addresses.length);
   const cov = coverageListHtml(covRows);
