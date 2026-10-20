@@ -34,9 +34,9 @@
    permits them for the pages that do carry ads. Deleting the markup
    alone would leave the page one careless paste away from serving.
 
-   THE HEADER IS DELIBERATELY LEFT BROAD. _headers applies to every
-   path, so it has to carry the union of what the ad-serving pages
-   need. It is a ceiling, not an instruction.
+   The site-wide response header carries the union required by guide
+   pages. Scanner paths also receive their own restrictive response
+   policy, so protection starts before any HTML or injected script.
    ===================================================================== */
 
 const fs = require('fs');
@@ -307,6 +307,21 @@ if (noPolicy.length) {
 const hp = path.join(__dirname, '_headers');
 let headers = fs.readFileSync(hp, 'utf8');
 headers = headers.replace(/^(\s*Content-Security-Policy: )(.+)$/m, (_, a, csp) => a + widenCsp(csp));
+// The scanner must be protected before the browser reaches its meta tag.
+// Multiple CSP response policies are intersected, so guide permissions in
+// the site-wide policy cannot grant scripts or frames on scanner routes.
+const scannerHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const scannerPolicy = (scannerHtml.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
+if (!scannerPolicy || !/script-src 'self' 'unsafe-inline';/.test(scannerPolicy)
+    || !/frame-src 'none'/.test(scannerPolicy)) {
+  throw new Error('The scanner requires a reviewed restrictive meta policy before generating response headers.');
+}
+const scannerHeaders = '# BEGIN GENERATED SCANNER CSP\n'
+  + ['/', '/index', '/index.html'].map(route => route + '\n  Content-Security-Policy: '
+    + scannerPolicy + " frame-ancestors 'none';").join('\n\n')
+  + '\n# END GENERATED SCANNER CSP\n';
+headers = headers.replace(/\n?# BEGIN GENERATED SCANNER CSP[\s\S]*?# END GENERATED SCANNER CSP\n?/, '\n');
+headers = headers.trimEnd() + '\n\n' + scannerHeaders;
 fs.writeFileSync(hp, headers, 'utf8');
 
 console.log(`\n${on} page(s) carry advertising, ${off} deliberately do not. ${changed} file(s) rewritten.`);

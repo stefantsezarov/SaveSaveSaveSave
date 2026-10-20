@@ -891,7 +891,7 @@ section('Address result escapes provider and pasted text');
   check('C5/S7: three address rows, each unchecked', (h.match(/class="addr-row"/g) || []).length === 3 && (h.match(/Not checked yet/g) || []).length === 3);
   check('C5/S7: each row discloses its network and recipients before the button',
     /id="addr-disc-0">Checking sends this address and the network \(Ethereum\) — not your message — to GoPlus Security\./.test(h)
-    && /id="addr-disc-2">Checking sends this address and the network \(Solana\)[^<]*PublicNode[^<]*up to 15 minutes, and Cloudflare logs that request, with the address and your IP address, for about seven days\./.test(h));
+    && /id="addr-disc-2">Checking sends this address and the network \(Solana\)[^<]*PublicNode[^<]*up to 15 minutes\.[^<]*Routine invocation logging[^<]*disabled[^<]*historical request logs[^<]*diagnostic logging remains enabled/.test(h));
   check('C5/S7: the button is described by the disclosure', /onclick="checkAddress\(1\)" aria-describedby="addr-disc-1"/.test(h));
   check('C5/S7: badge is INSUFFICIENT DATA while addresses are unchecked', badgeOf(h) === 'INSUFFICIENT DATA');
   sandbox.setAddressChain(0, '56');
@@ -941,11 +941,16 @@ section('Address result escapes provider and pasted text');
   check('P6: the privacy page states answers are not sent or stored', /are not sent or stored/.test(privacy));
   check('P6: the privacy page no longer says the count keeps nothing or that nothing is held',
     !/keeps nothing else/.test(privacy) && !/stores nothing about you/.test(privacy) && !/This project holds none/.test(privacy));
-  check('P6: the privacy page states Cloudflare logs Worker requests with IP and address',
-    /Cloudflare request logs for our Worker/.test(privacy) && /your IP address/.test(privacy) && /about seven days/.test(privacy));
+  check('P6: the privacy page distinguishes historical request logs from disabled invocation logging and enabled diagnostics',
+    /Cloudflare request logs for our Worker/.test(privacy) && /your IP address/.test(privacy)
+    && /Historical logs were observed to reach back about seven days/.test(privacy)
+    && /Routine invocation logging[\s\S]*?was disabled on 20 October 2026/.test(privacy)
+    && /Diagnostic logging remains enabled/.test(privacy)
+    && /did not delete those records/.test(privacy));
   check('P6: the privacy page says the scanner runs no third-party script', /No third-party script runs on the scanner page/.test(privacy));
   check('P6: the privacy page does not present a network check as proof', /not a proof about every possible visit/.test(privacy));
-  check('P6: the footer mentions request logging', /Cloudflare logs the request, including the address and your IP address, for about seven days/.test(html));
+  check('P6: the footer mentions historical request logs and enabled diagnostics',
+    /historical request logs may still contain addresses and IP addresses, and diagnostic logging remains enabled/.test(html));
   check('P6: no address-row disclosure claims "we do not store it"', !/addressDisclosure[\s\S]{0,1500}do not store/.test(html));
 
   check('P5: the share note says the image is generated on this device', /id="shareCardNote">Generated on this device\. Nothing is uploaded/.test(html));

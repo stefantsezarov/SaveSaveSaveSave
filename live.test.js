@@ -156,6 +156,19 @@ const MUST_404 = [
     const scriptSrc = (csp.split(';').map(x => x.trim()).find(x => x.startsWith('script-src ')) || '').slice(11).trim();
     check('scanner: no external script tag', r.status === 200 && !/<script[^>]+src=["']https?:\/\//i.test(r.body));
     check('scanner: script-src is this site only', scriptSrc === "'self' 'unsafe-inline'", scriptSrc || 'no script-src');
+    for (const scannerPath of ['/', '/index.html', '/index']) {
+      const response = scannerPath === '/' ? r : await get(scannerPath);
+      const policies = String(response.headers['content-security-policy'] || '').split(',');
+      const strictPolicy = policies.some(policy => {
+        const directives = policy.split(';').map(value => value.trim());
+        return directives.includes("script-src 'self' 'unsafe-inline'")
+          && directives.includes("frame-src 'none'")
+          && directives.includes("frame-ancestors 'none'");
+      });
+      check('scanner: restrictive CSP response header on ' + scannerPath,
+        response.status === 200 && strictPolicy,
+        'scanner protection must apply before parsing HTML, including platform-injected scripts');
+    }
   }
 
   section('Every page has a policy, and the rails are distinct');
@@ -213,15 +226,15 @@ const MUST_404 = [
   // deploy that shipped the script without the markup would show nothing
   // at all and nothing else in this file would notice.
   section('The scan console is actually on the page');
-  check('the console markup is served', /id="scanConsole"/.test(idx.body));
-  check('...as a polite live region', /id="scanConsole"[^>]*role="status"/.test(idx.body)
-    && /id="scanConsole"[^>]*aria-live="polite"/.test(idx.body),
+  check('the console markup is served', /id="scanConsole"/.test(home.body));
+  check('...as a polite live region', /id="scanConsole"[^>]*role="status"/.test(home.body)
+    && /id="scanConsole"[^>]*aria-live="polite"/.test(home.body),
     'without this a screen reader hears nothing while a scan runs');
-  check('...with its stage list and figure', /id="consoleStages"/.test(idx.body) && /id="cfNodes"/.test(idx.body));
-  check('the console stylesheet shipped with it', /\.console-stages/.test(idx.body),
+  check('...with its stage list and figure', /id="consoleStages"/.test(home.body) && /id="cfNodes"/.test(home.body));
+  check('the console stylesheet shipped with it', /\.console-stages/.test(home.body),
     'the markup without the CSS is an unstyled list in the middle of the page');
   check('reduced motion is honoured on the deploy',
-    /prefers-reduced-motion:reduce\)\{[\s\S]{0,800}?animation:none;/.test(idx.body));
+    /prefers-reduced-motion:reduce\)\{[\s\S]{0,800}?animation:none;/.test(home.body));
 
   // Structured data and social cards. These live in the <head>, nobody
   // looks at them, and a deploy that dropped them would show no symptom
@@ -263,7 +276,7 @@ const MUST_404 = [
   const guide = await get('/disguised-links.html');
   check('the logo links home from a guide', /<a class="brand" href="index\.html"/.test(guide.body));
   check('the logo on the scanner returns to the menu without reloading',
-    /<a class="brand"[^>]*onclick="return goHome\(event\)"/.test(idx.body),
+    /<a class="brand"[^>]*onclick="return goHome\(event\)"/.test(home.body),
     'a plain link would reload the page and lose a pasted message');
 
   // A contact route that does not depend on a platform account. This one
