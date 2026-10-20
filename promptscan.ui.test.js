@@ -774,14 +774,78 @@ section('Address result escapes provider and pasted text');
   h = renderFx(FX.S3);
   const s3Action = sandbox.scanPrompt(FX.S3).findings.find(f => f.severity === 'CRITICAL').action;
   check('part 1 on S3 carries the critical finding\'s precaution', h.includes(sandbox.escapeHtml(s3Action)));
-  check('part 2 on S3 defaults to the FAIL advice', advice(h) === 'Do not reply, pay or click anything in this message.');
+  check('part 2 on S3 defaults to the FAIL advice', advice(h).includes('Do not reply, pay or click anything in this message.'));
   h = renderFx(FX.S1);
   check('NO MATCH with no findings has no part 1 block', !/Precautions from this result/.test(h));
   check('part 2 on S1 defaults to the NO MATCH advice', /open the organisation’s own app or website yourself/.test(advice(h)));
-  check('part 2 on S4 defaults to the CAUTION advice', advice(renderFx(FX.S4)) === 'If you still need to act, contact the sender through a channel you already trust.');
+  check('part 2 on S4 defaults to the CAUTION advice', advice(renderFx(FX.S4)).includes('If you still need to act, contact the sender through a channel you already trust.'));
   sandbox.startMessageScan(u1, FX.L6, false); h = nodes.results.innerHTML;
   check('U1: part 1 keeps the incomplete-scan precaution', /This scan is incomplete\. Verify the message independently before acting\./.test(h));
   check('X1: part 1 keeps the incomplete-scan precaution', /This scan is incomplete\./.test(renderFx(X1)));
+
+  section('Before you act: the question');
+  // Everything except the question, part 2, the answer's coverage row and
+  // the timestamp footer must be byte-identical before and after answering.
+  const stable = (hh) => hh
+    .replace(/<fieldset class="bya[\s\S]*?<\/fieldset>/g, '')
+    .replace(/<div class="ra-advice" id="byaAdvice">[\s\S]*?<\/div>/, '')
+    .replace(/<div class="cov-row cov-not_checked" data-cov="answer">[\s\S]*?<\/div>/, '')
+    .replace(/<div class="pass-footer">[\s\S]*$/, '');
+  const ALL = ['pay', 'crypto', 'login', 'secret', 'sign', 'install', 'ai', 'info', 'unsure'];
+  const matrix = [['S3', () => renderFx(FX.S3)], ['S5', () => renderFx(FX.S5)], ['S4', () => renderFx(FX.S4)],
+    ['S6', () => renderFx(FX.S6)], ['F2', () => { sandbox.startMessageScan(f2, FX.S5, false); return nodes.results.innerHTML; }],
+    ['U1', () => { sandbox.startMessageScan(u1, FX.L6, false); return nodes.results.innerHTML; }],
+    ['X1', () => renderFx(X1)], ['X3', () => renderFx(X3)]];
+  let scans = 0;
+  const realScanPrompt = sandbox.scanPrompt;
+  matrix.forEach(([id, render]) => {
+    const before = stable(render());
+    sandbox.scanPrompt = (...a) => { scans++; return realScanPrompt(...a); };
+    const scansBefore = scans;
+    ALL.forEach(k => {
+      sandbox.setByaAnswer(k);
+      const after = nodes.results.innerHTML;
+      check('M1/' + id + '/' + k + ': result outside part 2 is unchanged', stable(after) === before);
+      const a = sandbox.byaAnswer(k);
+      const adv = advice(after);
+      check('M1/' + id + '/' + k + ': part 2 matches the table',
+        k === 'unsure' ? !/ra-status/.test(adv) : (a.status ? adv.includes(sandbox.escapeHtml(a.status)) : true));
+      if (id === 'U1' || id === 'X1') check('M1/' + id + '/' + k + ': incomplete-scan precaution stays',
+        /This scan is incomplete\. Verify the message independently before acting\./.test(after));
+    });
+    check('M5/' + id + ': answering re-runs no scan', scans === scansBefore);
+    sandbox.scanPrompt = realScanPrompt;
+  });
+  renderFx(FX.S3); sandbox.setByaAnswer('info'); h = nodes.results.innerHTML;
+  check('M2: S3 + information only keeps the precaution above the advice',
+    h.indexOf(sandbox.escapeHtml(s3Action)) !== -1 && h.indexOf(sandbox.escapeHtml(s3Action)) < h.indexOf('You selected information only.'));
+  check('M2: and says the warning signs still apply', advice(h).includes('Any warning signs above still apply.'));
+  renderFx(FX.S5); sandbox.setByaAnswer('ai'); h = nodes.results.innerHTML;
+  check('M3: AI answer shows the follow-up question', /What can that assistant do\?/.test(h));
+  check('M3: no follow-up answer shows the "Not sure" advice and the caveat',
+    advice(h).includes(sandbox.escapeHtml(sandbox.byaAi('unsure').advice)) && advice(h).includes('they do not guarantee protection'));
+  ['read', 'files', 'run', 'unsure'].forEach(k => {
+    sandbox.setByaAi(k);
+    const adv = advice(nodes.results.innerHTML);
+    check('M3: capability "' + k + '" shows its advice and the caveat',
+      adv.includes(sandbox.escapeHtml(sandbox.byaAi(k).advice)) && adv.includes('they do not guarantee protection'));
+  });
+  check('A2: the live region announces the status and advice once',
+    nodes.byaLive.textContent.startsWith('The consequences depend on your assistant') && nodes.byaLive.textContent.includes(sandbox.byaAi('unsure').advice));
+  sandbox.setByaAnswer('pay');
+  check('M3: leaving the AI answer clears the follow-up', !/What can that assistant do\?/.test(nodes.results.innerHTML));
+  check('pay adds its coverage row and the no-check note',
+    /data-cov="answer"><dt>Whether this payment request is genuine<\/dt><dd>Not checked</.test(nodes.results.innerHTML)
+    && advice(nodes.results.innerHTML).includes('We cannot check bank transfers or card payments.'));
+  renderFx(FX.S1); sandbox.setByaAnswer('info'); h = nodes.results.innerHTML;
+  check('M4: S1 read as information only still lists the four unanswered rows', NEVER_ROWS.every(t => h.includes('<dt>' + t + '</dt>')));
+  check('M4: and certifies nothing', !/No action requested/.test(h) && !/\bis safe\b/i.test(h) && badgeOf(h) === 'NO MATCH');
+  check('the radio inputs carry no inline handlers', !/<input type="radio"[^>]*\son\w+=/.test(h));
+  check('P3: the share card model never carries the answer', (() => {
+    renderFx(FX.S3); sandbox.setByaAnswer('secret');
+    const m = JSON.stringify(sandbox.currentMessageCard() || {});
+    return !ALL.some(k => m.includes('"' + k + '"')) && !m.includes(sandbox.byaAnswer('secret').label) && !m.includes('Do not share it.');
+  })());
 
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.

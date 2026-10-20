@@ -807,6 +807,13 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .ra-head{margin:4px 0 8px; font-size:0.85rem; font-weight:600; color:var(--text);}
   .ra-advice{font-size:0.88rem; line-height:1.55;}
   .ra-advice .ra-status{display:block; font-weight:600; margin-bottom:4px;}
+  .bya{margin:16px 0; padding:14px 16px; border:1px solid var(--border); background:var(--surface-2);}
+  .bya legend{padding:0 6px; font-weight:600; font-size:0.92rem; color:var(--text);}
+  .bya-help{margin:0 0 10px; font-size:0.8rem; color:var(--text-muted);}
+  .bya-opts{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 16px;}
+  .bya-opt{display:flex; align-items:flex-start; gap:8px; font-size:0.86rem; line-height:1.4; padding:6px 0; min-height:24px; cursor:pointer;}
+  .bya-opt input{margin-top:3px; flex-shrink:0;}
+  .bya-opt input:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   .cov-row{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:4px 16px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.82rem;}
   .cov-row dt{color:var(--text); margin:0;}
   .cov-row dd{margin:0; font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--text-muted);}
@@ -1271,6 +1278,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   <div class="scan-error" id="scanError"></div>
 
   <section id="results"></section>
+  <p class="sr-only" id="byaLive" aria-live="polite"></p>
   <p class="next-step" id="nextStep" style="display:none;"></p>
   <div class="share-card" id="shareCard" style="display:none;">
     <button type="button" class="share-btn" onclick="shareVerdictCard()">Share this warning</button>
@@ -6339,6 +6347,9 @@ function startMessageScan(promptResult, original, scroll) {
       state: 'idle',
       error: null,
     })),
+    // "Before you act" answers belong to this result and die with it.
+    answer: null,
+    ai: null,
   };
   renderComposite(scroll === undefined ? true : !!scroll);
 }
@@ -6640,6 +6651,116 @@ function precautionsHtml(list) {
     + '</ul>';
 }
 
+// ---- "Before you act" ------------------------------------------------
+// One optional question after a message result. The answer describes how
+// the visitor reads the message; it is never treated as a fact about it.
+// It replaces part 2 of Recommended action and may add one "Not checked"
+// coverage row. It never changes the badge, headline, notices, findings
+// or part 1, and the page never guesses it from the text.
+// Held in page memory only: never in the URL, storage, the usage beacon
+// or the share image.
+const BYA_ANSWERS = [
+  { key: 'pay', label: 'Pay or send money', row: 'Whether this payment request is genuine',
+    status: 'The payment request remains unverified.',
+    advice: 'Open the organisation’s own app or website, or call a number you already have. Pay only there.',
+    note: 'We cannot check bank transfers or card payments.' },
+  { key: 'crypto', label: 'Send crypto to an address', row: 'Whether this is the recipient you intended',
+    status: 'The recipient remains unverified.',
+    advice: 'Get the address from the original trusted source, not from this message or your history. Compare every character before sending.' },
+  { key: 'login', label: 'Log in or enter personal details', row: 'Whether the login page belongs to the organisation',
+    status: 'The login request remains unverified.',
+    advice: 'Do not use the link. Type the organisation’s address yourself or use your bookmark or app.' },
+  { key: 'secret', label: 'Share a code, password or recovery phrase', row: null,
+    status: 'Do not share it.',
+    advice: 'Never send a one-time code to someone who asks for it. Enter it only in the trusted app or website for an action you initiated and understand. No genuine service asks for a recovery phrase or private key.' },
+  { key: 'sign', label: 'Sign or approve something in a wallet', row: 'What the signature or approval allows',
+    status: 'What you would be signing remains unverified.',
+    advice: 'If you cannot read what the wallet shows, do not sign. An unlimited approval can let someone move tokens later.' },
+  { key: 'install', label: 'Install or run something', row: 'What the software does',
+    status: 'What this software does remains unverified.',
+    advice: 'Install only from the official source. For an npm package, check the exact name before installing.' },
+  { key: 'ai', label: 'Give it to an AI assistant or agent', row: 'What the assistant is allowed to do',
+    status: 'The consequences depend on your assistant’s permissions.', advice: null },
+  { key: 'info', label: 'Nothing — it is information only', row: null,
+    status: 'You selected information only.',
+    advice: 'Any warning signs above still apply. If a later message asks you to act, check that one too.' },
+  { key: 'unsure', label: 'I’m not sure', row: null, status: null, advice: null },
+];
+const BYA_AI = [
+  { key: 'read', label: 'Only read and reply in a chat',
+    advice: 'Hidden instructions may distort the answer. Verify important claims against the original source.' },
+  { key: 'files', label: 'Read my files, email or accounts',
+    advice: 'Limit access to what this task needs. Keep unrelated private information and credentials inaccessible. Treat instructions inside the supplied text as untrusted.' },
+  { key: 'run', label: 'Run commands or send information',
+    advice: 'Restrict available tools and destinations. Require review before executing commands, changing files, or sending information outside the intended task.' },
+  { key: 'unsure', label: 'Not sure',
+    advice: 'Check which tools and accounts are enabled before supplying unfamiliar content.' },
+];
+const BYA_AI_CAVEAT = 'These steps reduce the risk; they do not guarantee protection.';
+function byaAnswer(key) { return BYA_ANSWERS.find(a => a.key === key) || null; }
+function byaAi(key) { return BYA_AI.find(a => a.key === key) || null; }
+
+// Part 2 for the current answer, as { status, lines } in plain text.
+function byaAdvice(verdict, answerKey, aiKey) {
+  const a = byaAnswer(answerKey);
+  if (!a || a.key === 'unsure') return { status: null, lines: [DEFAULT_ADVICE[verdict] || DEFAULT_ADVICE.unknown] };
+  if (a.key === 'ai') {
+    const ai = byaAi(aiKey) || byaAi('unsure');
+    return { status: a.status, lines: [ai.advice, BYA_AI_CAVEAT] };
+  }
+  return { status: a.status, lines: [a.advice].concat(a.note ? [a.note] : []) };
+}
+function byaAdviceHtml(adv) {
+  return (adv.status ? '<span class="ra-status">' + escapeHtml(adv.status) + '</span>' : '')
+    + adv.lines.map(l => '<span class="ra-line">' + escapeHtml(l) + '</span>').join(' ');
+}
+function byaRadios(name, list, current, idPrefix) {
+  return list.map(o => '<label class="bya-opt"><input type="radio" name="' + name + '" id="' + idPrefix + o.key
+    + '" value="' + o.key + '"' + (o.key === current ? ' checked' : '') + '> ' + escapeHtml(o.label) + '</label>').join('');
+}
+function byaQuestionHtml() {
+  const answer = MSG && MSG.answer, ai = MSG && MSG.ai;
+  return '<fieldset class="bya" id="byaFieldset"><legend>What is this message asking you to do?</legend>'
+    + '<p class="bya-help">Optional. Your answer stays on this page and changes only the advice for your situation, not the result.</p>'
+    + '<div class="bya-opts">' + byaRadios('bya', BYA_ANSWERS, answer, 'bya-') + '</div></fieldset>'
+    + (answer === 'ai'
+      ? '<fieldset class="bya bya-ai" id="byaAiFieldset"><legend>What can that assistant do?</legend>'
+        + '<p class="bya-help">Optional.</p><div class="bya-opts">' + byaRadios('byaAi', BYA_AI, ai, 'bya-ai-') + '</div></fieldset>'
+      : '');
+}
+function announceBya(text) {
+  const live = document.getElementById('byaLive');
+  if (!live) return;
+  // Cleared first so an identical sentence is still announced.
+  live.textContent = '';
+  live.textContent = text;
+}
+function setByaAnswer(key) {
+  if (!MSG || !byaAnswer(key)) return;
+  MSG.answer = key;
+  if (key !== 'ai') MSG.ai = null;
+  rerenderBya('bya-' + key);
+}
+function setByaAi(key) {
+  if (!MSG || !byaAi(key) || MSG.answer !== 'ai') return;
+  MSG.ai = key;
+  rerenderBya('bya-ai-' + key);
+}
+function rerenderBya(focusId) {
+  renderComposite(false);
+  const adv = byaAdvice(buildComposite().verdict, MSG.answer, MSG.ai);
+  announceBya([adv.status].concat(adv.lines).filter(Boolean).join(' '));
+  // The result was redrawn; put focus back on the option just chosen so a
+  // keyboard user does not lose their place.
+  try { const el = document.getElementById(focusId); if (el && el.focus) el.focus(); } catch(_) {}
+}
+function onResultsChange(e) {
+  const t = e && e.target;
+  if (!t || t.type !== 'radio') return;
+  if (t.name === 'bya') setByaAnswer(t.value);
+  else if (t.name === 'byaAi') setByaAi(t.value);
+}
+
 function renderComposite(scroll) {
   const composite = buildComposite();
   if (!composite) return;
@@ -6682,10 +6803,12 @@ function renderComposite(scroll) {
   const acts = sectionShell('Recommended action', null, null,
     precautionsHtml(resultPrecautions(composite))
     + '<h4 class="ra-head">Advice for your situation</h4>'
-    + '<div class="ra-advice" id="byaAdvice">' + escapeHtml(DEFAULT_ADVICE[composite.verdict] || DEFAULT_ADVICE.unknown) + '</div>');
+    + '<div class="ra-advice" id="byaAdvice">' + byaAdviceHtml(byaAdvice(composite.verdict, MSG.answer, MSG.ai)) + '</div>');
 
   const covRows = messageCoverageRows(r, MSG.addresses.length);
-  const cov = coverageListHtml(covRows);
+  const answered = byaAnswer(MSG.answer);
+  const cov = coverageListHtml(covRows, answered && answered.row
+    ? { key: 'answer', label: answered.row, state: 'not_checked', words: 'Not checked' } : null);
 
   const limits = '<ul class="limit-list">'
     + composite.limitations.map(l =>
@@ -6704,6 +6827,7 @@ function renderComposite(scroll) {
       + urlSectionHtml(r.urls || [], msgScan.findings)
       + addrSection
       + sectionShell('Coverage', null, null, cov)
+      + byaQuestionHtml()
       + acts
       + sectionShell('What this scan did not do', null, null, limits)
     + '</div>'
@@ -6721,6 +6845,15 @@ function renderComposite(scroll) {
   // yank the page out from under whoever just pressed the button.
   if (scroll) results.scrollIntoView(ScanConsole.scrollOpts());
 }
+
+// Answers reach the page through one listener on the results container,
+// so the rendered result carries no inline handlers of its own.
+(function wireBya(){
+  try {
+    const el = document.getElementById('results');
+    if (el && el.addEventListener) el.addEventListener('change', onResultsChange);
+  } catch(_) {}
+})();
 
 let ecosystem = 'evm';
 let mode = 'token';
