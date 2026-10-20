@@ -37,9 +37,9 @@ An **MCP server**, **CLI** and **Node library** in [`agent/`](agent/) give agent
 ## Privacy
 
 - **Message text** never leaves the browser.
-- **Addresses** go from your browser to GoPlus, or through our Worker for some chains and checks. We don't store them.
-- **Usage** is counted only as anonymous daily totals (scan kind, chain, verdict). There is no cookie, ID or IP address, and Global Privacy Control is respected. The totals are public: [`?stats=week`](https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev/?stats=week).
-- **Ads** appear in the side columns on wide screens, on the scanner and a few guides. They never appear on the high-harm guides and never receive anything you scan. Details are on the [privacy page](https://savesavesavesave.xyz/privacy).
+- **Addresses** go from your browser to GoPlus, or through our Worker for some chains and checks. When the Worker is used it may keep GoPlus's answer in Cloudflare's edge cache for up to 15 minutes; EVM wallet checks also send up to 15 counterparty addresses to the sanctions oracle via PublicNode. Routine invocation logging for this Worker was disabled on 20 October 2026; diagnostic logging remains enabled. Historical request logs may still contain addresses, IP addresses and other request metadata. This is not a no-storage guarantee; see the privacy page for remaining storage and provider practices.
+- **Usage totals** contain only daily counts by scan kind, chain and verdict, with no message text, scanned address, cookie, visitor ID or IP address in those totals. Before invocation logging was disabled on 20 October 2026, counting requests were logged with IP addresses and other request metadata. Historical logs were observed to reach back approximately seven days that day; the configured retention period remains unconfirmed. Global Privacy Control suppresses the counting request. The totals are public: [`?stats=week`](https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev/?stats=week).
+- **Ads** appear in the side columns on wide screens, on a few guides only; the scanner page loads no third-party script at all. They never appear on the high-harm guides and never receive anything you scan. Details are on the [privacy page](https://savesavesavesave.xyz/privacy).
 
 ## How it's built
 

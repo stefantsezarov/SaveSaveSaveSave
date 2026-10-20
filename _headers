@@ -84,3 +84,14 @@
 # PDF equivalent of the <link rel="canonical"> in an HTML page.
 /SaveSaveSaveSave-Whitepaper.pdf
   Link: <https://savesavesavesave.xyz/whitepaper>; rel="canonical"
+
+# BEGIN GENERATED SCANNER CSP
+/
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://solana-rpc.publicnode.com https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none'; frame-ancestors 'none';
+
+/index
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://solana-rpc.publicnode.com https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none'; frame-ancestors 'none';
+
+/index.html
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://solana-rpc.publicnode.com https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none'; frame-ancestors 'none';
+# END GENERATED SCANNER CSP
