@@ -167,6 +167,9 @@ function describeOutcome(combined, total) {
     summary = `Not enough of this could be checked to give you a reliable answer. This is not a clean result.`;
   } else {
     summary = `Nothing covered by these checks was found${total > 1 ? ` across all ${total} of them` : ''}. That is not a guarantee of safety.`;
+    if (driver && (driver.scan_type === SCAN_TYPES.PROMPT || driver.scan_type === SCAN_TYPES.MESSAGE)) {
+      summary += ' Delivery-fee, bank, prize and job scams are not covered — if this message asks you to pay, log in or act fast, check with the sender through a channel you already trust.';
+    }
   }
 
   if (incomplete && verdict !== 'unknown') {

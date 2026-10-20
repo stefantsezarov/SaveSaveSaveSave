@@ -290,7 +290,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .pass{position:relative; background:var(--surface); border:1px solid var(--border); border-radius:0; overflow:hidden;}
   .pass-top{padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:1px dashed var(--border);}
   .verdict{display:flex; align-items:center; gap:12px;}
-  .verdict-badge{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.3rem; padding:8px 18px; border-radius:0; letter-spacing:0.03em; white-space:nowrap;}
+  .verdict-badge{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.3rem; padding:8px 18px; border-radius:0; letter-spacing:0.03em; white-space:nowrap; flex-shrink:0;}
   .verdict-badge.pass{background:var(--safe-dim); color:var(--safe); border:1px solid var(--safe);}
   .verdict-badge.caution{background:var(--caution-dim); color:var(--caution); border:1px solid var(--caution);}
   .verdict-badge.fail{background:var(--danger-dim); color:var(--danger); border:1px solid var(--danger);}
@@ -972,6 +972,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
        unchanged, and appears once a check is chosen. -->
   <section class="home-menu" id="homeMenu" aria-labelledby="homeMenuHead">
     <h2 id="homeMenuHead" class="sr-only">Choose a check</h2>
+    <p class="sub home-sub">Free. No account. Pick the check that matches what is in front of you.</p>
     <div class="home-cards">
     <button type="button" class="home-card hc-address" onclick="openTool('address')" aria-describedby="hc-address-desc">
       <svg class="hc-art" viewBox="0 0 160 110" aria-hidden="true" focusable="false">
@@ -1001,7 +1002,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       <span class="hc-body">
         <span class="hc-num" aria-hidden="true">02</span>
         <span class="hc-title">Message or prompt</span>
-        <span class="hc-desc" id="hc-prompt-desc">Check a message, prompt or AI-written text for hidden instructions, fake links, requests for secrets and AI leftovers.</span>
+        <span class="hc-desc" id="hc-prompt-desc">Check a message or AI prompt for crypto-wallet scams, requests for your recovery phrase, disguised links and hidden instructions.</span>
         <span class="hc-cta">Scan a message or prompt <span aria-hidden="true">&rarr;</span></span>
       </span>
     </button>
@@ -1067,7 +1068,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 
       <div class="field-row">
         <select class="chain-select" id="chainSelect" aria-label="Chain"></select>
-        <input class="addr-input" id="addrInput" type="text" placeholder="0x… paste a token contract address" autocomplete="off" spellcheck="false">
+        <input class="addr-input" id="addrInput" type="text" aria-describedby="inlineError" placeholder="0x… paste a token contract address" autocomplete="off" spellcheck="false">
         <button class="scan-btn" id="scanBtn" onclick="runScan()">Scan address</button>
       </div>
 
@@ -1084,7 +1085,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <button type="button" class="example-chip" onclick="fillExample('sui','sui','0xbc732bc5f1e9a9f4bdf4c0672ee538dbf56c161afe04ff1de2176efabdf41f92::suai::SUAI')">SUAI · Sui</button>
         <button type="button" class="example-chip" onclick="fillExample('tron','tron','TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t')">USDT · TRON</button>
       </div>
-      <div class="inline-error" id="inlineError" style="display:none;"></div>
+      <div class="inline-error" id="inlineError" role="alert" style="display:none;"></div>
       <details class="twin" id="twinCheck">
         <summary>Compare two addresses</summary>
         <div class="twin-body">
@@ -1104,10 +1105,10 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
           <span><strong>Never paste a seed phrase, private key, password, or authentication code into this box</strong> — or into any AI system. Nothing legitimate ever needs them.</span>
         </div>
 
-        <label class="sr-only" for="promptInput">Prompt to scan</label>
-        <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off"
-          placeholder="Paste a prompt you found on Reddit, X, Discord, a blog, a course, or a prompt marketplace&#10;&#10;We check it for hidden instructions, data requests, suspicious links, prompt injection and other warning signs."
-          oninput="updatePromptCount()"></textarea>
+        <label class="sr-only" for="promptInput">Message or prompt to scan</label>
+        <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off" aria-describedby="promptError"
+          placeholder="Paste the message or prompt you want to check — for example a DM about your wallet, or a prompt copied from Reddit or Discord.&#10;&#10;We check it for requests for secrets, disguised links, hidden instructions and other known warning signs."
+          oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'"></textarea>
 
         <div class="prompt-meta">
           <span class="prompt-count" id="promptCount">0 characters</span>
@@ -1128,13 +1129,13 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <div class="privacy-line">
           <span class="accent">&#9679;</span> This scan is local. The text you paste is analysed in your browser — never sent, never stored, never seen by us. <a href="whitepaper.html#privacy">What the site itself loads</a>.
         </div>
-        <div class="inline-error" id="promptError" style="display:none;"></div>
+        <div class="inline-error" id="promptError" role="alert" style="display:none;"></div>
       </div>
 
       <div class="prompt-panel package-panel" id="packagePanel">
         <div class="field-row">
           <label class="sr-only" for="packageInput">npm package name</label>
-          <input class="addr-input" id="packageInput" type="text" placeholder="npm package: lodash, @scope/name or name@1.2.3" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="if(event.key==='Enter')runPackageScan()">
+          <input class="addr-input" id="packageInput" type="text" aria-describedby="packageError" placeholder="npm package: lodash, @scope/name or name@1.2.3" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="if(event.key==='Enter')runPackageScan()">
           <button class="scan-btn" id="packageScanBtn" onclick="runPackageScan()">Check package</button>
         </div>
         <div class="examples">
@@ -1146,7 +1147,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <div class="privacy-line">
           <span class="accent">&#9679;</span> Only the package name and version go to the npm registry and to OSV.dev, Google's open vulnerability database. The package's code is never downloaded or run. <a href="privacy.html#package-check">Details</a>
         </div>
-        <div class="inline-error" id="packageError" style="display:none;"></div>
+        <div class="inline-error" id="packageError" role="alert" style="display:none;"></div>
       </div>
 
       <div class="situations" role="group" aria-label="Not sure which check you need?">
@@ -2787,6 +2788,9 @@ function describeOutcome(combined, total) {
     summary = `Not enough of this could be checked to give you a reliable answer. This is not a clean result.`;
   } else {
     summary = `Nothing covered by these checks was found${total > 1 ? ` across all ${total} of them` : ''}. That is not a guarantee of safety.`;
+    if (driver && (driver.scan_type === SCAN_TYPES.PROMPT || driver.scan_type === SCAN_TYPES.MESSAGE)) {
+      summary += ' Delivery-fee, bank, prize and job scams are not covered — if this message asks you to pay, log in or act fast, check with the sender through a channel you already trust.';
+    }
   }
 
   if (incomplete && verdict !== 'unknown') {
@@ -3722,7 +3726,7 @@ const RULES = [
   },
   {
     id: 'SOCIAL_ENGINEERING_001', category: 'SOCIAL_ENGINEERING', severity: 'MEDIUM', confidence: 0.7,
-    re: /\b(urgent(?:ly)?|immediately|act now|within \d+ (?:minutes?|hours?)|expires? (?:soon|today|in)|last chance|final (?:warning|notice)|account (?:will be )?(?:suspended|locked|closed|terminated)|suspicious activity detected|verify (?:your )?(?:identity|account) (?:now|immediately))\b/i,
+    re: /\b(urgent(?:ly)?|immediately|act now|within \d+\s?(?:minutes?|mins?|hours?|hrs?|h)|expires? (?:soon|today|in)|last chance|final (?:warning|notice)|account (?:will be )?(?:suspended|locked|closed|terminated)|suspicious activity detected|verify (?:your )?(?:identity|account) (?:now|immediately))\b/i,
     title: 'Uses urgency or threats',
     plain: 'The prompt pressures you to act fast. Time pressure exists to stop you checking, and it is present in almost every scam and almost no legitimate instruction.',
     action: 'Slow down. Anything genuinely important will still be true in an hour.',
@@ -4543,13 +4547,14 @@ function decideVerdict(findings, coverage, limitations) {
     low.forEach(f => { f.contributed = true; });
   } else {
     verdict = 'pass'; label = 'PASS';
-    sub = 'No covered high-risk pattern was detected. This is not a guarantee that the prompt is safe in every context.';
+    sub = 'None of the patterns this scan covers matched. That is not a guarantee of safety: delivery-fee, bank, prize and job scams are not covered. If a message asks you to pay, log in or act fast, contact the sender through a channel you already trust.';
   }
 
+  // A clean result is never 'high': this scan matches known patterns and
+  // reads no meaning, so "nothing matched" is weaker evidence than a match.
   const confidence = crit.length ? 'high'
     : materialGap ? 'low'
-    : (high.length || med.length) ? 'medium'
-    : 'high';
+    : 'medium';
 
   return {
     verdict, label, sub, confidence,
@@ -5935,6 +5940,7 @@ function clearPrompt() {
 
 function fillPrompt(k) {
   document.getElementById('promptInput').value = PROMPT_EXAMPLES[k] || '';
+  document.getElementById('promptError').style.display = 'none';
   updatePromptCount();
 }
 
@@ -6244,7 +6250,7 @@ function evidenceHtml(original, ev) {
   const before = original.slice(a, ev.start);
   const hit = original.slice(ev.start, ev.end);
   const after = original.slice(ev.end, b);
-  return '<div class="evidence-label">Found in your prompt at character ' + ev.start + '</div>'
+  return '<div class="evidence-label">Found in your text at character ' + ev.start + '</div>'
     + '<div class="evidence">'
     + (a > 0 ? '…' : '') + escapeHtml(before)
     + '<mark>' + escapeHtml(hit) + '</mark>'

@@ -766,7 +766,7 @@ const RULES = [
   },
   {
     id: 'SOCIAL_ENGINEERING_001', category: 'SOCIAL_ENGINEERING', severity: 'MEDIUM', confidence: 0.7,
-    re: /\b(urgent(?:ly)?|immediately|act now|within \d+ (?:minutes?|hours?)|expires? (?:soon|today|in)|last chance|final (?:warning|notice)|account (?:will be )?(?:suspended|locked|closed|terminated)|suspicious activity detected|verify (?:your )?(?:identity|account) (?:now|immediately))\b/i,
+    re: /\b(urgent(?:ly)?|immediately|act now|within \d+\s?(?:minutes?|mins?|hours?|hrs?|h)|expires? (?:soon|today|in)|last chance|final (?:warning|notice)|account (?:will be )?(?:suspended|locked|closed|terminated)|suspicious activity detected|verify (?:your )?(?:identity|account) (?:now|immediately))\b/i,
     title: 'Uses urgency or threats',
     plain: 'The prompt pressures you to act fast. Time pressure exists to stop you checking, and it is present in almost every scam and almost no legitimate instruction.',
     action: 'Slow down. Anything genuinely important will still be true in an hour.',
@@ -1587,13 +1587,14 @@ function decideVerdict(findings, coverage, limitations) {
     low.forEach(f => { f.contributed = true; });
   } else {
     verdict = 'pass'; label = 'PASS';
-    sub = 'No covered high-risk pattern was detected. This is not a guarantee that the prompt is safe in every context.';
+    sub = 'None of the patterns this scan covers matched. That is not a guarantee of safety: delivery-fee, bank, prize and job scams are not covered. If a message asks you to pay, log in or act fast, contact the sender through a channel you already trust.';
   }
 
+  // A clean result is never 'high': this scan matches known patterns and
+  // reads no meaning, so "nothing matched" is weaker evidence than a match.
   const confidence = crit.length ? 'high'
     : materialGap ? 'low'
-    : (high.length || med.length) ? 'medium'
-    : 'high';
+    : 'medium';
 
   return {
     verdict, label, sub, confidence,

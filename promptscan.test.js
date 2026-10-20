@@ -444,6 +444,15 @@ check('disabling URL analysis never yields PASS',
 const clean = S.scanPrompt('Write a haiku about rain on a tin roof.');
 check('PASS is never phrased as a guarantee', /not a guarantee/i.test(clean.sub));
 check('limitations are present even on PASS', clean.limitations.length >= 4);
+// Audit 2026-10-20: a clean pattern scan reads no meaning, so it must not
+// claim high confidence, and its PASS line must name what it does not cover.
+check('a clean PASS is never high confidence', clean.confidence === 'medium');
+check('PASS names the scam types it does not cover', /delivery-fee, bank, prize and job scams are not covered/.test(clean.sub));
+// "within 24h" is the same urgency as "within 24 hours", which already matched.
+const parcel = S.scanPrompt('DHL: Your parcel is on hold due to an unpaid customs fee of 1.99 EUR. Pay within 24h or it will be returned: https://dhl-parcel-redelivery.top/pay');
+check('short-form deadline ("within 24h") reads as urgency', parcel.findings.some(f => f.ruleId === 'SOCIAL_ENGINEERING_001') && parcel.label === 'CAUTION');
+check('"within 2 hrs" reads as urgency', S.scanPrompt('Reply within 2 hrs or your account will be closed.').findings.some(f => f.ruleId === 'SOCIAL_ENGINEERING_001'));
+check('a bare "within 24h" in a harmless note stays out of FAIL', S.scanPrompt('Thanks, I will reply within 24h.').label !== 'FAIL');
 check('coverage reports semantic analysis as unavailable', clean.coverage.semantic === 'unavailable');
 
 check('findings that decided the verdict are marked',
