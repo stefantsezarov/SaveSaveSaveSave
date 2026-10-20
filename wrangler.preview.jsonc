@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Used only by the preview build command. Production retains its
+  // dashboard configuration and unchanged `npx wrangler deploy` command.
+  "name": "savesavesavesave",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "."
+  },
+  // Required by Wrangler's isolated branch-preview workflow.
+  // No production bindings, secrets, routes or databases are attached.
+  "previews": {}
+}

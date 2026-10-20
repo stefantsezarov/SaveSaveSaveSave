@@ -467,7 +467,7 @@ async function afterFirstScan() {
         Number(nodes['cfProgress'].getAttribute('stroke-dasharray')) * 0.5,
         'offset ' + nodes['cfProgress'].getAttribute('stroke-dashoffset'));
       check('the "Now" line ends on the outcome, not mid-scan',
-        /Pass complete/.test(nodes['consoleCurrentText']._text),
+        /Check complete/.test(nodes['consoleCurrentText']._text),
         nodes['consoleCurrentText']._text);
       return afterSweep();
     });

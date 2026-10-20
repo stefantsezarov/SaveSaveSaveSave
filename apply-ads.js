@@ -34,9 +34,9 @@
    permits them for the pages that do carry ads. Deleting the markup
    alone would leave the page one careless paste away from serving.
 
-   THE HEADER IS DELIBERATELY LEFT BROAD. _headers applies to every
-   path, so it has to carry the union of what the ad-serving pages
-   need. It is a ceiling, not an instruction.
+   The site-wide response header carries the union required by guide
+   pages. Scanner paths also receive their own restrictive response
+   policy, so protection starts before any HTML or injected script.
    ===================================================================== */
 
 const fs = require('fs');
@@ -64,7 +64,7 @@ const SLOTS_ARE_DISTINCT = SLOT_LEFT !== SLOT_RIGHT;
 // whoever changes it later. Flipping one of these to true is a
 // deliberate act that should be argued for in the commit message.
 const AD_POLICY = {
-  'index.html':                 { enabled: true,  mode: 'contextual', reason: 'The scanner and its explanation. Rails sit in the page gutters, never inside the result markup — asserted by promptscan.ui.test.js.' },
+  'index.html':                 { enabled: false, reason: 'The scanner. Third-party scripts in this document run with full access to the message box and results, and a same-origin ad frame is not isolation. Off so that "message text never leaves your browser" does not depend on Google\'s code. Ads stay on guides that allow them. Decided 20 October 2026.' },
   'guides.html':                { enabled: true,  mode: 'contextual', reason: 'An index of articles. No verdict, no warning, nothing an ad could be mistaken for.' },
   'whitepaper.html':            { enabled: true,  mode: 'contextual', reason: 'General explanation of what the product is and how it is paid for.' },
   'technical-appendix.html':    { enabled: true,  mode: 'contextual', reason: 'Technical transparency document. Read by people checking claims, not by people in trouble.' },
@@ -307,6 +307,21 @@ if (noPolicy.length) {
 const hp = path.join(__dirname, '_headers');
 let headers = fs.readFileSync(hp, 'utf8');
 headers = headers.replace(/^(\s*Content-Security-Policy: )(.+)$/m, (_, a, csp) => a + widenCsp(csp));
+// The scanner must be protected before the browser reaches its meta tag.
+// Multiple CSP response policies are intersected, so guide permissions in
+// the site-wide policy cannot grant scripts or frames on scanner routes.
+const scannerHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const scannerPolicy = (scannerHtml.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
+if (!scannerPolicy || !/script-src 'self' 'unsafe-inline';/.test(scannerPolicy)
+    || !/frame-src 'none'/.test(scannerPolicy)) {
+  throw new Error('The scanner requires a reviewed restrictive meta policy before generating response headers.');
+}
+const scannerHeaders = '# BEGIN GENERATED SCANNER CSP\n'
+  + ['/', '/index', '/index.html'].map(route => route + '\n  Content-Security-Policy: '
+    + scannerPolicy + " frame-ancestors 'none';").join('\n\n')
+  + '\n# END GENERATED SCANNER CSP\n';
+headers = headers.replace(/\n?# BEGIN GENERATED SCANNER CSP[\s\S]*?# END GENERATED SCANNER CSP\n?/, '\n');
+headers = headers.trimEnd() + '\n\n' + scannerHeaders;
 fs.writeFileSync(hp, headers, 'utf8');
 
 console.log(`\n${on} page(s) carry advertising, ${off} deliberately do not. ${changed} file(s) rewritten.`);

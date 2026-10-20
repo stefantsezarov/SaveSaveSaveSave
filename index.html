@@ -16,7 +16,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://fundingchoices.google.com; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://solana-rpc.publicnode.com https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev https://cloudflareinsights.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://fundingchoicesmessages.google.com; img-src 'self' data: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.g.doubleclick.net https://www.google.com https://fundingchoicesmessages.google.com; base-uri 'self'; form-action 'none'; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src https://api.gopluslabs.io https://registry.npmjs.org https://api.npmjs.org https://api.osv.dev https://solana-rpc.publicnode.com https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev; img-src 'self' data:; base-uri 'self'; form-action 'none'; frame-src 'none';">
 <script>
 /* "Scan selected text" bookmark (see /tools): the text arrives after #scan= .
    The part of an address after # is never sent to any server. Take it out
@@ -239,7 +239,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   @media (max-width:640px){
     header.top{padding:16px 16px 12px;}
     .brand-tag{display:none;}
-    .top-nav{gap:16px;}
+    .top-nav{gap:6px 16px; flex-wrap:wrap;}
     .nav-link{white-space:nowrap;}
     .hero{padding-top:18px;}
     .sub{margin-bottom:18px;}
@@ -292,10 +292,16 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .verdict{display:flex; align-items:center; gap:12px;}
   .verdict-badge{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.3rem; padding:8px 18px; border-radius:0; letter-spacing:0.03em; white-space:nowrap; flex-shrink:0;}
   .verdict-badge.pass{background:var(--safe-dim); color:var(--safe); border:1px solid var(--safe);}
+  /* NO MATCH is not a success state: neutral, outlined, no green. */
+  .verdict-badge.nomatch{background:transparent; color:var(--text); border:1px solid var(--text-muted);}
   .verdict-badge.caution{background:var(--caution-dim); color:var(--caution); border:1px solid var(--caution);}
   .verdict-badge.fail{background:var(--danger-dim); color:var(--danger); border:1px solid var(--danger);}
   .verdict-badge.unknown{background:var(--unknown-dim); color:var(--unknown); border:1px solid var(--unknown);}
   .verdict-meta{font-size:0.8rem; color:var(--text-muted); font-family:'IBM Plex Mono', monospace;}
+  .verdict-meta strong{display:block; color:var(--text); font-family:'Space Grotesk', sans-serif; font-size:1rem; margin-bottom:4px;}
+  .verdict-line{display:block; line-height:1.5;}
+  @media (max-width:560px){ .verdict{flex-wrap:wrap;} .verdict-meta{flex-basis:100%;} }
+  .addr-scope{color:var(--text-muted); font-size:0.78rem; margin-right:6px;}
   .pass-id{text-align:right; font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:var(--text-muted);}
   .pass-id .addr{color:var(--text); font-size:0.8rem; word-break:break-all; max-width:260px; display:block;}
 
@@ -642,6 +648,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .sect-verdict{font-family:'IBM Plex Mono',monospace; font-size:0.7rem; font-weight:600; letter-spacing:0.07em;
     padding:3px 9px; border-radius:0; white-space:nowrap;}
   .sv-pass{background:rgba(52,199,123,0.14); color:var(--safe);}
+  .sv-nomatch{background:transparent; color:var(--text); box-shadow:inset 0 0 0 1px var(--text-muted);}
   .sv-caution{background:rgba(240,180,41,0.14); color:var(--caution);}
   .sv-fail{background:rgba(232,79,79,0.14); color:var(--danger);}
   .sv-unknown{background:rgba(255,255,255,0.07); color:var(--text-muted);}
@@ -800,12 +807,27 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .tech-toggle{margin-top:8px; background:none; border:none; color:var(--text-muted); font-family:'IBM Plex Mono', monospace; font-size:0.68rem; cursor:pointer; padding:0; text-decoration:underline dotted;}
   .tech-toggle:hover{color:var(--accent);}
 
-  .cov-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:16px;}
-  .cov-cell{background:var(--surface-2); border:1px solid var(--border); border-radius:0; padding:9px 11px; font-family:'IBM Plex Mono', monospace; font-size:0.72rem;}
-  .cov-cell .k{color:var(--text-muted); display:block;}
-  .cov-cell .v{font-weight:600;}
-  .cov-complete .v{color:var(--safe);} .cov-partial .v{color:var(--caution);}
-  .cov-unavailable .v{color:var(--unknown);} .cov-na .v{color:var(--text-muted);}
+  .cov-list{margin:0 0 12px; padding:0;}
+  .ra-head{margin:4px 0 8px; font-size:0.85rem; font-weight:600; color:var(--text);}
+  .ra-advice{font-size:0.88rem; line-height:1.55;}
+  .ra-advice .ra-status{display:block; font-weight:600; margin-bottom:4px;}
+  .ra-handoff{display:block; margin-top:10px;}
+  .addr-disclose{margin:6px 0 0; font-size:0.76rem; line-height:1.5; color:var(--text-muted);}
+  .addr-ctl-below{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 4px;}
+  .bya{margin:16px 0; padding:14px 16px; border:1px solid var(--border); background:var(--surface-2);}
+  .bya legend{padding:0 6px; font-weight:600; font-size:0.92rem; color:var(--text);}
+  .bya-help{margin:0 0 10px; font-size:0.8rem; color:var(--text-muted);}
+  .bya-opts{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 16px;}
+  .bya-opt{display:flex; align-items:flex-start; gap:8px; font-size:0.86rem; line-height:1.4; padding:6px 0; min-height:24px; cursor:pointer;}
+  .bya-opt input{margin-top:3px; flex-shrink:0;}
+  .bya-opt input:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .cov-row{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:4px 16px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.82rem;}
+  .cov-row dt{color:var(--text); margin:0;}
+  .cov-row dd{margin:0; font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--text-muted);}
+  .cov-checked dd{color:var(--text);} .cov-failed dd, .cov-partial dd{color:var(--caution);}
+  .cov-defs{margin:8px 0 0; padding-left:18px; font-size:0.76rem; color:var(--text-muted); line-height:1.5;}
+  .cov-notice{margin:12px 0 0; padding:10px 12px; border:1px solid var(--caution); background:var(--caution-dim); font-size:0.85rem; line-height:1.5;}
+  @media (max-width:560px){ .cov-row{grid-template-columns:1fr;} }
   .limits{margin-top:18px; padding:14px; background:var(--surface-2); border:1px solid var(--border); border-radius:0;}
   .limits h4{font-family:'Space Grotesk', sans-serif; font-size:0.82rem; margin:0 0 8px;}
   .limits ul{margin:0; padding-left:18px;}
@@ -829,40 +851,6 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   footer{margin-top:60px; padding:26px 20px 40px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:0.76rem; max-width:960px; margin-left:auto; margin-right:auto;}
   footer p{max-width:620px; margin:0 auto 6px;}
 
-  /* ---- Advertising rails -------------------------------------------
-     Fixed in the page gutters so they never enter the document flow, and
-     never enter the scan result markup. An ad that participates in
-     layout can push a verdict down as a creative loads; a fixed rail
-     cannot. The scanner's measured Cumulative Layout Shift is already
-     0.332, which Google rates poor, so nothing here is allowed to add
-     to it.
-
-     The rail sits beside the whole page, results included. It is not
-     inside the result DOM, it is not styled like any control or verdict,
-     and no ad call is ever given a finding, an address, a URL from a
-     message, or any part of pasted text. promptscan.ui.test.js asserts
-     the last part.
-
-     NOT RENDERED below 1280px — the scanner needs the full width on a
-     phone, and roughly a third of visitors arrive on Android.
-
-     KILL SWITCH: <html data-ads="off"> removes every slot instantly. */
-  .ad-rail{display:none;}
-  @media (min-width: 1280px){
-    .ad-rail{
-      display:block; position:fixed; top:96px; width:160px; z-index:1;
-      max-height:calc(100vh - 140px); overflow:hidden;
-    }
-    .ad-rail-left{left:max(12px, calc((100vw - 960px) / 2 - 176px));}
-    .ad-rail-right{right:max(12px, calc((100vw - 960px) / 2 - 176px));}
-    .ad-rail .adsbygoogle{width:160px; min-height:600px;}
-  }
-  .ad-label{
-    display:block; font-family:'IBM Plex Mono',monospace; font-size:0.6rem;
-    letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);
-    opacity:0.75; margin-bottom:6px; text-align:center;
-  }
-  :root[data-ads="off"] .ad-rail{display:none !important;}
 
   @media (max-width: 640px){
     .steps{grid-template-columns:1fr;}
@@ -1108,7 +1096,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <label class="sr-only" for="promptInput">Message or prompt to scan</label>
         <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off" aria-describedby="promptError"
           placeholder="Paste the message or prompt you want to check — for example a DM about your wallet, or a prompt copied from Reddit or Discord.&#10;&#10;We check it for requests for secrets, disguised links, hidden instructions and other known warning signs."
-          oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'"></textarea>
+          oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'; syncMessageFreshness()"></textarea>
 
         <div class="prompt-meta">
           <span class="prompt-count" id="promptCount">0 characters</span>
@@ -1263,10 +1251,11 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   <div class="scan-error" id="scanError"></div>
 
   <section id="results"></section>
+  <p class="sr-only" id="byaLive" aria-live="polite"></p>
   <p class="next-step" id="nextStep" style="display:none;"></p>
   <div class="share-card" id="shareCard" style="display:none;">
     <button type="button" class="share-btn" onclick="shareVerdictCard()">Share this warning</button>
-    <span class="share-note" id="shareCardNote">Makes an image on your device. Nothing is uploaded.</span>
+    <span class="share-note" id="shareCardNote">Generated on this device. Nothing is uploaded; where you share it next is your choice.</span>
   </div>
   <nav class="tool-again" id="toolAgain" aria-label="Run another check" style="display:none;">
     <span class="tool-again-label">Run another check</span>
@@ -1349,7 +1338,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
 
 <footer>
   <p>SaveSaveSaveSave is an independent screening aid built on public third-party data (GoPlus Security). It is not financial, legal, or investment advice, and a PASS result is not a guarantee of safety — it means no flags were found among the indicators actually checked, not that none exist. Always verify independently before signing any transaction or sending funds.</p>
-  <p>The address you submit is sent directly from your browser to GoPlus Security's API to run the check — SaveSaveSaveSave itself does not see, log, or store it, but GoPlus's own data practices apply on their end.</p>
+  <p>An address you check is sent to GoPlus Security: directly from your browser for EVM token checks, and through our own Cloudflare Worker for some chains and for wallet sanctions and counterparty checks. When the Worker is used, it may keep GoPlus's answer for that address for up to 15 minutes. Routine invocation logging for that Worker was disabled on 20 October 2026; historical request logs may still contain addresses and IP addresses, and diagnostic logging remains enabled. Your message is never sent with the address. See the <a href="privacy.html">privacy policy</a> for the services involved, historical logs and remaining storage.</p>
   <p>Message and prompt text is analysed inside your browser and is never sent anywhere — see the <a class="nav-link" href="privacy.html">privacy policy</a> for exactly what does and does not leave this page.</p>
   <p><a class="nav-link" href="guides.html">Guides</a> &nbsp;·&nbsp; <a class="nav-link" href="whitepaper.html">Read Before You Act</a> &nbsp;·&nbsp; <a class="nav-link" href="SaveSaveSaveSave-Whitepaper.pdf">Download PDF</a> &nbsp;·&nbsp; <a class="nav-link" href="technical-appendix.html">Technical Transparency</a> &nbsp;·&nbsp; <a class="nav-link" href="tools.html">Tools: bookmark, CI, CLI</a> &nbsp;·&nbsp; <a class="nav-link" href="agents.html">For AI agents (MCP)</a> &nbsp;·&nbsp; <a class="nav-link" href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a class="nav-link" href="terms.html">Terms</a></p>
   <p style="margin-top:14px; color:var(--text-muted);">© 2026 <a class="nav-link" href="about.html">Stefan Tsezarov</a>. Code under <a class="nav-link" href="LICENSE.md">AGPL-3.0</a>; guides and brand all rights reserved. · <a class="nav-link" href="support.html">Support</a> <a class="coffee-btn" href="https://ko-fi.com/savesavesavesave" target="_blank" rel="noopener">&#9749; Buy me a coffee</a></p>
@@ -5179,7 +5168,7 @@ const ScanConsole = (function(){
     pendingHandoff = state === 'failed' ? 'var(--danger)' : state === 'warn' ? 'var(--caution)' : 'var(--safe)';
     box.classList.add('lock-' + (state === 'failed' || state === 'warn' ? state : 'done'));
     setHeadState(state, o.stateText || 'Complete');
-    setCurrent(o.stateText ? 'Pass complete \u00B7 ' + o.stateText : 'Pass complete', true);
+    setCurrent(o.stateText ? 'Check complete \u00B7 ' + o.stateText : 'Check complete', true);
     const right = [];
     if(typeof o.realMs === 'number') right.push('analysis ' + fmtMs(o.realMs));
     // Includes the hold that is about to happen, so the number is the
@@ -5889,8 +5878,13 @@ async function runPackageScan(){
   }
 }
 
+// The check currently on screen. Results of the three checks share one
+// container, so a late redraw of the message result must not land on top
+// of an address or package result.
+let currentScanMode = null;
 function setScanMode(m) {
   leaveHome();
+  currentScanMode = m;
   const addr = document.getElementById('addressPanel');
   const prompt = document.getElementById('promptPanel');
   const bAddr = document.getElementById('smode-address');
@@ -5919,6 +5913,17 @@ function setScanMode(m) {
   // Switching modes discards the console too. A scan panel left standing
   // over a different input is the same class of error as a stale result.
   ScanConsole.hide();
+  // Opening another check only suspends the message result. Coming back
+  // restores it, answers included, while the box still holds exactly the
+  // text that was scanned.
+  if (isPrompt) restoreMessageResult();
+}
+function restoreMessageResult() {
+  if (!MSG) return;
+  const box = document.getElementById('promptInput');
+  if (!box || box.value !== MSG.text) return;
+  renderComposite(false);
+  showNextStep('message', (MSG.promptScan.findings || []).map(f => f.category));
 }
 
 function updatePromptCount() {
@@ -5930,15 +5935,37 @@ function updatePromptCount() {
   el.classList.toggle('over', v.length > max);
 }
 
+// Editing the message after a scan makes the result out of date: it stays
+// visible, says so, and its hand-off buttons stop working until a rescan.
+// Undoing the edit back to the scanned text makes it current again.
+function syncMessageFreshness() {
+  if (!MSG) return;
+  const box = document.getElementById('promptInput');
+  const stale = !!box && box.value !== MSG.text;
+  if (stale === !!MSG.stale) return;
+  MSG.stale = stale;
+  if (currentScanMode === 'prompt' && document.getElementById('results').style.display !== 'none') renderComposite(false);
+}
+// Clearing the message or loading an example discards the result and its
+// answers. So does a new scan (startMessageScan replaces MSG) and a reload.
+function invalidateMessageResult() {
+  MSG = null;
+  document.getElementById('results').style.display = 'none';
+  hideNextStep();
+  ScanConsole.hide();
+}
+
 function clearPrompt() {
   document.getElementById('promptInput').value = '';
   updatePromptCount();
   document.getElementById('results').style.display = 'none';
   document.getElementById('promptError').style.display = 'none';
   ScanConsole.hide();
+  MSG = null;
 }
 
 function fillPrompt(k) {
+  invalidateMessageResult();
   document.getElementById('promptInput').value = PROMPT_EXAMPLES[k] || '';
   document.getElementById('promptError').style.display = 'none';
   updatePromptCount();
@@ -6199,7 +6226,7 @@ function runPromptScan() {
   const workMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
 
   const runId = ScanConsole.begin({
-    title: 'Risk pass · message scan',
+    title: 'Risk check · message scan',
     targetLabel: 'Submitted text',
     target: (text.length > 160 ? text.slice(0, 160) + '…' : text),
     sub: text.length.toLocaleString() + ' characters · analysed in this browser',
@@ -6223,7 +6250,7 @@ function runPromptScan() {
     if(!ScanConsole.isCurrent(runId)) return;
     return ScanConsole.finish(runId, {
       state: result.verdict === 'fail' ? 'failed' : (result.verdict === 'pass' ? 'done' : 'warn'),
-      stateText: result.label,
+      stateText: MSG_BADGE[result.verdict] || result.label,
       realMs: workMs,
     }).then(() => { if(ScanConsole.isCurrent(runId)) reveal(); });
   }, err => {
@@ -6267,19 +6294,9 @@ function findingHtml(f, original) {
     + '<div class="finding-action"><span class="arrow">→</span><span>' + escapeHtml(f.action) + '</span></div>'
     + (f.technical
         ? '<button class="tech-toggle" onclick="this.parentNode.classList.toggle(\'show-tech\')">technical detail</button>'
-          + '<div class="finding-tech">' + escapeHtml(f.ruleId + ' · confidence ' + f.confidence + ' · via ' + f.source + '\n' + f.technical) + '</div>'
+          + '<div class="finding-tech">' + escapeHtml(f.ruleId + ' · via ' + f.source + '\n' + f.technical) + '</div>'
         : '')
     + '</div>';
-}
-
-function coverageCell(key, label, value) {
-  const cls = value === 'complete' ? 'cov-complete'
-    : value === 'partial' ? 'cov-partial'
-    : (value === 'not_applicable' || value === 'not_found' || value === 'not_checked') ? 'cov-na'
-    : 'cov-unavailable';
-  const shown = String(value).replace(/_/g, ' ');
-  return '<div class="cov-cell ' + cls + '"><span class="k">' + escapeHtml(label) + '</span>'
-    + '<span class="v">' + escapeHtml(shown) + '</span></div>';
 }
 
 // ---- Composite message scan ----------------------------------------
@@ -6341,14 +6358,26 @@ function startMessageScan(promptResult, original, scroll) {
       state: 'idle',
       error: null,
     })),
+    // "Before you act" answers belong to this result and die with it.
+    answer: null,
+    ai: null,
   };
+  // The verdict from the text and unchecked addresses alone. When an
+  // address check moves the result away from it, the page says why.
+  MSG.initialVerdict = buildComposite().verdict;
   renderComposite(scroll === undefined ? true : !!scroll);
 }
 
 async function checkAddress(i) {
-  if (!MSG || !MSG.addresses[i]) return;
+  if (!MSG || !MSG.addresses[i] || MSG.stale) return;
+  const owner = MSG;
   const entry = MSG.addresses[i];
   if (entry.state === 'running') return;
+  // A response belongs to this result, this address and this chain. If any
+  // of them changes while it is in flight, the response is discarded.
+  const gen = entry.gen = (entry.gen || 0) + 1;
+  const chainAtStart = entry.chainId;
+  const isCurrent = () => MSG === owner && entry.gen === gen && entry.chainId === chainAtStart;
   entry.state = 'running';
   entry.error = null;
   renderComposite();
@@ -6358,17 +6387,23 @@ async function checkAddress(i) {
     if (!adapter) throw new Error('there is no scanner for this chain yet.');
     if (!adapter.validateAddress(entry.address)) throw new Error('it failed the chain\'s own address validator.');
     let out;
+    const hosts = new Set();
+    const onNet = (ev, url) => { if (ev === 'request') { try { hosts.add(viaName(new URL(url).host)); } catch(_) {} } };
     try {
-      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000, onNet);
     } catch (firstErr) {
-      if (!isTransientFailure(firstErr)) throw firstErr;
+      if (!isCurrent() || !isTransientFailure(firstErr)) throw firstErr;
       await new Promise(r => setTimeout(r, 2000));
-      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
+      out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000, onNet);
     }
+    entry.via = Array.from(hosts);
+    if (!isCurrent()) return;
     const result = VerdictEngine.evaluate(out.checks, out.expected, adapter.name, out.criticalDefsTotal);
     entry.scan = fromAddressScan(result, entry.address, entry.chainId, 'token');
     entry.state = 'done';
+    entry.checkedAt = new Date();
   } catch (e) {
+    if (!isCurrent()) return;
     // A failed check must never read as a clean one. It stays INSUFFICIENT
     // DATA, which keeps the composite off PASS.
     entry.error = (e && e.message) ? e.message : 'unknown error';
@@ -6382,14 +6417,17 @@ async function checkAllAddresses() {
   if (!MSG) return;
   // Sequential on purpose: the free security API rate-limits per IP, and a
   // burst of parallel calls turns into a page of INSUFFICIENT DATA rows.
-  for (let i = 0; i < MSG.addresses.length; i++) {
-    if (MSG.addresses[i].state !== 'done') await checkAddress(i);
+  const owner = MSG;
+  for (let i = 0; i < owner.addresses.length; i++) {
+    if (MSG !== owner || MSG.stale) return;
+    if (owner.addresses[i].state !== 'done') await checkAddress(i);
   }
 }
 
 function setAddressChain(i, chainId) {
   if (!MSG || !MSG.addresses[i]) return;
   MSG.addresses[i].chainId = chainId;
+  MSG.addresses[i].gen = (MSG.addresses[i].gen || 0) + 1;   // any check in flight was for the old chain
   MSG.addresses[i].scan = null;      // a previous result was for another chain
   MSG.addresses[i].state = 'idle';
   MSG.addresses[i].error = null;
@@ -6397,7 +6435,8 @@ function setAddressChain(i, chainId) {
 }
 
 /* ------------------------------------------------------- rendering */
-const VCLASS = { pass: 'sv-pass', caution: 'sv-caution', fail: 'sv-fail', unknown: 'sv-unknown' };
+// Message results only: a clean code is shown as a neutral NO MATCH.
+const VCLASS = { pass: 'sv-nomatch', caution: 'sv-caution', fail: 'sv-fail', unknown: 'sv-unknown' };
 const CHAIN_NAME = { evm: 'EVM', solana: 'Solana', sui: 'Sui', tron: 'TRON' };
 
 function sectionShell(title, verdictLabel, verdictKey, bodyHtml) {
@@ -6425,6 +6464,24 @@ function urlSectionHtml(urls, findings) {
   return sectionShell('Links found (' + urls.length + ')', null, null, rows);
 }
 
+// What a "Check this address" press sends, and to whom. Message-extracted
+// addresses are checked as tokens; the recipients below are the ones each
+// chain's token path contacts (verified from the adapters, 20 Oct 2026).
+const VIA_NAMES = { 'api.gopluslabs.io': 'GoPlus Security', 'solana-rpc.publicnode.com': 'PublicNode (Solana)' };
+function viaName(host) {
+  if (VIA_NAMES[host]) return VIA_NAMES[host];
+  if (/\.workers\.dev$/.test(host)) return 'our server';
+  return host;
+}
+function addressDisclosure(entry) {
+  const net = entry.chain === 'evm' ? (EVM_CHAINS[entry.chainId] || entry.chainId) : (CHAIN_NAME[entry.chain] || entry.chain);
+  const head = 'Checking sends this address and the network (' + net + ') — not your message — to ';
+  if (entry.chain === 'evm') return head + 'GoPlus Security.';
+  const cache = ' If our server is used, it may keep the provider’s answer for up to 15 minutes. Routine invocation logging for that server was disabled on 20 October 2026; historical request logs may still contain addresses and IP addresses, and diagnostic logging remains enabled. See the privacy policy for remaining storage.';
+  if (entry.chain === 'solana') return head + 'GoPlus Security, or through our server if a direct request fails. If the address is not a token, a public Solana node (PublicNode) is asked what kind of account it is.' + cache;
+  return head + 'GoPlus Security, or through our server if a direct request fails.' + cache;
+}
+
 function addressRowHtml(entry, i) {
   const chainName = CHAIN_NAME[entry.chain] || entry.chain;
   let picker = '';
@@ -6437,25 +6494,28 @@ function addressRowHtml(entry, i) {
   }
 
   const busy = entry.state === 'running';
-  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')"' + (busy ? ' disabled' : '') + '>'
-    + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : 'Check this address')) + '</button>';
+  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')" aria-describedby="addr-disc-' + i + '"' + (busy || (MSG && MSG.stale) ? ' disabled' : '') + '>'
+    + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : (entry.state === 'error' ? 'Try again' : 'Check this address'))) + '</button>';
 
   let result = '';
   if (entry.state === 'done' && entry.scan) {
     const s = entry.scan;
     const top = (s.findings || []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').slice(0, 3);
     result = '<div class="addr-result">'
-      + '<div class="rline"><span class="sect-verdict ' + (VCLASS[s.verdict] || '') + '">' + escapeHtml(s.label) + '</span>'
+      + '<div class="rline"><span class="sect-verdict ' + (VCLASS[s.verdict] || '') + '">' + escapeHtml(MSG_BADGE[s.verdict] || s.label) + '</span>'
+      + (s.verdict === 'pass' ? '<span class="addr-scope">About this address only.</span> ' : '')
       + '<span>' + escapeHtml(s.summary) + '</span></div>'
       + (top.length
           ? '<ul>' + top.map(f => '<li>' + escapeHtml(f.title) + '</li>').join('') + '</ul>'
           : '')
-      + '<div class="addr-meta">' + escapeHtml(s.coverage.indicators || '') + '</div>'
+      + '<div class="addr-meta">' + escapeHtml(s.coverage.indicators || '')
+      + (entry.checkedAt ? ' · checked ' + escapeHtml(entry.checkedAt.toLocaleTimeString()) : '')
+      + (entry.via && entry.via.length ? ' · via ' + escapeHtml(entry.via.join(', ')) : '') + '</div>'
       + '</div>';
   } else if (entry.state === 'error') {
     result = '<div class="addr-result"><div class="rline">'
       + '<span class="sect-verdict sv-unknown">INSUFFICIENT DATA</span>'
-      + '<span>This address could not be checked: ' + escapeHtml(String(entry.error).replace(/\.\s*$/, ''))
+      + '<span>Could not complete \u2014 ' + escapeHtml(String(entry.error).replace(/\.\s*$/, ''))
       + '. That is not a clean result — nothing is known about it either way.</span></div></div>';
   } else if (entry.state === 'idle') {
     result = '<div class="addr-unchecked">Not checked yet — counted as INSUFFICIENT DATA, not as safe.</div>';
@@ -6492,17 +6552,334 @@ function addressRowHtml(entry, i) {
     + '<div class="addr-mono">' + escapeHtml(entry.address) + '</div>'
     + '<div class="addr-meta">' + escapeHtml(chainName)
     + (entry.chain === 'evm' ? ' · chain not stated in the text' : '') + '</div>'
-    + '</div><div class="addr-ctl">' + picker + btn + '</div></div>'
+    + '</div></div>'
+    + '<p class="addr-disclose" id="addr-disc-' + i + '">' + escapeHtml(addressDisclosure(entry)) + '</p>'
+    + '<div class="addr-ctl addr-ctl-below">' + picker + btn + '</div>'
     + where
     + '<div class="addr-links">' + explorer + '</div>'
     + result + '</div>';
 }
 
+// ---- Message result presentation -------------------------------------
+// Presentation only. The engine's verdict codes, their precedence and the
+// API output are unchanged; this maps them to the words a visitor reads.
+// A clean code is never shown as "PASS": nothing here can establish that a
+// message is legitimate, only that no covered pattern matched.
+const MSG_BADGE = { pass: 'NO MATCH', caution: 'CAUTION', fail: 'FAIL', unknown: 'INSUFFICIENT DATA' };
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function compositeFindings(composite) {
+  const out = [];
+  (composite.sections || []).forEach(s => {
+    (s.scan ? [s.scan] : []).concat(s.scans || []).forEach(sc => {
+      (sc && sc.findings || []).forEach(f => out.push(f));
+    });
+  });
+  return out;
+}
+// Addresses that still leave a gap: not checked yet, or checked and failed.
+function addressGaps() {
+  const list = (MSG && MSG.addresses) || [];
+  return {
+    pending: list.filter(a => a.state === 'idle' || a.state === 'running').length,
+    failed: list.filter(a => a.state === 'error').length,
+  };
+}
+function addressGapSentence() {
+  const g = addressGaps();
+  const parts = [];
+  if (g.pending) parts.push(plural(g.pending, 'address', 'addresses') + ' in this message ' + (g.pending === 1 ? 'has' : 'have') + ' not been checked');
+  if (g.failed) parts.push(plural(g.failed, 'address check', 'address checks') + ' could not complete');
+  return parts.length ? parts.join(', and ').replace(/^./, c => c.toUpperCase()) + '.' : 'An address in this message has not been checked.';
+}
+// Shown when an address check moved the result away from what the text
+// scan alone produced, so a visitor knows why the badge changed.
+const ADDRESS_UPDATE_NOTICE = 'Updated after checking an address in this message. This does not verify the sender or the request.';
+
+function messageHeadline(composite, promptVerdict) {
+  const fs = compositeFindings(composite);
+  const serious = fs.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').length;
+  const signs = fs.filter(f => ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].indexOf(f.severity) !== -1).length;
+  const v = composite.verdict;
+  if (v === 'fail') return { badge: MSG_BADGE.fail, title: 'Serious warning signs — do not act on this message',
+    line: (serious ? plural(serious, 'serious finding') + ' matched. ' : '') + 'The rest of the text passing does not make this part safe.' };
+  if (v === 'caution') return { badge: MSG_BADGE.caution, title: 'Warning signs found — check before you act',
+    line: (signs ? plural(signs, 'warning sign') + ' matched. ' : '') + 'Read what each one means below before you reply, pay or click.' };
+  if (v === 'unknown') return { badge: MSG_BADGE.unknown, title: 'Not enough could be checked',
+    // An unknown that comes only from addresses is a different fact from
+    // text that could not be analysed; say which, and how many.
+    line: promptVerdict === 'unknown'
+      ? 'Part of this text could not be analysed. This is not a clean result.'
+      : addressGapSentence() + ' This is not a clean result.' };
+  return { badge: MSG_BADGE.pass, title: 'No covered warning signs detected',
+    line: 'We checked hidden instructions, requests for secrets and link structure. We did not establish whether the sender, payment request or destination is legitimate.' };
+}
+
+// Coverage rows. "Checked" means the check completed within its documented
+// scope and limits — never that the content is legitimate. Rows the scan
+// cannot answer are always listed, because they are the questions a
+// visitor most often assumes were answered.
+const COV_WORDS = {
+  checked: 'Checked',
+  na: 'Not applicable',
+  disabled: 'Not checked — disabled for this scan',
+  failed: 'Could not complete',
+};
+function messageCoverageRows(r, addrCount) {
+  const cov = r.coverage || {};
+  const trunc = !!(r.input && r.input.truncated);
+  const limit = Number(LIMITS.MAX_INPUT_CHARS).toLocaleString('en-US');
+  const nLinks = (r.urls || []).length;
+  // 'unavailable' is what the engine reports for a check it was told not to
+  // run; 'failed' is reserved for a check that started and failed.
+  const stateOf = (v) => v === 'failed' ? 'failed'
+    : v === 'unavailable' ? 'disabled'
+    : (v === 'not_applicable' || v === 'not_found') ? 'na'
+    : 'checked';
+  const ran = [
+    ['secrets', 'Requests for secrets (recovery phrase, keys, passwords, codes)', stateOf(cov.rules)],
+    ['instructions', 'Hidden instructions aimed at AI assistants', stateOf(cov.rules)],
+    ['unicode', 'Invisible and look-alike characters', stateOf(cov.unicode)],
+    ['markup', 'Hidden markup', stateOf(cov.markup)],
+    ['encoding', 'Encoded content', stateOf(cov.encoding)],
+    ['urls', 'Link structure (' + plural(nLinks, 'link') + ')', stateOf(cov.urls)],
+    ['leftovers', 'AI-assistant leftovers', stateOf(cov.leftovers)],
+    ['addresses', 'Address extraction (' + addrCount + ' identified)', addrCount ? 'checked' : 'na'],
+  ].map(([key, label, state]) => {
+    // Only part of the text was examined: no row that ran can claim the
+    // whole of it.
+    if (trunc && (state === 'checked' || state === 'na')) {
+      return { key, label, state: 'partial', words: 'Could not complete — checked the first ' + limit + ' characters' };
+    }
+    return { key, label, state, words: COV_WORDS[state] };
+  });
+  const never = [
+    ['owner', 'Where links lead and who owns them', 'Not checked — links are never opened'],
+    ['sender', 'Who sent this message', 'Not checked — cannot be established from text'],
+    ['genuine', 'Whether a payment or login request is genuine', 'Not checked — outside this scan'],
+    ['meaning', 'Meaning of the text', 'Not checked — this scan matches patterns only'],
+  ].map(([key, label, words]) => ({ key, label, state: 'not_checked', words, always: true }));
+  return ran.concat(never);
+}
+function coverageListHtml(rows, extraRow) {
+  const row = (x) => '<div class="cov-row cov-' + x.state + '" data-cov="' + escapeHtml(x.key) + '">'
+    + '<dt>' + escapeHtml(x.label) + '</dt><dd>' + escapeHtml(x.words) + '</dd></div>';
+  return '<dl class="cov-list">' + rows.map(row).join('') + (extraRow ? row(extraRow) : '') + '</dl>'
+    + '<ul class="cov-defs">'
+    + '<li><strong>Checked</strong> — this check completed within its documented scope and processing limits. It does not establish that the content is legitimate.</li>'
+    + '<li><strong>Not applicable</strong> — no input requiring this check was identified within the supported scope.</li>'
+    + '<li><strong>Not checked</strong> — this scan does not do it, or it was disabled for this scan; the reason follows the dash.</li>'
+    + '<li><strong>Could not complete</strong> — the check started and then failed, or reached a limit that prevented it from covering the whole text.</li>'
+    + '</ul>';
+}
+// Notices sit under the headline whatever the badge. They never replace a
+// detected finding; they say what the result does not cover.
+function coverageNoticesHtml(rows) {
+  let h = '';
+  if (rows.some(x => x.state === 'partial')) {
+    h += '<p class="cov-notice"><strong>Only part of your message was checked.</strong> No result applies to the remaining text.</p>';
+  }
+  const failed = rows.filter(x => x.state === 'failed').map(x => x.label);
+  if (failed.length) {
+    h += '<p class="cov-notice"><strong>Some checks could not complete:</strong> ' + escapeHtml(failed.join(', '))
+      + '. Findings shown below still apply; anything those checks would have found is unknown.</p>';
+  }
+  return h;
+}
+
+// Recommended action, part 1: precautions that belong to this result.
+// Result-level lines first, then every CRITICAL, HIGH and MEDIUM finding's
+// own precaution, de-duplicated. Nothing a visitor answers later can
+// remove, reorder or soften this part.
+const SEV_ORDER = { CRITICAL: 3, HIGH: 2, MEDIUM: 1 };
+function resultPrecautions(composite) {
+  const out = [];
+  const seen = new Set();
+  const add = (action, because) => {
+    const key = String(action).trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({ action, because });
+  };
+  if (composite.verdict === 'unknown') add('This scan is incomplete. Verify the message independently before acting.', null);
+  // Removed only when the gap is actually closed: every address checked
+  // and answered. A failed check is a gap, not a resolution.
+  const g = addressGaps();
+  if (g.pending || g.failed) add('Do not send anything to an address in this message until it has been checked and you have confirmed it with the intended recipient.', addressGapSentence());
+  compositeFindings(composite)
+    .filter(f => f.action && SEV_ORDER[f.severity])
+    .sort((a, b) => SEV_ORDER[b.severity] - SEV_ORDER[a.severity])
+    .forEach(f => add(f.action, f.title));
+  return out;
+}
+// Part 2 before any answer: the default for the engine code.
+const DEFAULT_ADVICE = {
+  pass: 'If this message asks you to pay, log in, share a code or install something, open the organisation’s own app or website yourself. Do not use the link or number in the message.',
+  caution: 'If you still need to act, contact the sender through a channel you already trust.',
+  fail: 'Do not reply, pay or click anything in this message.',
+  unknown: 'Treat this message as unchecked. Do not act on it until you have verified it another way.',
+};
+function precautionsHtml(list) {
+  if (!list.length) return '';
+  return '<h4 class="ra-head">Precautions from this result</h4><ul class="actions-list">'
+    + list.map(a => '<li>' + escapeHtml(a.action)
+      + (a.because ? '<span class="cause">because: ' + escapeHtml(a.because) + '</span>' : '') + '</li>').join('')
+    + '</ul>';
+}
+
+// ---- "Before you act" ------------------------------------------------
+// One optional question after a message result. The answer describes how
+// the visitor reads the message; it is never treated as a fact about it.
+// It replaces part 2 of Recommended action and may add one "Not checked"
+// coverage row. It never changes the badge, headline, notices, findings
+// or part 1, and the page never guesses it from the text.
+// Held in page memory only: never in the URL, storage, the usage beacon
+// or the share image.
+const BYA_ANSWERS = [
+  { key: 'pay', label: 'Pay or send money', row: 'Whether this payment request is genuine',
+    status: 'The payment request remains unverified.',
+    advice: 'Open the organisation’s own app or website, or call a number you already have. Pay only there.',
+    note: 'We cannot check bank transfers or card payments.' },
+  { key: 'crypto', label: 'Send crypto to an address', row: 'Whether this is the recipient you intended',
+    status: 'The recipient remains unverified.',
+    advice: 'Get the address from the original trusted source, not from this message or your history. Compare every character before sending.' },
+  { key: 'login', label: 'Log in or enter personal details', row: 'Whether the login page belongs to the organisation',
+    status: 'The login request remains unverified.',
+    advice: 'Do not use the link. Type the organisation’s address yourself or use your bookmark or app.' },
+  { key: 'secret', label: 'Share a code, password or recovery phrase', row: null,
+    status: 'Do not share it.',
+    advice: 'Never send a one-time code to someone who asks for it. Enter it only in the trusted app or website for an action you initiated and understand. No genuine service asks for a recovery phrase or private key.' },
+  { key: 'sign', label: 'Sign or approve something in a wallet', row: 'What the signature or approval allows',
+    status: 'What you would be signing remains unverified.',
+    advice: 'If you cannot read what the wallet shows, do not sign. An unlimited approval can let someone move tokens later.' },
+  { key: 'install', label: 'Install or run something', row: 'What the software does',
+    status: 'What this software does remains unverified.',
+    advice: 'Install only from the official source. For an npm package, check the exact name before installing.' },
+  { key: 'ai', label: 'Give it to an AI assistant or agent', row: 'What the assistant is allowed to do',
+    status: 'The consequences depend on your assistant’s permissions.', advice: null },
+  { key: 'info', label: 'Nothing — it is information only', row: null,
+    status: 'You selected information only.',
+    advice: 'Any warning signs above still apply. If a later message asks you to act, check that one too.' },
+  { key: 'unsure', label: 'I’m not sure', row: null, status: null, advice: null },
+];
+const BYA_AI = [
+  { key: 'read', label: 'Only read and reply in a chat',
+    advice: 'Hidden instructions may distort the answer. Verify important claims against the original source.' },
+  { key: 'files', label: 'Read my files, email or accounts',
+    advice: 'Limit access to what this task needs. Keep unrelated private information and credentials inaccessible. Treat instructions inside the supplied text as untrusted.' },
+  { key: 'run', label: 'Run commands or send information',
+    advice: 'Restrict available tools and destinations. Require review before executing commands, changing files, or sending information outside the intended task.' },
+  { key: 'unsure', label: 'Not sure',
+    advice: 'Check which tools and accounts are enabled before supplying unfamiliar content.' },
+];
+const BYA_AI_CAVEAT = 'These steps reduce the risk; they do not guarantee protection.';
+function byaAnswer(key) { return BYA_ANSWERS.find(a => a.key === key) || null; }
+// For tests: the current answer, or null when there is no result.
+function messageAnswerForTest() { return MSG ? MSG.answer : null; }
+function byaAi(key) { return BYA_AI.find(a => a.key === key) || null; }
+
+// Part 2 for the current answer, as { status, lines } in plain text.
+function byaAdvice(verdict, answerKey, aiKey) {
+  const a = byaAnswer(answerKey);
+  if (!a || a.key === 'unsure') return { status: null, lines: [DEFAULT_ADVICE[verdict] || DEFAULT_ADVICE.unknown] };
+  if (a.key === 'ai') {
+    const ai = byaAi(aiKey) || byaAi('unsure');
+    return { status: a.status, lines: [ai.advice, BYA_AI_CAVEAT] };
+  }
+  const lines = [a.advice].concat(a.note ? [a.note] : []);
+  const n = MSG ? MSG.addresses.length : 0;
+  let handoff = null;
+  if (a.key === 'crypto' || a.key === 'sign') {
+    lines.push(n ? 'Use \u201cCheck this address\u201d on ' + (n === 1 ? 'the address' : 'each address') + ' above. A result there is about that address only.'
+                 : 'No crypto address was found in this text.');
+    if (a.key === 'crypto') handoff = { action: 'compare', label: 'Compare two addresses' };
+  }
+  if (a.key === 'install') handoff = { action: 'npm', label: 'Open the npm package check' };
+  return { status: a.status, lines, handoff };
+}
+function byaAdviceHtml(adv) {
+  return (adv.status ? '<span class="ra-status">' + escapeHtml(adv.status) + '</span>' : '')
+    + adv.lines.map(l => '<span class="ra-line">' + escapeHtml(l) + '</span>').join(' ')
+    + (adv.handoff
+      ? '<span class="ra-handoff"><button type="button" class="btn-check" data-bya-action="' + adv.handoff.action + '"'
+        + (MSG && MSG.stale ? ' disabled' : '') + '>' + escapeHtml(adv.handoff.label) + '</button></span>'
+      : '');
+}
+// Hand-offs open an existing check and send nothing. The compare tool is
+// never prefilled: the trusted address must come from the visitor. The
+// package check opens without a name: the visitor types the exact one.
+function byaHandoff(action) {
+  if (!MSG || MSG.stale) return;
+  if (action === 'compare') {
+    setScanMode('address');
+    const t = document.getElementById('twinCheck');
+    if (t) t.open = true;
+    const a = document.getElementById('twinA');
+    if (a && a.focus) a.focus();
+  } else if (action === 'npm') {
+    setScanMode('package');
+    const p = document.getElementById('packageInput');
+    if (p && p.focus) p.focus();
+  }
+}
+function onResultsClick(e) {
+  const t = e && e.target && e.target.closest ? e.target.closest('[data-bya-action]') : null;
+  if (t && !t.disabled) byaHandoff(t.getAttribute('data-bya-action'));
+}
+function byaRadios(name, list, current, idPrefix) {
+  return list.map(o => '<label class="bya-opt"><input type="radio" name="' + name + '" id="' + idPrefix + o.key
+    + '" value="' + o.key + '"' + (o.key === current ? ' checked' : '') + '> ' + escapeHtml(o.label) + '</label>').join('');
+}
+function byaQuestionHtml() {
+  const answer = MSG && MSG.answer, ai = MSG && MSG.ai;
+  return '<fieldset class="bya" id="byaFieldset"><legend>What is this message asking you to do?</legend>'
+    + '<p class="bya-help">Optional. Your answer stays on this page and changes only the advice for your situation, not the result.</p>'
+    + '<div class="bya-opts">' + byaRadios('bya', BYA_ANSWERS, answer, 'bya-') + '</div></fieldset>'
+    + (answer === 'ai'
+      ? '<fieldset class="bya bya-ai" id="byaAiFieldset"><legend>What can that assistant do?</legend>'
+        + '<p class="bya-help">Optional.</p><div class="bya-opts">' + byaRadios('byaAi', BYA_AI, ai, 'bya-ai-') + '</div></fieldset>'
+      : '');
+}
+function announceBya(text) {
+  const live = document.getElementById('byaLive');
+  if (!live) return;
+  // Cleared first so an identical sentence is still announced.
+  live.textContent = '';
+  live.textContent = text;
+}
+function setByaAnswer(key) {
+  if (!MSG || !byaAnswer(key)) return;
+  MSG.answer = key;
+  if (key !== 'ai') MSG.ai = null;
+  rerenderBya('bya-' + key);
+}
+function setByaAi(key) {
+  if (!MSG || !byaAi(key) || MSG.answer !== 'ai') return;
+  MSG.ai = key;
+  rerenderBya('bya-ai-' + key);
+}
+function rerenderBya(focusId) {
+  renderComposite(false);
+  const adv = byaAdvice(buildComposite().verdict, MSG.answer, MSG.ai);
+  announceBya([adv.status].concat(adv.lines).filter(Boolean).join(' '));
+  // The result was redrawn; put focus back on the option just chosen so a
+  // keyboard user does not lose their place.
+  try { const el = document.getElementById(focusId); if (el && el.focus) el.focus(); } catch(_) {}
+}
+function onResultsChange(e) {
+  const t = e && e.target;
+  if (!t || t.type !== 'radio') return;
+  if (t.name === 'bya') setByaAnswer(t.value);
+  else if (t.name === 'byaAi') setByaAi(t.value);
+}
+
 function renderComposite(scroll) {
+  // Suspended while another check is on screen; restored on return.
+  if (currentScanMode && currentScanMode !== 'prompt') return;
   const composite = buildComposite();
   if (!composite) return;
   const msgScan = composite.sections[0].scan;
   const r = MSG.promptScan;
+  const head = messageHeadline(composite, r.verdict);
 
   const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
   const labels = { CRITICAL: 'Critical', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', INFO: 'Informational' };
@@ -6516,48 +6893,35 @@ function renderComposite(scroll) {
       + list.map(f => findingHtml(f, MSG.text)).join('') + '</div>';
   }
   if (!msgScan.findings.length) {
-    groups = '<div class="finding"><div class="finding-plain">No covered risk pattern matched anywhere in this text. That is not the same as the message being safe — see what this scan did not do, below.</div></div>';
+    groups = '<div class="finding"><div class="finding-plain">Nothing matched the patterns listed under Coverage.</div></div>';
   }
   const c = r.counts;
   const countsLine = '<div class="counts-line">'
     + c.critical + ' critical · ' + c.high + ' high · ' + c.medium + ' medium · '
-    + c.low + ' low · ' + c.informational + ' informational · confidence: ' + escapeHtml(r.confidence)
+    + c.low + ' low · ' + c.informational + ' informational'
     + (r.input.invisibleCharactersRemoved ? ' · ' + r.input.invisibleCharactersRemoved + ' invisible characters found' : '')
     + '</div>';
 
   const checked = MSG.addresses.filter(a => a.state === 'done').length;
   const addrSection = MSG.addresses.length
     ? sectionShell(
-        'Crypto addresses found (' + MSG.addresses.length + ')',
+        'Addresses in this text (' + MSG.addresses.length + ' · ' + checked + ' checked)',
         null, null,
         (MSG.addresses.length > 1
-          ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()">Check all ' + MSG.addresses.length + '</button>'
+          ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()"' + (MSG.stale ? ' disabled' : '') + '>Check all ' + MSG.addresses.length + '</button>'
           : '')
         + MSG.addresses.map(addressRowHtml).join(''))
     : '';
 
-  const acts = composite.recommended_actions.length
-    ? sectionShell('What to do', null, null,
-        '<ul class="actions-list">' + composite.recommended_actions.map(a =>
-          '<li>' + escapeHtml(a.action) + '<span class="cause">because: ' + escapeHtml(a.because) + '</span></li>'
-        ).join('') + '</ul>')
-    : '';
+  const acts = sectionShell('Recommended action', null, null,
+    precautionsHtml(resultPrecautions(composite))
+    + '<h4 class="ra-head">Advice for your situation</h4>'
+    + '<div class="ra-advice" id="byaAdvice">' + byaAdviceHtml(byaAdvice(composite.verdict, MSG.answer, MSG.ai)) + '</div>');
 
-  const addrCoverage = !MSG.addresses.length ? 'not_found'
-    : checked === 0 ? 'not_checked'
-    : checked === MSG.addresses.length ? 'complete'
-    : 'partial';
-  const cov = '<div class="cov-grid">'
-    + coverageCell('unicode', 'Invisible characters', msgScan.coverage.unicode)
-    + coverageCell('markup', 'Hidden markup', msgScan.coverage.markup)
-    + coverageCell('encoding', 'Encoded content', msgScan.coverage.encoding)
-    + coverageCell('urls', 'Links', msgScan.coverage.urls)
-    + coverageCell('leftovers', 'AI-assistant leftovers', msgScan.coverage.leftovers || 'unavailable')
-    + coverageCell('semantic', 'Meaning analysis', msgScan.coverage.semantic)
-    + coverageCell('addresses',
-        MSG.addresses.length ? 'Addresses (' + checked + '/' + MSG.addresses.length + ')' : 'Addresses',
-        addrCoverage)
-    + '</div>';
+  const covRows = messageCoverageRows(r, MSG.addresses.length);
+  const answered = byaAnswer(MSG.answer);
+  const cov = coverageListHtml(covRows, answered && answered.row
+    ? { key: 'answer', label: answered.row, state: 'not_checked', words: 'Not checked' } : null);
 
   const limits = '<ul class="limit-list">'
     + composite.limitations.map(l =>
@@ -6566,17 +6930,21 @@ function renderComposite(scroll) {
 
   const html = '<div class="pass">'
     + '<div class="pass-top"><div class="verdict">'
-      + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(composite.label) + '</div>'
-      + '<div class="verdict-meta"><strong>' + escapeHtml(composite.summary) + '</strong></div>'
-    + '</div><div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
+      + '<div class="verdict-badge ' + (composite.verdict === 'pass' ? 'nomatch' : composite.verdict) + '">' + escapeHtml(head.badge) + '</div>'
+      + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
+    + '</div>' + (MSG.stale ? '<p class="cov-notice stale-notice"><strong>Out of date — scan again.</strong> The message was edited after this scan. This result and its buttons apply to the earlier text.</p>' : '')
+    + (MSG.addresses.some(a => a.state === 'done' || a.state === 'error') && composite.verdict !== MSG.initialVerdict
+        ? '<p class="cov-notice addr-update-notice"><strong>' + escapeHtml(ADDRESS_UPDATE_NOTICE) + '</strong></p>' : '')
+    + coverageNoticesHtml(covRows) + '<div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
       + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
     + '</div></div>'
     + '<div class="pass-body">'
-      + sectionShell('Message content', msgScan.label, msgScan.verdict, countsLine + groups)
+      + sectionShell('Message content', MSG_BADGE[msgScan.verdict] || msgScan.label, msgScan.verdict, countsLine + groups)
       + urlSectionHtml(r.urls || [], msgScan.findings)
       + addrSection
-      + acts
       + sectionShell('Coverage', null, null, cov)
+      + byaQuestionHtml()
+      + acts
       + sectionShell('What this scan did not do', null, null, limits)
     + '</div>'
     + '<div class="pass-footer">'
@@ -6593,6 +6961,18 @@ function renderComposite(scroll) {
   // yank the page out from under whoever just pressed the button.
   if (scroll) results.scrollIntoView(ScanConsole.scrollOpts());
 }
+
+// Answers reach the page through one listener on the results container,
+// so the rendered result carries no inline handlers of its own.
+(function wireBya(){
+  try {
+    const el = document.getElementById('results');
+    if (el && el.addEventListener) {
+      el.addEventListener('change', onResultsChange);
+      el.addEventListener('click', onResultsClick);
+    }
+  } catch(_) {}
+})();
 
 let ecosystem = 'evm';
 let mode = 'token';
@@ -7131,91 +7511,9 @@ function receiveFromBookmarklet(){
   } catch(_) {}
 }
 </script>
-<!-- Cloudflare Web Analytics — cookieless, no fingerprinting, no scan content.
-     Installed manually rather than auto-injected: this site is served by a
-     Worker, which swallows the same-origin /cdn-cgi/rum collector path and
-     answered every automatic beacon with 503. The manual snippet posts to
-     Cloudflare's own endpoint instead, which the CSP allows. -->
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "85f9758a7b7443ec813df639c26f6f89"}'></script>
-
-<!-- ADVERTISING ==========================================================
-     Google AdSense, publisher ca-pub-7192453271158919.
-
-     This page carries advertising by an explicit decision recorded in
-     AD_POLICY in apply-ads.js. Pages whose subject is a scam, a
-     phishing message or an unsafe instruction do NOT carry it, and
-     their Content-Security-Policy omits these hosts entirely.
-
-     NOTHING SUBMITTED TO THE SCANNER EVER REACHES AN AD CALL. The ad
-     code receives the page URL and nothing else: no finding, no
-     verdict, no address, no URL taken from a message, no part of
-     pasted text. promptscan.ui.test.js asserts the code path; a live
-     network capture is the only thing that proves the behaviour, and
-     that check belongs in the release routine, not in this comment.
-
-     The rails are position:fixed in the page gutters and are NOT
-     RENDERED below 1280px — they do not exist in the flow, so they
-     cannot shift the page or crowd the scanner on a phone.
-
-     A RAIL STAYS HIDDEN UNTIL AN AD ACTUALLY FILLS, so an unfilled
-     slot cannot leave the word "Advertisement" over an empty box.
-
-     KILL SWITCH: set data-ads="off" on <html> and every slot
-     disappears with no deploy of the page content itself.
-     ================================================================== -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7192453271158919"
-     crossorigin="anonymous"></script>
-
-  <aside class="ad-rail ad-rail-left" data-ad-state="pending">
-    <span class="ad-label">Advertisement</span>
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-7192453271158919"
-         data-ad-slot="1457626247"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </aside>
-
-  <aside class="ad-rail ad-rail-right" data-ad-state="pending">
-    <span class="ad-label">Advertisement</span>
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-7192453271158919"
-         data-ad-slot="8189344100"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </aside>
-<script>
-/* Reveal a rail only once AdSense reports a filled creative. Reads one
-   attribute AdSense sets on its own element; sends nothing anywhere. */
-(function () {
-  var rails = document.querySelectorAll('.ad-rail');
-  if (!rails.length) return;
-  function sync() {
-    for (var i = 0; i < rails.length; i++) {
-      var ins = rails[i].querySelector('ins.adsbygoogle');
-      var filled = !!ins && ins.getAttribute('data-ad-status') === 'filled';
-      rails[i].setAttribute('data-ad-state', filled ? 'filled' : 'empty');
-    }
-  }
-  if (typeof MutationObserver === 'function') {
-    var obs = new MutationObserver(sync);
-    for (var i = 0; i < rails.length; i++) {
-      var ins = rails[i].querySelector('ins.adsbygoogle');
-      if (ins) obs.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
-    }
-    /* Stop watching once the network has had its chance. */
-    setTimeout(function () { sync(); obs.disconnect(); }, 8000);
-  } else {
-    setTimeout(sync, 4000);
-  }
-})();
-</script>
+<!-- No third-party script runs in this document. The scanner page holds
+     pasted messages and their results, and any script here could read
+     them; Cloudflare Web Analytics and advertising stay on the other pages.
+     promptscan.ui.test.js fails the build if one is added back. -->
 </body>
 </html>

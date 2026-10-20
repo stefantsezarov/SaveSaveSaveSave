@@ -98,3 +98,6 @@ switch-domain.sh
 agent
 agent/**
 action.yml
+
+# Deployment configuration is not a public site asset.
+wrangler.preview.jsonc
