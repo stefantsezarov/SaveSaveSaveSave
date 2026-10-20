@@ -37,7 +37,7 @@ An **MCP server**, **CLI** and **Node library** in [`agent/`](agent/) give agent
 ## Privacy
 
 - **Message text** never leaves the browser.
-- **Addresses** go from your browser to GoPlus, or through our Worker for some chains and checks. We don't store them.
+- **Addresses** go from your browser to GoPlus, or through our Worker for some chains and checks. When the Worker is used it may keep GoPlus's answer in Cloudflare's edge cache for up to 15 minutes; EVM wallet checks also send up to 15 counterparty addresses to the sanctions oracle via PublicNode. The Worker's own code logs nothing.
 - **Usage** is counted only as anonymous daily totals (scan kind, chain, verdict). There is no cookie, ID or IP address, and Global Privacy Control is respected. The totals are public: [`?stats=week`](https://cool-sound-6db2riskpass.stefan-tsezarov82.workers.dev/?stats=week).
 - **Ads** appear in the side columns on wide screens, on the scanner and a few guides. They never appear on the high-harm guides and never receive anything you scan. Details are on the [privacy page](https://savesavesavesave.xyz/privacy).
 

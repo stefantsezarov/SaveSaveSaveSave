@@ -963,6 +963,17 @@ section('Address result escapes provider and pasted text');
   nodes.promptInput.value = FX.S6 + '!'; sandbox.syncMessageFreshness();
   check('H1: a stale result disables its hand-off button', /data-bya-action="npm" disabled>/.test(nodes.results.innerHTML));
 
+  section('Before you act: privacy copy matches routing');
+  const privacy = fs.readFileSync(path.join(__dirname, 'privacy.html'), 'utf8');
+  check('P6: the footer no longer claims the address goes only directly to GoPlus or is never stored',
+    !/sent directly from your browser to GoPlus Security's API to run the check/.test(html) && !/does not see, log, or store it/.test(html));
+  check('P6: the footer names the Worker path and the 15-minute cache', /through our own Cloudflare Worker/.test(html) && /up to 15 minutes/.test(html));
+  check('P6: the privacy page no longer says nothing is stored anywhere', !/Nothing you scan is stored anywhere, in your browser or ours/.test(privacy));
+  check('P6: the privacy page discloses the edge cache and counterparty checks',
+    /edge cache for up to 15 minutes/.test(privacy) && /up to 15 addresses the wallet traded with/.test(privacy) && /PublicNode \(EVM RPC\)/.test(privacy));
+  check('P6: the privacy page states answers are not sent or stored', /are not sent or stored/.test(privacy));
+  check('P6: no address-row disclosure claims "we do not store it"', !/addressDisclosure[\s\S]{0,1500}do not store/.test(html));
+
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
   check('leftovers: the message tool description names AI-assistant leftovers',
