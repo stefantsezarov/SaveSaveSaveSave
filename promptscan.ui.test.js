@@ -253,6 +253,8 @@ check('prompt mode shows the prompt panel', nodes.promptPanel.classList.contains
 sandbox.setScanMode('address');
 check('address mode restores the address panel', nodes.addressPanel.style.display === 'block');
 check('address mode hides the prompt panel', !nodes.promptPanel.classList.contains('active'));
+// The message scan below is only reachable from the prompt panel.
+sandbox.setScanMode('prompt');
 
 nodes.promptInput.value = 'hello world';
 sandbox.updatePromptCount();
@@ -846,6 +848,75 @@ section('Address result escapes provider and pasted text');
     const m = JSON.stringify(sandbox.currentMessageCard() || {});
     return !ALL.some(k => m.includes('"' + k + '"')) && !m.includes(sandbox.byaAnswer('secret').label) && !m.includes('Do not share it.');
   })());
+
+  section('Before you act: result state');
+  const S6ADDR = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
+  const scanS6 = () => { nodes.promptInput.value = FX.S6; sandbox.startMessageScan(sandbox.scanPrompt(FX.S6), FX.S6, false); };
+  // H1: editing marks the result out of date and disables hand-offs.
+  scanS6();
+  nodes.promptInput.value = FX.S6 + ' edited';
+  sandbox.syncMessageFreshness(); h = nodes.results.innerHTML;
+  check('H1: an edit marks the result out of date', /Out of date — scan again\./.test(h));
+  check('H1: and disables the address buttons', /onclick="checkAddress\(0\)" disabled>/.test(h));
+  let attempted = 0;
+  sandbox.attemptScan = async () => { attempted++; return cleanChecks(); };
+  await sandbox.checkAddress(0);
+  check('H1: a stale result cannot start an address check', attempted === 0);
+  nodes.promptInput.value = FX.S6; sandbox.syncMessageFreshness(); h = nodes.results.innerHTML;
+  check('H1: undoing the edit makes it current again', !/Out of date/.test(h) && !/onclick="checkAddress\(0\)" disabled>/.test(h));
+  // H2: the four invalidating actions (reload is a fresh page).
+  scanS6(); sandbox.setByaAnswer('crypto');
+  sandbox.clearPrompt(); sandbox.setByaAnswer('pay');
+  check('H2: clearing discards the result and answers', nodes.results.style.display === 'none' && sandbox.messageAnswerForTest() === null);
+  scanS6(); sandbox.setByaAnswer('crypto'); nodes.results.style.display = 'block';
+  sandbox.fillPrompt('safe');
+  check('H2: loading an example discards the result and answers', nodes.results.style.display === 'none' && sandbox.messageAnswerForTest() === null);
+  scanS6(); sandbox.setByaAnswer('crypto');
+  sandbox.startMessageScan(sandbox.scanPrompt(FX.S6), FX.S6, false);
+  check('H2: a new scan starts with no answer', sandbox.messageAnswerForTest() === null && !/ra-status/.test(advice(nodes.results.innerHTML)));
+  // H4: an address check keeps the answers; the badge follows the composite.
+  scanS6(); sandbox.setByaAnswer('crypto');
+  stubScans({ [S6ADDR]: cleanChecks() });
+  await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('H4: answers and part 2 survive an address check', advice(h).includes('The recipient remains unverified.') && sandbox.messageAnswerForTest() === 'crypto');
+  check('H4: badge follows the engine composite (CAUTION from the text)', badgeOf(h) === 'CAUTION');
+  // H5: a late response never updates a newer result.
+  scanS6();
+  let release; const gate = new Promise(r => { release = r; });
+  sandbox.attemptScan = async () => { await gate; return cleanChecks(); };
+  const pending = sandbox.checkAddress(0);
+  nodes.promptInput.value = FX.L6; sandbox.startMessageScan(sandbox.scanPrompt(FX.L6), FX.L6, false);
+  const newer = nodes.results.innerHTML;
+  release(); await pending;
+  check('H5: the late response changed nothing', nodes.results.innerHTML === newer && badgeOf(newer) === 'NO MATCH');
+  // A chain change while a check is in flight discards that check.
+  scanS6();
+  let release2; const gate2 = new Promise(r => { release2 = r; });
+  sandbox.attemptScan = async () => { await gate2; return cleanChecks(); };
+  const pending2 = sandbox.checkAddress(0);
+  sandbox.setAddressChain(0, '56');
+  release2(); await pending2;
+  check('H5: a response for the old chain is discarded', /Not checked yet/.test(nodes.results.innerHTML));
+  // H6: repeated clicks make one request.
+  scanS6(); attempted = 0;
+  let release3; const gate3 = new Promise(r => { release3 = r; });
+  sandbox.attemptScan = async () => { attempted++; await gate3; return cleanChecks(); };
+  const p1 = sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0); sandbox.checkAddress(0);
+  check('H6: the button is disabled while pending', /onclick="checkAddress\(0\)" disabled>Checking/.test(nodes.results.innerHTML));
+  release3(); await p1;
+  check('H6: five clicks, one request', attempted === 1);
+  // Suspend and restore around another check.
+  scanS6(); sandbox.setByaAnswer('crypto');
+  sandbox.setScanMode('package');
+  nodes.results.innerHTML = 'PACKAGE RESULT';
+  stubScans({ [S6ADDR]: cleanChecks() });
+  sandbox.renderComposite(false);
+  check('suspend: a message redraw never lands on another check\'s result', nodes.results.innerHTML === 'PACKAGE RESULT');
+  sandbox.setScanMode('prompt'); h = nodes.results.innerHTML;
+  check('restore: returning shows the message result with its answers', badgeOf(h) === 'CAUTION' && advice(h).includes('The recipient remains unverified.'));
+  nodes.promptInput.value = 'something else';
+  sandbox.setScanMode('package'); nodes.results.innerHTML = 'PACKAGE RESULT'; sandbox.setScanMode('prompt');
+  check('restore: not when the box holds different text', nodes.results.innerHTML === 'PACKAGE RESULT' || nodes.results.style.display === 'none');
 
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.

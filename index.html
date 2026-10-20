@@ -1123,7 +1123,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <label class="sr-only" for="promptInput">Message or prompt to scan</label>
         <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off" aria-describedby="promptError"
           placeholder="Paste the message or prompt you want to check — for example a DM about your wallet, or a prompt copied from Reddit or Discord.&#10;&#10;We check it for requests for secrets, disguised links, hidden instructions and other known warning signs."
-          oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'"></textarea>
+          oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'; syncMessageFreshness()"></textarea>
 
         <div class="prompt-meta">
           <span class="prompt-count" id="promptCount">0 characters</span>
@@ -5905,8 +5905,13 @@ async function runPackageScan(){
   }
 }
 
+// The check currently on screen. Results of the three checks share one
+// container, so a late redraw of the message result must not land on top
+// of an address or package result.
+let currentScanMode = null;
 function setScanMode(m) {
   leaveHome();
+  currentScanMode = m;
   const addr = document.getElementById('addressPanel');
   const prompt = document.getElementById('promptPanel');
   const bAddr = document.getElementById('smode-address');
@@ -5935,6 +5940,17 @@ function setScanMode(m) {
   // Switching modes discards the console too. A scan panel left standing
   // over a different input is the same class of error as a stale result.
   ScanConsole.hide();
+  // Opening another check only suspends the message result. Coming back
+  // restores it, answers included, while the box still holds exactly the
+  // text that was scanned.
+  if (isPrompt) restoreMessageResult();
+}
+function restoreMessageResult() {
+  if (!MSG) return;
+  const box = document.getElementById('promptInput');
+  if (!box || box.value !== MSG.text) return;
+  renderComposite(false);
+  showNextStep('message', (MSG.promptScan.findings || []).map(f => f.category));
 }
 
 function updatePromptCount() {
@@ -5946,15 +5962,37 @@ function updatePromptCount() {
   el.classList.toggle('over', v.length > max);
 }
 
+// Editing the message after a scan makes the result out of date: it stays
+// visible, says so, and its hand-off buttons stop working until a rescan.
+// Undoing the edit back to the scanned text makes it current again.
+function syncMessageFreshness() {
+  if (!MSG) return;
+  const box = document.getElementById('promptInput');
+  const stale = !!box && box.value !== MSG.text;
+  if (stale === !!MSG.stale) return;
+  MSG.stale = stale;
+  if (currentScanMode === 'prompt' && document.getElementById('results').style.display !== 'none') renderComposite(false);
+}
+// Clearing the message or loading an example discards the result and its
+// answers. So does a new scan (startMessageScan replaces MSG) and a reload.
+function invalidateMessageResult() {
+  MSG = null;
+  document.getElementById('results').style.display = 'none';
+  hideNextStep();
+  ScanConsole.hide();
+}
+
 function clearPrompt() {
   document.getElementById('promptInput').value = '';
   updatePromptCount();
   document.getElementById('results').style.display = 'none';
   document.getElementById('promptError').style.display = 'none';
   ScanConsole.hide();
+  MSG = null;
 }
 
 function fillPrompt(k) {
+  invalidateMessageResult();
   document.getElementById('promptInput').value = PROMPT_EXAMPLES[k] || '';
   document.getElementById('promptError').style.display = 'none';
   updatePromptCount();
@@ -6355,9 +6393,15 @@ function startMessageScan(promptResult, original, scroll) {
 }
 
 async function checkAddress(i) {
-  if (!MSG || !MSG.addresses[i]) return;
+  if (!MSG || !MSG.addresses[i] || MSG.stale) return;
+  const owner = MSG;
   const entry = MSG.addresses[i];
   if (entry.state === 'running') return;
+  // A response belongs to this result, this address and this chain. If any
+  // of them changes while it is in flight, the response is discarded.
+  const gen = entry.gen = (entry.gen || 0) + 1;
+  const chainAtStart = entry.chainId;
+  const isCurrent = () => MSG === owner && entry.gen === gen && entry.chainId === chainAtStart;
   entry.state = 'running';
   entry.error = null;
   renderComposite();
@@ -6374,10 +6418,12 @@ async function checkAddress(i) {
       await new Promise(r => setTimeout(r, 2000));
       out = await attemptScan(adapter, entry.address, 'token', entry.chainId, 20000);
     }
+    if (!isCurrent()) return;
     const result = VerdictEngine.evaluate(out.checks, out.expected, adapter.name, out.criticalDefsTotal);
     entry.scan = fromAddressScan(result, entry.address, entry.chainId, 'token');
     entry.state = 'done';
   } catch (e) {
+    if (!isCurrent()) return;
     // A failed check must never read as a clean one. It stays INSUFFICIENT
     // DATA, which keeps the composite off PASS.
     entry.error = (e && e.message) ? e.message : 'unknown error';
@@ -6391,14 +6437,17 @@ async function checkAllAddresses() {
   if (!MSG) return;
   // Sequential on purpose: the free security API rate-limits per IP, and a
   // burst of parallel calls turns into a page of INSUFFICIENT DATA rows.
-  for (let i = 0; i < MSG.addresses.length; i++) {
-    if (MSG.addresses[i].state !== 'done') await checkAddress(i);
+  const owner = MSG;
+  for (let i = 0; i < owner.addresses.length; i++) {
+    if (MSG !== owner || MSG.stale) return;
+    if (owner.addresses[i].state !== 'done') await checkAddress(i);
   }
 }
 
 function setAddressChain(i, chainId) {
   if (!MSG || !MSG.addresses[i]) return;
   MSG.addresses[i].chainId = chainId;
+  MSG.addresses[i].gen = (MSG.addresses[i].gen || 0) + 1;   // any check in flight was for the old chain
   MSG.addresses[i].scan = null;      // a previous result was for another chain
   MSG.addresses[i].state = 'idle';
   MSG.addresses[i].error = null;
@@ -6446,7 +6495,7 @@ function addressRowHtml(entry, i) {
   }
 
   const busy = entry.state === 'running';
-  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')"' + (busy ? ' disabled' : '') + '>'
+  const btn = '<button class="btn-check" onclick="checkAddress(' + i + ')"' + (busy || (MSG && MSG.stale) ? ' disabled' : '') + '>'
     + (busy ? 'Checking…' : (entry.state === 'done' ? 'Re-check' : 'Check this address')) + '</button>';
 
   let result = '';
@@ -6698,6 +6747,8 @@ const BYA_AI = [
 ];
 const BYA_AI_CAVEAT = 'These steps reduce the risk; they do not guarantee protection.';
 function byaAnswer(key) { return BYA_ANSWERS.find(a => a.key === key) || null; }
+// For tests: the current answer, or null when there is no result.
+function messageAnswerForTest() { return MSG ? MSG.answer : null; }
 function byaAi(key) { return BYA_AI.find(a => a.key === key) || null; }
 
 // Part 2 for the current answer, as { status, lines } in plain text.
@@ -6762,6 +6813,8 @@ function onResultsChange(e) {
 }
 
 function renderComposite(scroll) {
+  // Suspended while another check is on screen; restored on return.
+  if (currentScanMode && currentScanMode !== 'prompt') return;
   const composite = buildComposite();
   if (!composite) return;
   const msgScan = composite.sections[0].scan;
@@ -6795,7 +6848,7 @@ function renderComposite(scroll) {
         'Addresses in this text (' + MSG.addresses.length + ' · ' + checked + ' checked)',
         null, null,
         (MSG.addresses.length > 1
-          ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()">Check all ' + MSG.addresses.length + '</button>'
+          ? '<button class="btn-check" style="margin-bottom:11px;" onclick="checkAllAddresses()"' + (MSG.stale ? ' disabled' : '') + '>Check all ' + MSG.addresses.length + '</button>'
           : '')
         + MSG.addresses.map(addressRowHtml).join(''))
     : '';
@@ -6819,7 +6872,8 @@ function renderComposite(scroll) {
     + '<div class="pass-top"><div class="verdict">'
       + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(head.badge) + '</div>'
       + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
-    + '</div>' + coverageNoticesHtml(covRows) + '<div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
+    + '</div>' + (MSG.stale ? '<p class="cov-notice stale-notice"><strong>Out of date — scan again.</strong> The message was edited after this scan. This result and its buttons apply to the earlier text.</p>' : '')
+    + coverageNoticesHtml(covRows) + '<div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
       + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
     + '</div></div>'
     + '<div class="pass-body">'
