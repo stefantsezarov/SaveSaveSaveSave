@@ -296,6 +296,9 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .verdict-badge.fail{background:var(--danger-dim); color:var(--danger); border:1px solid var(--danger);}
   .verdict-badge.unknown{background:var(--unknown-dim); color:var(--unknown); border:1px solid var(--unknown);}
   .verdict-meta{font-size:0.8rem; color:var(--text-muted); font-family:'IBM Plex Mono', monospace;}
+  .verdict-meta strong{display:block; color:var(--text); font-family:'Space Grotesk', sans-serif; font-size:1rem; margin-bottom:4px;}
+  .verdict-line{display:block; line-height:1.5;}
+  .addr-scope{color:var(--text-muted); font-size:0.78rem; margin-right:6px;}
   .pass-id{text-align:right; font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:var(--text-muted);}
   .pass-id .addr{color:var(--text); font-size:0.8rem; word-break:break-all; max-width:260px; display:block;}
 
@@ -6223,7 +6226,7 @@ function runPromptScan() {
     if(!ScanConsole.isCurrent(runId)) return;
     return ScanConsole.finish(runId, {
       state: result.verdict === 'fail' ? 'failed' : (result.verdict === 'pass' ? 'done' : 'warn'),
-      stateText: result.label,
+      stateText: MSG_BADGE[result.verdict] || result.label,
       realMs: workMs,
     }).then(() => { if(ScanConsole.isCurrent(runId)) reveal(); });
   }, err => {
@@ -6267,7 +6270,7 @@ function findingHtml(f, original) {
     + '<div class="finding-action"><span class="arrow">→</span><span>' + escapeHtml(f.action) + '</span></div>'
     + (f.technical
         ? '<button class="tech-toggle" onclick="this.parentNode.classList.toggle(\'show-tech\')">technical detail</button>'
-          + '<div class="finding-tech">' + escapeHtml(f.ruleId + ' · confidence ' + f.confidence + ' · via ' + f.source + '\n' + f.technical) + '</div>'
+          + '<div class="finding-tech">' + escapeHtml(f.ruleId + ' · via ' + f.source + '\n' + f.technical) + '</div>'
         : '')
     + '</div>';
 }
@@ -6445,7 +6448,8 @@ function addressRowHtml(entry, i) {
     const s = entry.scan;
     const top = (s.findings || []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').slice(0, 3);
     result = '<div class="addr-result">'
-      + '<div class="rline"><span class="sect-verdict ' + (VCLASS[s.verdict] || '') + '">' + escapeHtml(s.label) + '</span>'
+      + '<div class="rline"><span class="sect-verdict ' + (VCLASS[s.verdict] || '') + '">' + escapeHtml(MSG_BADGE[s.verdict] || s.label) + '</span>'
+      + (s.verdict === 'pass' ? '<span class="addr-scope">About this address only.</span> ' : '')
       + '<span>' + escapeHtml(s.summary) + '</span></div>'
       + (top.length
           ? '<ul>' + top.map(f => '<li>' + escapeHtml(f.title) + '</li>').join('') + '</ul>'
@@ -6498,11 +6502,47 @@ function addressRowHtml(entry, i) {
     + result + '</div>';
 }
 
+// ---- Message result presentation -------------------------------------
+// Presentation only. The engine's verdict codes, their precedence and the
+// API output are unchanged; this maps them to the words a visitor reads.
+// A clean code is never shown as "PASS": nothing here can establish that a
+// message is legitimate, only that no covered pattern matched.
+const MSG_BADGE = { pass: 'NO MATCH', caution: 'CAUTION', fail: 'FAIL', unknown: 'INSUFFICIENT DATA' };
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function compositeFindings(composite) {
+  const out = [];
+  (composite.sections || []).forEach(s => {
+    (s.scan ? [s.scan] : []).concat(s.scans || []).forEach(sc => {
+      (sc && sc.findings || []).forEach(f => out.push(f));
+    });
+  });
+  return out;
+}
+function messageHeadline(composite, promptVerdict) {
+  const fs = compositeFindings(composite);
+  const serious = fs.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').length;
+  const signs = fs.filter(f => ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].indexOf(f.severity) !== -1).length;
+  const v = composite.verdict;
+  if (v === 'fail') return { badge: MSG_BADGE.fail, title: 'Serious warning signs — do not act on this message',
+    line: (serious ? plural(serious, 'serious finding') + ' matched. ' : '') + 'The rest of the text passing does not make this part safe.' };
+  if (v === 'caution') return { badge: MSG_BADGE.caution, title: 'Warning signs found — check before you act',
+    line: (signs ? plural(signs, 'warning sign') + ' matched. ' : '') + 'Read what each one means below before you reply, pay or click.' };
+  if (v === 'unknown') return { badge: MSG_BADGE.unknown, title: 'Not enough could be checked',
+    // An unknown that comes only from addresses nobody has checked yet is
+    // a different fact from text that could not be analysed; say which.
+    line: promptVerdict === 'unknown'
+      ? 'Part of this text could not be analysed. This is not a clean result.'
+      : 'Addresses in this message have not been checked. This is not a clean result.' };
+  return { badge: MSG_BADGE.pass, title: 'No covered warning signs detected',
+    line: 'We checked hidden instructions, requests for secrets and link structure. We did not establish whether the sender, payment request or destination is legitimate.' };
+}
+
 function renderComposite(scroll) {
   const composite = buildComposite();
   if (!composite) return;
   const msgScan = composite.sections[0].scan;
   const r = MSG.promptScan;
+  const head = messageHeadline(composite, r.verdict);
 
   const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
   const labels = { CRITICAL: 'Critical', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', INFO: 'Informational' };
@@ -6521,7 +6561,7 @@ function renderComposite(scroll) {
   const c = r.counts;
   const countsLine = '<div class="counts-line">'
     + c.critical + ' critical · ' + c.high + ' high · ' + c.medium + ' medium · '
-    + c.low + ' low · ' + c.informational + ' informational · confidence: ' + escapeHtml(r.confidence)
+    + c.low + ' low · ' + c.informational + ' informational'
     + (r.input.invisibleCharactersRemoved ? ' · ' + r.input.invisibleCharactersRemoved + ' invisible characters found' : '')
     + '</div>';
 
@@ -6566,13 +6606,13 @@ function renderComposite(scroll) {
 
   const html = '<div class="pass">'
     + '<div class="pass-top"><div class="verdict">'
-      + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(composite.label) + '</div>'
-      + '<div class="verdict-meta"><strong>' + escapeHtml(composite.summary) + '</strong></div>'
+      + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(head.badge) + '</div>'
+      + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
     + '</div><div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
       + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
     + '</div></div>'
     + '<div class="pass-body">'
-      + sectionShell('Message content', msgScan.label, msgScan.verdict, countsLine + groups)
+      + sectionShell('Message content', MSG_BADGE[msgScan.verdict] || msgScan.label, msgScan.verdict, countsLine + groups)
       + urlSectionHtml(r.urls || [], msgScan.findings)
       + addrSection
       + acts
