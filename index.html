@@ -761,8 +761,8 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   .prompt-panel.active{display:block;}
   .tabs{flex-wrap:wrap;}
   .pkg-note{font-size:0.9rem; line-height:1.6; margin:0;}
-  .prompt-warn{display:flex; gap:10px; align-items:flex-start; background:var(--danger-dim); border:1px solid var(--danger); border-radius:0; padding:12px 14px; margin-bottom:14px; font-size:0.82rem; color:var(--text);}
-  .prompt-warn strong{color:var(--danger);}
+  .prompt-warn{display:flex; gap:10px; align-items:flex-start; border-left:2px solid var(--border); padding:8px 12px; margin:14px 0; font-size:0.82rem; line-height:1.6; color:var(--text-muted);}
+  .prompt-warn strong{color:var(--text); font-weight:500;}
   .prompt-input{width:100%; min-height:190px; resize:vertical; background:var(--ink); border:1px solid var(--border); border-radius:var(--radius-control); padding:14px; color:var(--text); font-family:'IBM Plex Mono', monospace; font-size:0.82rem; line-height:1.55;}
   .prompt-input:focus{outline:2px solid var(--accent); outline-offset:2px;}
   .prompt-meta{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;}
@@ -817,8 +817,23 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
     .prompt-actions{width:100%;} .prompt-actions button{flex:1;}
   }
 
-  .how{margin:52px 0 20px;}
+  .how{margin:24px 0 0;}
   .how h2{font-family:'Space Grotesk', sans-serif; font-size:1.3rem; margin-bottom:22px;}
+  .learn-disclosure{border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
+  .learn-toggle{display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; padding:16px 4px; cursor:pointer; list-style:none;}
+  .learn-toggle::-webkit-details-marker{display:none;}
+  .how .learn-toggle h2{font-size:1.05rem; margin:0;}
+  .learn-toggle:hover{color:var(--accent-2);}
+  .learn-toggle:focus-visible{outline:2px solid var(--accent-2); outline-offset:4px;}
+  .disclosure-label{display:flex; align-items:center; gap:12px; flex-shrink:0; font-size:0.78rem; color:var(--text-muted);}
+  .disclosure-icon{width:18px; text-align:center; font-size:1.2rem; color:var(--accent-2);}
+  .disclosure-icon::before{content:'+';}
+  .collapse-label{display:none;}
+  .learn-disclosure[open] > summary .expand-label{display:none;}
+  .learn-disclosure[open] > summary .collapse-label{display:inline;}
+  .learn-disclosure[open] > summary .disclosure-icon::before{content:'\2212';}
+  .disclosure-content{padding:8px 4px 20px;}
+  @media(max-width:400px){.learn-toggle{gap:10px;} .how .learn-toggle h2{font-size:0.95rem;} .disclosure-label{gap:6px; font-size:0.72rem;}}
   .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
   .steps[hidden]{display:none;}
   .step{background:var(--surface); border:1px solid var(--border); border-radius:0; padding:18px;}
@@ -992,7 +1007,6 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   </section>
 
   <section class="hero">
-    <p class="sub">Three free security checks. Pick the one that matches what is in front of you.</p>
 
     <div class="scanner">
       <!-- The three checks are the product: they are the first and largest
@@ -1066,13 +1080,8 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       </div><!-- /addressPanel -->
 
       <div class="prompt-panel" id="promptPanel">
-        <div class="prompt-warn">
-          <span aria-hidden="true">&#9888;</span>
-          <span><strong>Never paste a seed phrase, private key, password, or authentication code into this box</strong> — or into any AI system. Nothing legitimate ever needs them.</span>
-        </div>
-
         <label class="sr-only" for="promptInput">Message or prompt to scan</label>
-        <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off" aria-describedby="promptError"
+        <textarea class="prompt-input" id="promptInput" spellcheck="false" autocomplete="off" aria-describedby="promptSafetyNote promptError"
           placeholder="Paste the message or prompt you want to check — for example a DM about your wallet, or a prompt copied from Reddit or Discord.&#10;&#10;We check it for requests for secrets, disguised links, hidden instructions and other known warning signs."
           oninput="updatePromptCount(); document.getElementById('promptError').style.display='none'"></textarea>
 
@@ -1090,6 +1099,11 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
           <button type="button" class="example-chip" onclick="fillPrompt('hidden')">Hidden instructions</button>
           <button type="button" class="example-chip" onclick="fillPrompt('drainer')">Wallet drainer</button>
           <button type="button" class="example-chip" onclick="fillPrompt('article')">Article about injection</button>
+        </div>
+
+        <div class="prompt-warn" id="promptSafetyNote">
+          <span aria-hidden="true">&#9432;</span>
+          <span><strong>Never paste a seed phrase, private key, password, or authentication code into this box</strong> — or into any AI system. Nothing legitimate ever needs them.</span>
         </div>
 
         <div class="privacy-line">
@@ -1242,7 +1256,9 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   </nav>
 
   <section class="how">
-    <h2>How the pass is built</h2>
+    <details class="learn-disclosure" id="howDetails">
+      <summary class="learn-toggle"><h2>How the pass is built</h2><span class="disclosure-label"><span class="expand-label">Read more</span><span class="collapse-label">Show less</span><span class="disclosure-icon" aria-hidden="true"></span></span></summary>
+      <div class="disclosure-content">
     <div class="steps" id="how-address">
       <div class="step">
         <div class="step-n">01</div>
@@ -1294,9 +1310,13 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
         <p>A malicious report, an npm security takedown or an install script that pipes downloads into a shell means FAIL. Sources that do not answer count as unknown, never as a pass, and every result lists what was not checked.</p>
       </div>
     </div>
+      </div>
+    </details>
   </section>
   <section class="how learn" aria-labelledby="learnHead">
-    <h2 id="learnHead">How the tricks work</h2>
+    <details class="learn-disclosure" id="tricksDetails">
+      <summary class="learn-toggle"><h2 id="learnHead">How the tricks work</h2><span class="disclosure-label"><span class="expand-label">Read more</span><span class="collapse-label">Show less</span><span class="disclosure-icon" aria-hidden="true"></span></span></summary>
+      <div class="disclosure-content">
     <p class="learn-sub">Plain-language guides to the scams this scanner checks for.</p>
     <ul class="learn-list">
       <li><a href="address-poisoning.html"><strong>Address poisoning:</strong> The Address That Looks Like Yours</a></li>
@@ -1310,6 +1330,8 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
       <li><a href="agent-second-opinion.html"><strong>Agent second opinion:</strong> Check what your AI agent installs</a></li>
     </ul>
     <p class="learn-all"><a href="guides.html">All guides &rarr;</a></p>
+      </div>
+    </details>
   </section>
 </div>
 
