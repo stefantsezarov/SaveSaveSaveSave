@@ -84,9 +84,9 @@ const AD_HOSTS = /googlesyndication|googleadservices|googletagservices|adservice
 // Mirrors AD_POLICY in apply-ads.js. Kept as its own list on purpose:
 // this file checks the DEPLOY, so reading the policy from the repository
 // would let a page and its policy be wrong together and still agree.
-const ADS_ON  = ['/index.html', '/guides.html', '/whitepaper.html',
+const ADS_ON  = ['/guides.html', '/whitepaper.html',
                  '/technical-appendix.html', '/honeypot-tokens.html', '/address-poisoning.html', '/ai-leftovers.html'];
-const ADS_OFF = ['/about.html', '/privacy.html', '/terms.html', '/support.html', '/tools.html', '/agents.html', '/invisible-characters.html',
+const ADS_OFF = ['/index.html', '/about.html', '/privacy.html', '/terms.html', '/support.html', '/tools.html', '/agents.html', '/invisible-characters.html',
                  '/prompt-injection.html', '/seed-phrase-phishing.html',
                  '/disguised-links.html', '/sanctioned-addresses.html'];
 
@@ -149,6 +149,15 @@ const MUST_404 = [
       !metaCsp ? 'the page has no meta Content-Security-Policy at all' : 'its policy still permits the ad hosts');
   }
 
+  section('The scanner runs no third-party script');
+  {
+    const r = await get('/');
+    const csp = (r.body.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1] || '';
+    const scriptSrc = (csp.split(';').map(x => x.trim()).find(x => x.startsWith('script-src ')) || '').slice(11).trim();
+    check('scanner: no external script tag', r.status === 200 && !/<script[^>]+src=["']https?:\/\//i.test(r.body));
+    check('scanner: script-src is this site only', scriptSrc === "'self' 'unsafe-inline'", scriptSrc || 'no script-src');
+  }
+
   section('Every page has a policy, and the rails are distinct');
   for (const p of [...ADS_ON, ...ADS_OFF]) {
     const r = await get(p);
@@ -156,7 +165,9 @@ const MUST_404 = [
       /<meta http-equiv="Content-Security-Policy" content="/.test(r.body),
       'a page shipped once with none; the response header covered it and nothing complained');
   }
-  const idx = await get('/index.html');
+  // The scanner carries no ads (decided 20 October 2026); the rails are
+  // checked on the guide index instead.
+  const idx = await get('/guides.html');
   const slots = [...idx.body.matchAll(/class="ad-rail[\s\S]{0,400}?data-ad-slot="(\d+)"/g)].map(m => m[1]);
   check('the two rails carry different ad units',
     slots.length === 2 && slots[0] !== slots[1],

@@ -308,7 +308,7 @@ if (fs.existsSync(guidePath)) {
   // And the claim has to be true in the documents that make it.
   const priv = fs.readFileSync(path.join(__dirname, 'privacy.html'), 'utf8');
   check('the privacy policy no longer claims ads run on every page',
-    !/It runs on every page/i.test(priv) && /deliberately do not/i.test(priv));
+    !/It runs on every page/i.test(priv) && /The scanner never does/.test(priv) && /switched off entirely on the scanner/.test(priv));
 }
 
 

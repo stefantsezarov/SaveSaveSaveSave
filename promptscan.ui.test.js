@@ -468,11 +468,10 @@ function stubScans(map) {
   // an ad call learns the page URL and nothing else: no finding, no
   // verdict, no address, no URL lifted from a message, no pasted text.
   //
-  // This is asserted structurally rather than by watching the network,
-  // because the ad script is third-party and its request shape is not
-  // ours to predict. What IS ours is the DOM: if no ad element and no
-  // ad-related global ever receives scanned content, there is nothing
-  // for the ad script to read.
+  // The structural checks below are not a privacy proof on their own: any
+  // third-party script in this document could read what is on the page.
+  // The real control is that the scanner page loads none (see the section
+  // "Scanner document: no third-party script").
   section('Advertising cannot see scan content');
 
   const secret = 'ZQXCANARY7731MESSAGEBODY';
@@ -488,45 +487,13 @@ function stubScans(map) {
     !/adsbygoogle|ad-rail|data-ad-slot|data-ad-client/i.test(pageHtml),
     'an ad inside the result DOM could be mistaken for part of the verdict');
 
-  // The rails live outside #results by construction. Anything the ad
-  // script can read from its own subtree must therefore be ad markup
-  // only — assert that the rail template carries no interpolation at all.
-  const railSource = (html.match(/<aside class="ad-rail[\s\S]*?<\/aside>/g) || []);
-  check('the page defines exactly two ad slots', railSource.length === 2,
-    'got ' + railSource.length);
-
-  // Each rail has its own ad unit. With one id in both, the two
-  // placements sit in a single auction and report as one line, so
-  // neither can be judged on its own — and nobody notices, because
-  // everything still works.
-  const slots = railSource.map(r => (r.match(/data-ad-slot="(\d+)"/) || [])[1]);
-  check('each rail carries its own ad unit',
-    slots.length === 2 && slots[0] && slots[1] && slots[0] !== slots[1],
-    'both rails use ' + slots[0]);
-  check('neither slot contains any template interpolation',
-    railSource.every(r => !/\$\{|\+\s*escapeHtml|innerHTML/.test(r)),
-    'a slot built by string concatenation is a slot that can be fed scan text');
-  // data-ad-state is ours: a rail stays hidden until AdSense reports a
-  // filled creative, so an unfilled slot cannot leave the word
-  // "Advertisement" floating over an empty box. It is permitted here
-  // ONLY with its three fixed values — an open-ended attribute on an ad
-  // slot is precisely the channel this section exists to keep shut.
-  check('the ad slots carry only the publisher, the slot id and a fixed state',
-    railSource.every(r => {
-      const attrs = r.match(/data-[a-z-]+="[^"]*"/g) || [];
-      return attrs.every(a =>
-        /^data-(ad-client|ad-slot|ad-format|full-width-responsive)=/.test(a)
-        || /^data-ad-state="(pending|filled|empty)"$/.test(a));
-    }), 'no scan-derived data attribute may ride along on an ad slot');
-
-  // The reveal script may read only the attribute AdSense sets on its
-  // own element. If it ever grows a reference to the scan, the result,
-  // or the page text, that is a data path out of the tool.
-  const revealScript = (html.match(/Reveal a rail only once[\s\S]*?\}\)\(\);/) || [''])[0];
-  check('the rail-reveal script touches nothing but the ad status attribute',
-    revealScript.length > 0
-    && !/promptscan|scanResult|#result|textarea|value|innerText|textContent|dataLayer|adsbygoogle\.push/i.test(revealScript),
-    'the script that shows a rail must not be able to see what was scanned');
+  // Earlier versions asserted that the rail markup carried no scan data.
+  // That was never enough: a third-party script running in this document
+  // can read the message box and the results whether or not an ad element
+  // receives them. Since 20 October 2026 the scanner carries no ads at all
+  // (apply-ads.js AD_POLICY), and these checks hold it there.
+  check('the scanner page defines no ad slot', !/<aside class="ad-rail/.test(html) && !/data-ad-slot=/.test(html));
+  check('the scanner page has no rail-reveal script', !/Reveal a rail only once/.test(html));
 
   check('no ad global is assigned scanned text anywhere in the page',
     !/adsbygoogle[^;]{0,200}(MSG|promptScan|findings|composite|entry\.address)/.test(html),
@@ -924,7 +891,7 @@ section('Address result escapes provider and pasted text');
   check('C5/S7: three address rows, each unchecked', (h.match(/class="addr-row"/g) || []).length === 3 && (h.match(/Not checked yet/g) || []).length === 3);
   check('C5/S7: each row discloses its network and recipients before the button',
     /id="addr-disc-0">Checking sends this address and the network \(Ethereum\) — not your message — to GoPlus Security\./.test(h)
-    && /id="addr-disc-2">Checking sends this address and the network \(Solana\)[^<]*PublicNode[^<]*up to 15 minutes\./.test(h));
+    && /id="addr-disc-2">Checking sends this address and the network \(Solana\)[^<]*PublicNode[^<]*up to 15 minutes, and Cloudflare logs that request, with the address and your IP address, for about seven days\./.test(h));
   check('C5/S7: the button is described by the disclosure', /onclick="checkAddress\(1\)" aria-describedby="addr-disc-1"/.test(h));
   check('C5/S7: badge is INSUFFICIENT DATA while addresses are unchecked', badgeOf(h) === 'INSUFFICIENT DATA');
   sandbox.setAddressChain(0, '56');
@@ -972,9 +939,27 @@ section('Address result escapes provider and pasted text');
   check('P6: the privacy page discloses the edge cache and counterparty checks',
     /edge cache for up to 15 minutes/.test(privacy) && /up to 15 addresses the wallet traded with/.test(privacy) && /PublicNode \(EVM RPC\)/.test(privacy));
   check('P6: the privacy page states answers are not sent or stored', /are not sent or stored/.test(privacy));
+  check('P6: the privacy page no longer says the count keeps nothing or that nothing is held',
+    !/keeps nothing else/.test(privacy) && !/stores nothing about you/.test(privacy) && !/This project holds none/.test(privacy));
+  check('P6: the privacy page states Cloudflare logs Worker requests with IP and address',
+    /Cloudflare request logs for our Worker/.test(privacy) && /your IP address/.test(privacy) && /about seven days/.test(privacy));
+  check('P6: the privacy page says the scanner runs no third-party script', /No third-party script runs on the scanner page/.test(privacy));
+  check('P6: the privacy page does not present a network check as proof', /not a proof about every possible visit/.test(privacy));
+  check('P6: the footer mentions request logging', /Cloudflare logs the request, including the address and your IP address, for about seven days/.test(html));
   check('P6: no address-row disclosure claims "we do not store it"', !/addressDisclosure[\s\S]{0,1500}do not store/.test(html));
 
   check('P5: the share note says the image is generated on this device', /id="shareCardNote">Generated on this device\. Nothing is uploaded/.test(html));
+
+  section('Scanner document: no third-party script');
+  const metaCsp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1] || '';
+  const directive = (n) => ((metaCsp.split(';').map(x => x.trim()).find(x => x.startsWith(n + ' ')) || '') + ' ').slice(n.length + 1).trim();
+  check('no external <script src> in the scanner page', !/<script[^>]+src=["']https?:\/\//i.test(html));
+  check('script-src allows this site only', directive('script-src') === "'self' 'unsafe-inline'", directive('script-src'));
+  check('frame-src is none: no ad or consent frames', directive('frame-src') === "'none'", directive('frame-src'));
+  check('no advertising markup or loader', !/adsbygoogle|googlesyndication|fundingchoices/.test(html.replace(/<style>[\s\S]*?<\/style>/g, '')));
+  check('connect-src names only the check services and our Worker',
+    directive('connect-src').split(/\s+/).every(h => /^https:\/\/(api\.gopluslabs\.io|registry\.npmjs\.org|api\.npmjs\.org|api\.osv\.dev|solana-rpc\.publicnode\.com|cool-sound-6db2riskpass\.stefan-tsezarov82\.workers\.dev)$/.test(h)),
+    directive('connect-src'));
 
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.

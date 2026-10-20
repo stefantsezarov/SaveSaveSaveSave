@@ -64,7 +64,7 @@ const SLOTS_ARE_DISTINCT = SLOT_LEFT !== SLOT_RIGHT;
 // whoever changes it later. Flipping one of these to true is a
 // deliberate act that should be argued for in the commit message.
 const AD_POLICY = {
-  'index.html':                 { enabled: true,  mode: 'contextual', reason: 'The scanner and its explanation. Rails sit in the page gutters, never inside the result markup — asserted by promptscan.ui.test.js.' },
+  'index.html':                 { enabled: false, reason: 'The scanner. Third-party scripts in this document run with full access to the message box and results, and a same-origin ad frame is not isolation. Off so that "message text never leaves your browser" does not depend on Google\'s code. Ads stay on guides that allow them. Decided 20 October 2026.' },
   'guides.html':                { enabled: true,  mode: 'contextual', reason: 'An index of articles. No verdict, no warning, nothing an ad could be mistaken for.' },
   'whitepaper.html':            { enabled: true,  mode: 'contextual', reason: 'General explanation of what the product is and how it is paid for.' },
   'technical-appendix.html':    { enabled: true,  mode: 'contextual', reason: 'Technical transparency document. Read by people checking claims, not by people in trouble.' },
