@@ -239,7 +239,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   @media (max-width:640px){
     header.top{padding:16px 16px 12px;}
     .brand-tag{display:none;}
-    .top-nav{gap:16px;}
+    .top-nav{gap:6px 16px; flex-wrap:wrap;}
     .nav-link{white-space:nowrap;}
     .hero{padding-top:18px;}
     .sub{margin-bottom:18px;}
@@ -1286,7 +1286,7 @@ history.replaceState(null,'',location.pathname);}catch(_){window.__s4Selected=nu
   <p class="next-step" id="nextStep" style="display:none;"></p>
   <div class="share-card" id="shareCard" style="display:none;">
     <button type="button" class="share-btn" onclick="shareVerdictCard()">Share this warning</button>
-    <span class="share-note" id="shareCardNote">Makes an image on your device. Nothing is uploaded.</span>
+    <span class="share-note" id="shareCardNote">Generated on this device. Nothing is uploaded; where you share it next is your choice.</span>
   </div>
   <nav class="tool-again" id="toolAgain" aria-label="Run another check" style="display:none;">
     <span class="tool-again-label">Run another check</span>
@@ -6257,7 +6257,7 @@ function runPromptScan() {
   const workMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
 
   const runId = ScanConsole.begin({
-    title: 'Risk pass · message scan',
+    title: 'Risk check · message scan',
     targetLabel: 'Submitted text',
     target: (text.length > 160 ? text.slice(0, 160) + '…' : text),
     sub: text.length.toLocaleString() + ' characters · analysed in this browser',

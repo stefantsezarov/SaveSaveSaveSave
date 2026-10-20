@@ -974,6 +974,8 @@ section('Address result escapes provider and pasted text');
   check('P6: the privacy page states answers are not sent or stored', /are not sent or stored/.test(privacy));
   check('P6: no address-row disclosure claims "we do not store it"', !/addressDisclosure[\s\S]{0,1500}do not store/.test(html));
 
+  check('P5: the share note says the image is generated on this device', /id="shareCardNote">Generated on this device\. Nothing is uploaded/.test(html));
+
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
   check('leftovers: the message tool description names AI-assistant leftovers',
