@@ -961,6 +961,56 @@ section('Address result escapes provider and pasted text');
     directive('connect-src').split(/\s+/).every(h => /^https:\/\/(api\.gopluslabs\.io|registry\.npmjs\.org|api\.npmjs\.org|api\.osv\.dev|solana-rpc\.publicnode\.com|cool-sound-6db2riskpass\.stefan-tsezarov82\.workers\.dev)$/.test(h)),
     directive('connect-src'));
 
+  section('Address checks: why the result changed');
+  const cautionChecks = () => { const c = cleanChecks(); c.checks[2] = { id: 'is_open_source', category: 'control', status: 'RISK', critical: false, severityWeight: 2, label: 'Source not published', detail: 'Contract source is not verified.', source: 'GoPlus' }; return c; };
+  const NOTICE = 'Updated after checking an address in this message. This does not verify the sender or the request.';
+  const GAP = 'Do not send anything to an address in this message until it has been checked';
+  const FUNDS = 'Do not send funds to, or approve spending for, this address until you have verified it independently.';
+  const oneAddr = `Refund will be sent from ${USDC}.`;
+  const startOne = () => { nodes.promptInput.value = oneAddr; sandbox.startMessageScan(sandbox.scanPrompt(oneAddr), oneAddr, false); };
+  // Unchecked: the address is the whole gap.
+  startOne(); h = nodes.results.innerHTML;
+  check('T0: one unchecked address is INSUFFICIENT DATA and says why', badgeOf(h) === 'INSUFFICIENT DATA' && /1 address in this message has not been checked\. This is not a clean result\./.test(h));
+  check('T0: the address-gap precaution is in part 1', h.includes(GAP));
+  check('T0: no update notice before any check', !h.includes(NOTICE));
+  // unchecked -> clean
+  stubScans({ [USDC]: cleanChecks() }); await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('T1 unchecked→clean: NO MATCH', badgeOf(h) === 'NO MATCH');
+  check('T1: the update notice explains the change', h.includes(NOTICE));
+  check('T1: the gap precaution and incomplete line are gone once resolved', !h.includes(GAP) && !/This scan is incomplete/.test(h));
+  check('T1: still no claim the message is legitimate', /We did not establish whether the sender, payment request or destination is legitimate/.test(h));
+  // unchecked -> caution
+  startOne(); stubScans({ [USDC]: cautionChecks() }); await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('T2 unchecked→caution: CAUTION with the update notice', badgeOf(h) === 'CAUTION' && h.includes(NOTICE));
+  check('T2: the headline counts the address finding', /1 warning sign matched\./.test(h));
+  // unchecked -> fail, after the visitor said "information only"
+  startOne(); sandbox.setByaAnswer('info');
+  stubScans({ [USDC]: honeypotChecks() }); await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('T3 unchecked→fail: FAIL with the update notice', badgeOf(h) === 'FAIL' && h.includes(NOTICE));
+  check('T3: the headline counts the address finding that caused FAIL', /1 serious finding matched\./.test(h));
+  check('T3: the address warning and precaution are in part 1 despite "information only"',
+    h.indexOf(FUNDS) !== -1 && /because: Honeypot pattern/.test(h) && h.indexOf(FUNDS) < h.indexOf('You selected information only.'));
+  check('T3: the answer is kept', sandbox.messageAnswerForTest() === 'info');
+  // request failure
+  startOne(); stubScans({ [USDC]: { throws: 'The request timed out' } }); await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('T4 failure: stays INSUFFICIENT DATA, no update notice', badgeOf(h) === 'INSUFFICIENT DATA' && !h.includes(NOTICE));
+  check('T4: headline says the check could not complete', /1 address check could not complete\. This is not a clean result\./.test(h));
+  check('T4: the gap precaution stays: a failed check is not a resolution', h.includes(GAP));
+  // Multiple addresses (S7: two EVM, one Solana).
+  const [A0, A1, A2] = ['0x742d35Cc6634C0532925a3b844Bc454e4438f44e', '0x52908400098527886E0F7030069857D2E4169EE7', '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'];
+  nodes.promptInput.value = FX.S7; sandbox.startMessageScan(sandbox.scanPrompt(FX.S7), FX.S7, false);
+  stubScans({ [A0]: cleanChecks(), [A1]: honeypotChecks(), [A2]: { throws: 'The request timed out' } });
+  await sandbox.checkAddress(0); h = nodes.results.innerHTML;
+  check('M-1: one clean of three: still INSUFFICIENT DATA, no notice, two left', badgeOf(h) === 'INSUFFICIENT DATA' && !h.includes(NOTICE) && /2 addresses in this message have not been checked/.test(h));
+  await sandbox.checkAddress(1); h = nodes.results.innerHTML;
+  check('M-2: a failing address raises the message to FAIL, with the notice', badgeOf(h) === 'FAIL' && h.includes(NOTICE) && h.includes(FUNDS));
+  await sandbox.checkAddress(2); h = nodes.results.innerHTML;
+  check('M-3: a failed third check keeps FAIL and keeps the gap precaution', badgeOf(h) === 'FAIL' && h.includes(GAP) && /1 address check could not complete/.test(h));
+  nodes.promptInput.value = FX.S7; sandbox.startMessageScan(sandbox.scanPrompt(FX.S7), FX.S7, false);
+  stubScans({ [A0]: cleanChecks(), [A1]: cleanChecks(), [A2]: cleanChecks() });
+  await sandbox.checkAllAddresses(); h = nodes.results.innerHTML;
+  check('M-4: all three clean: NO MATCH with the notice, gap precaution gone', badgeOf(h) === 'NO MATCH' && h.includes(NOTICE) && !h.includes(GAP));
+
   // AI-assistant leftovers: named in the tool description, shown as its own
   // coverage cell and console stage, and never presented as AI detection.
   check('leftovers: the message tool description names AI-assistant leftovers',

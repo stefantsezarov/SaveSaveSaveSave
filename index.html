@@ -6359,6 +6359,9 @@ function startMessageScan(promptResult, original, scroll) {
     answer: null,
     ai: null,
   };
+  // The verdict from the text and unchecked addresses alone. When an
+  // address check moves the result away from it, the page says why.
+  MSG.initialVerdict = buildComposite().verdict;
   renderComposite(scroll === undefined ? true : !!scroll);
 }
 
@@ -6569,6 +6572,25 @@ function compositeFindings(composite) {
   });
   return out;
 }
+// Addresses that still leave a gap: not checked yet, or checked and failed.
+function addressGaps() {
+  const list = (MSG && MSG.addresses) || [];
+  return {
+    pending: list.filter(a => a.state === 'idle' || a.state === 'running').length,
+    failed: list.filter(a => a.state === 'error').length,
+  };
+}
+function addressGapSentence() {
+  const g = addressGaps();
+  const parts = [];
+  if (g.pending) parts.push(plural(g.pending, 'address', 'addresses') + ' in this message ' + (g.pending === 1 ? 'has' : 'have') + ' not been checked');
+  if (g.failed) parts.push(plural(g.failed, 'address check', 'address checks') + ' could not complete');
+  return parts.length ? parts.join(', and ').replace(/^./, c => c.toUpperCase()) + '.' : 'An address in this message has not been checked.';
+}
+// Shown when an address check moved the result away from what the text
+// scan alone produced, so a visitor knows why the badge changed.
+const ADDRESS_UPDATE_NOTICE = 'Updated after checking an address in this message. This does not verify the sender or the request.';
+
 function messageHeadline(composite, promptVerdict) {
   const fs = compositeFindings(composite);
   const serious = fs.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').length;
@@ -6579,11 +6601,11 @@ function messageHeadline(composite, promptVerdict) {
   if (v === 'caution') return { badge: MSG_BADGE.caution, title: 'Warning signs found — check before you act',
     line: (signs ? plural(signs, 'warning sign') + ' matched. ' : '') + 'Read what each one means below before you reply, pay or click.' };
   if (v === 'unknown') return { badge: MSG_BADGE.unknown, title: 'Not enough could be checked',
-    // An unknown that comes only from addresses nobody has checked yet is
-    // a different fact from text that could not be analysed; say which.
+    // An unknown that comes only from addresses is a different fact from
+    // text that could not be analysed; say which, and how many.
     line: promptVerdict === 'unknown'
       ? 'Part of this text could not be analysed. This is not a clean result.'
-      : 'Addresses in this message have not been checked. This is not a clean result.' };
+      : addressGapSentence() + ' This is not a clean result.' };
   return { badge: MSG_BADGE.pass, title: 'No covered warning signs detected',
     line: 'We checked hidden instructions, requests for secrets and link structure. We did not establish whether the sender, payment request or destination is legitimate.' };
 }
@@ -6675,6 +6697,10 @@ function resultPrecautions(composite) {
     out.push({ action, because });
   };
   if (composite.verdict === 'unknown') add('This scan is incomplete. Verify the message independently before acting.', null);
+  // Removed only when the gap is actually closed: every address checked
+  // and answered. A failed check is a gap, not a resolution.
+  const g = addressGaps();
+  if (g.pending || g.failed) add('Do not send anything to an address in this message until it has been checked and you have confirmed it with the intended recipient.', addressGapSentence());
   compositeFindings(composite)
     .filter(f => f.action && SEV_ORDER[f.severity])
     .sort((a, b) => SEV_ORDER[b.severity] - SEV_ORDER[a.severity])
@@ -6903,6 +6929,8 @@ function renderComposite(scroll) {
       + '<div class="verdict-badge ' + composite.verdict + '">' + escapeHtml(head.badge) + '</div>'
       + '<div class="verdict-meta"><strong>' + escapeHtml(head.title) + '</strong><span class="verdict-line">' + escapeHtml(head.line) + '</span></div>'
     + '</div>' + (MSG.stale ? '<p class="cov-notice stale-notice"><strong>Out of date — scan again.</strong> The message was edited after this scan. This result and its buttons apply to the earlier text.</p>' : '')
+    + (MSG.addresses.some(a => a.state === 'done' || a.state === 'error') && composite.verdict !== MSG.initialVerdict
+        ? '<p class="cov-notice addr-update-notice"><strong>' + escapeHtml(ADDRESS_UPDATE_NOTICE) + '</strong></p>' : '')
     + coverageNoticesHtml(covRows) + '<div class="pass-id">Message scan · ' + r.input.characters.toLocaleString() + ' characters'
       + (MSG.addresses.length ? ' · ' + MSG.addresses.length + ' address' + (MSG.addresses.length === 1 ? '' : 'es') : '')
     + '</div></div>'
