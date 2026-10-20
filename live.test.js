@@ -99,6 +99,7 @@ const MUST_404 = [
   '/SaveSaveSaveSave_Wallet_Risk_Intelligence_Proposal.md',
   '/SaveSaveSaveSave_Whitepaper_v3.0.md',
   '/promptscan.js', '/core.js', '/apply-ads.js', '/promptscan.test.js',
+  '/wrangler.preview.jsonc',
 ];
 
 (async () => {
