@@ -70,6 +70,8 @@ const STYLE = `<style>
   .stt-list li{border-top:1px solid var(--paper-rule, #d9d6cc); padding:12px 0;}
   .stt-list a{font-weight:600;}
   .stt-share-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+  .stt-review{font-family:'IBM Plex Mono',monospace; font-size:0.8rem;}
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 </style>
 <noscript><style>.stt-explanation[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>`;
 
@@ -118,6 +120,32 @@ ${withScript ? '<script src="spot-the-trap.js"></script>\n' : ''}</body>
 </html>
 `;
 
+// A real calendar date that is not in the future. "2026-02-30" and
+// "2026-13-01" are date-shaped and wrong; both are refused.
+function validReviewDate(d, today) {
+  if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const t = new Date(d + 'T00:00:00Z');
+  if (isNaN(t) || t.toISOString().slice(0, 10) !== d) return false;
+  return d <= (today || new Date().toISOString().slice(0, 10));
+}
+// Every reason a set of scenarios may not be released. Empty = releasable.
+function releaseProblems(list, today) {
+  const out = [];
+  for (const c of list) {
+    if (c.reviewed === null || c.reviewed === undefined) out.push(c.id + ': not approved (reviewed: null)');
+    else if (!validReviewDate(c.reviewed, today)) out.push(c.id + ': reviewed is not a real past date (' + c.reviewed + ')');
+  }
+  return out;
+}
+const HUMAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function reviewLine(c) {
+  if (c.reviewed && validReviewDate(c.reviewed)) {
+    const [y, m, d] = c.reviewed.split('-').map(Number);
+    return 'Version ' + c.version + ' · content last reviewed <time datetime="' + c.reviewed + '">' + d + ' ' + HUMAN_MONTHS[m - 1] + ' ' + y + '</time>';
+  }
+  return 'Version ' + c.version + ' · Draft — awaiting content review';
+}
+
 function partsHtml(parts) {
   return parts.map(p => typeof p === 'string' ? esc(p)
     : '<span class="sign">' + esc(p.text) + '<sup class="sign-n" hidden>' + p.mark + '</sup></span>').join('');
@@ -161,6 +189,7 @@ ${opts}
     <section class="stt-explanation" id="stt-explanation" aria-labelledby="stt-expl-heading" hidden>
     <h2 id="stt-expl-heading" tabindex="-1">The explanation</h2>
     <div class="stt-yours" id="stt-your-choice"></div>
+    <p class="sr-only" id="stt-change-status" role="status" aria-live="polite"></p>
     <h3>Each option</h3>
     <ul class="stt-options">
 ${feedback}
@@ -170,6 +199,7 @@ ${details}${c.note ? '    <p>' + esc(c.note) + '</p>\n' : ''}    <div class="rul
     <h3>About this pattern</h3>
     <p>${esc(c.source.text)} <a href="${esc(c.source.url)}" rel="noopener noreferrer">${esc(c.source.label)}</a></p>
     <p>The source documents the technique, not this invented example.</p>
+    <p class="stt-review">${reviewLine(c)}</p>
     <p>Have a message of your own? <a href="index.html">The message checker</a> looks for specific warning patterns. It cannot confirm who sent it or whether a request is genuine.</p>
     <h3>Share or try another</h3>
     <div class="stt-share-row">
@@ -220,11 +250,14 @@ ${list}
 ` + foot(false);
 }
 
+module.exports = { scenarioPage, indexPage, reviewLine, validReviewDate, releaseProblems };
+if (require.main !== module) return;
+
 // ---------------------------------------------------------------------
 if (release) {
-  const pending = CHALLENGES.filter(c => !c.reviewed).map(c => c.id);
-  if (pending.length) {
-    console.error('FAIL: not approved for release (reviewed: null): ' + pending.join(', '));
+  const problems = releaseProblems(CHALLENGES);
+  if (problems.length) {
+    console.error('FAIL: Spot the Trap is not approved for release:\n  ' + problems.join('\n  '));
     process.exit(1);
   }
 }

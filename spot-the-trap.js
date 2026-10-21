@@ -66,9 +66,20 @@
     heading.focus();
   });
 
+  // After the reveal, a new choice rewrites the feedback in place. Focus
+  // stays on the radio button; a short polite status says what changed,
+  // and the full feedback remains ordinary text to read on demand.
+  var changeStatus = document.getElementById('stt-change-status');
   form.addEventListener('change', function () {
     need.textContent = '';
-    if (revealed) showYours(chosen());
+    if (!revealed) return;
+    var key = chosen();
+    showYours(key);
+    if (changeStatus) {
+      changeStatus.textContent = '';
+      var rec = expl.querySelector('li[data-key="' + key + '"][data-recommended="true"]');
+      changeStatus.textContent = 'Feedback updated for answer ' + key + (rec ? ', the recommended next step.' : '.');
+    }
   });
 
   var share = document.getElementById('stt-share');

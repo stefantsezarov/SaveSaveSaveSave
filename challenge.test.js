@@ -131,6 +131,101 @@ check('spot-the-trap.js is published; challenges.js and the builders are not',
   (() => { const ig = read('.assetsignore'); return !/^spot-the-trap\.js$/m.test(ig) && /^challenges\.js$/m.test(ig) && /^build-challenges\.js$/m.test(ig) && /^trap-cards\.py$/m.test(ig); })());
 check('trap-cards.py draws only the title, never choices or feedback', !/choice|feedback|recommended|remember/i.test(read('trap-cards.py').replace(/^"""[\s\S]*?"""/m, '')));
 
+console.log('\n== Release gate and review dates ==');
+const B = require('./build-challenges.js');
+const fx = (reviewed) => Object.assign({}, CHALLENGES[0], { reviewed });
+check('an unapproved scenario cannot be released', B.releaseProblems([fx(null)], '2026-10-21').length === 1);
+check('a date-shaped but impossible date is refused', B.releaseProblems([fx('2026-02-30')], '2026-10-21').length === 1);
+check('a future review date is refused', B.releaseProblems([fx('2026-12-01')], '2026-10-21').length === 1);
+check('a real past review date is accepted', B.releaseProblems([fx('2026-10-20')], '2026-10-21').length === 0);
+check('the four real scenarios are still unapproved (no date filled in on anyone\'s behalf)',
+  CHALLENGES.every(c => c.reviewed === null) && B.releaseProblems(CHALLENGES).length === 4);
+let gateFails = false;
+try { execFileSync('node', ['build-challenges.js', '--release', '--check'], { cwd: __dirname, stdio: 'pipe' }); } catch (_) { gateFails = true; }
+check('the release command fails closed while scenarios are unapproved', gateFails);
+const draftPage = B.scenarioPage(fx(null), 0, null);
+const approvedPage = B.scenarioPage(fx('2026-10-20'), 0, null);
+check('an unapproved page says it is a draft and shows its version',
+  /Version 1 · Draft — awaiting content review/.test(draftPage) && !/last reviewed/.test(draftPage));
+check('an approved page shows the review date to readers',
+  /Version 1 · content last reviewed <time datetime="2026-10-20">20 October 2026<\/time>/.test(approvedPage) && !/Draft —/.test(approvedPage));
+for (const c of CHALLENGES) check('spot-the-trap-' + c.id + '.html: shows its current review state',
+  read('spot-the-trap-' + c.id + '.html').includes('Version ' + c.version + ' · Draft — awaiting content review'));
+const wf = read('.github/workflows/tests.yml');
+check('CI runs the release gate on pull requests into main and on main',
+  /spot-the-trap-release:[\s\S]*github\.base_ref == 'main'[\s\S]*node build-challenges\.js --release --check/.test(wf));
+
+console.log('\n== Response headers ==');
+const hdr = read('_headers');
+const block = (hdr.match(/# BEGIN GENERATED SPOT THE TRAP CSP([\s\S]*?)# END GENERATED SPOT THE TRAP CSP/) || [])[1] || '';
+for (const f of pages) {
+  const meta = (read(f).match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
+  const base = '/' + f.replace(/\.html$/, '');
+  for (const route of [base, base + '.html']) {
+    const re = new RegExp('^' + route.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\n  Content-Security-Policy: (.+)$', 'm');
+    const got = (block.match(re) || [])[1];
+    check(route + ': response header carries the page\'s own restrictive policy', got === meta + " frame-ancestors 'none';", got);
+  }
+}
+
+console.log('\n== The script, run ==');
+// A small stand-in DOM, enough for spot-the-trap.js. The real script runs
+// against it: this checks what the code does, not how it reads.
+function runRound(c) {
+  const el = (id, extra) => Object.assign({ id, hidden: false, _text: '', kids: [], attrs: {}, listeners: {},
+    get textContent() { return this._text + this.kids.map(k => k.textContent).join(''); },
+    set textContent(v) { this._text = String(v); this.kids = []; },
+    appendChild(k) { this.kids.push(k); return k; },
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    focus() { focused = this.id; },
+    classList: { _s: new Set(), add(x) { this._s.add(x); }, contains(x) { return this._s.has(x); } } }, extra || {});
+  let focused = null;
+  const radios = c.choices.map(ch => ({ value: ch.key, checked: false }));
+  const items = c.choices.map(ch => el(null, { attrs: { 'data-key': ch.key, 'data-feedback': ch.feedback, 'data-recommended': ch.recommended ? 'true' : 'false' } }));
+  const signs = marksOf(c).map(() => el(null, { hidden: true }));
+  const nodes = {
+    'stt-form': el('stt-form', { querySelector: () => radios.find(r => r.checked) || null }),
+    'stt-reveal': el('stt-reveal'), 'stt-need': el('stt-need'), 'stt-expl-heading': el('stt-expl-heading'),
+    'stt-your-choice': el('stt-your-choice'), 'stt-change-status': el('stt-change-status'),
+    'stt-message': el('stt-message', { querySelectorAll: () => signs }),
+    'stt-explanation': el('stt-explanation', { hidden: true, querySelector: (sel) => {
+      const m = /data-key="([A-D])"\](\[data-recommended="true"\])?/.exec(sel);
+      const li = m && items.find(i => i.attrs['data-key'] === m[1]);
+      return li && (!m[2] || li.attrs['data-recommended'] === 'true') ? li : null; } }),
+    'stt-share': el('stt-share', { attrs: { 'data-url': 'U', 'data-text': 'T' } }), 'stt-share-status': el('stt-share-status'),
+  };
+  const touched = [];
+  const trap = new Proxy({}, { get: (_, k) => { touched.push(String(k)); return undefined; } });
+  const sandbox = { document: { getElementById: (id) => nodes[id] || null, createElement: () => el(null) },
+    navigator: trap, localStorage: trap, sessionStorage: trap, fetch: () => touched.push('fetch') };
+  require('vm').runInNewContext(read('spot-the-trap.js'), sandbox);
+  const click = (id) => nodes[id].listeners.click.forEach(f => f());
+  const pick = (k) => { radios.forEach(r => { r.checked = r.value === k; }); nodes['stt-form'].listeners.change.forEach(f => f()); };
+  return { nodes, radios, signs, click, pick, touched, focused: () => focused };
+}
+for (const c of CHALLENGES) {
+  const r = runRound(c);
+  const rec = c.choices.find(x => x.recommended).key;
+  const other = c.choices.find(x => !x.recommended).key;
+  r.click('stt-reveal');
+  check(c.id + ': nothing selected → asks for a choice, stays hidden',
+    r.nodes['stt-need'].textContent === 'Choose an answer first.' && r.nodes['stt-explanation'].hidden === true);
+  r.pick(rec);
+  check(c.id + ': selecting does not reveal', r.nodes['stt-explanation'].hidden === true && r.nodes['stt-change-status'].textContent === '');
+  r.click('stt-reveal');
+  check(c.id + ': the button reveals, numbers show and focus moves to the heading',
+    r.nodes['stt-explanation'].hidden === false && r.signs.every(s => s.hidden === false) && r.focused() === 'stt-expl-heading');
+  check(c.id + ': feedback names the choice and says it is recommended',
+    /You chose [A-D]\./.test(r.nodes['stt-your-choice'].textContent) && /recommended next step/.test(r.nodes['stt-your-choice'].textContent));
+  r.pick(other);
+  check(c.id + ': changing the answer updates the feedback and posts a short status',
+    r.nodes['stt-your-choice'].textContent.includes(c.choices.find(x => x.key === other).feedback)
+    && r.nodes['stt-change-status'].textContent === 'Feedback updated for answer ' + other + '.');
+  check(c.id + ': changing the answer does not move focus', r.focused() === 'stt-expl-heading');
+  check(c.id + ': no storage or network touched during the round', !r.touched.some(t => /fetch|getItem|setItem|sendBeacon/.test(t)));
+}
+
 console.log('\n' + '='.repeat(60));
 console.log(`${pass}/${pass + fail} Spot the Trap checks passed`);
 if (failures.length) { console.log('\nFailures:'); failures.forEach(f => console.log('  - ' + f)); }

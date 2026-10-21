@@ -152,6 +152,38 @@ const MUST_404 = [
       !metaCsp ? 'the page has no meta Content-Security-Policy at all' : 'its policy still permits the ad hosts');
   }
 
+  section('Spot the Trap pages run no third-party code');
+  {
+    const SCENARIOS = ['deposit-job', 'safe-account', 'human-check', 'delivery-update'];
+    const pagesStt = ['/spot-the-trap'].concat(SCENARIOS.map(id => '/spot-the-trap-' + id));
+    for (const base of pagesStt) {
+      for (const p of [base, base + '.html']) {
+        const r = await get(p);
+        check(p + ': served', r.status === 200, 'status ' + r.status);
+        // Response policy: the header must carry its own restrictive policy,
+        // so the site-wide one cannot grant scripts, connections or frames.
+        const policies = String(r.headers['content-security-policy'] || '').split(',');
+        const strict = policies.some(pol => {
+          const d = pol.split(';').map(x => x.trim());
+          return d.includes("script-src 'self'") && d.includes("connect-src 'none'") && d.includes("frame-src 'none'");
+        });
+        check(p + ': response CSP allows scripts from this site only and no connections', strict, policies.length + ' policies');
+        const scripts = [...r.body.matchAll(/<script\b([^>]*)>/g)].map(m => m[1]);
+        check(p + ': the only scripts are spot-the-trap.js and structured data',
+          scripts.every(a => /src="spot-the-trap\.js"/.test(a) || /type="application\/ld\+json"/.test(a)));
+        check(p + ': no advertising or analytics', !/adsbygoogle|googlesyndication|fundingchoices|cloudflareinsights/.test(r.body));
+      }
+    }
+    for (const asset of ['/spot-the-trap.js', '/spot-the-trap.png'].concat(SCENARIOS.map(id => '/spot-the-trap-' + id + '.png'))) {
+      const r = await get(asset);
+      check(asset + ': published', r.status === 200, 'status ' + r.status);
+    }
+    for (const hidden of ['/challenges.js', '/build-challenges.js', '/trap-cards.py', '/challenge.test.js']) {
+      const r = await get(hidden);
+      check(hidden + ': not published', r.status === 404, 'status ' + r.status);
+    }
+  }
+
   section('The scanner runs no third-party script');
   {
     const r = await get('/');
