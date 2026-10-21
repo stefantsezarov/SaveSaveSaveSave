@@ -179,7 +179,7 @@ const LEARN_MORE = {
   'deposit-job': 'scam and fake job proposals',
   'safe-account': 'safe account bank impersonation scam',
   'human-check': 'fake CAPTCHA verification run command scam',
-  'delivery-update': 'fake delivery text message scam',
+  'job-link': 'job offer phishing link scam',
 };
 const searchOf = c => 'https://www.google.com/search?q=' + encodeURIComponent(LEARN_MORE[c.id]).replace(/%20/g, '+');
 
@@ -200,8 +200,7 @@ function scenarioPage(c, i, existing) {
     <h1 class="title">${esc(c.title)}</h1>
     <p class="stt-scene">${esc(c.scene)}</p>
 
-    <section class="stt-example" aria-labelledby="stt-ex-label">
-      <p class="stt-label" id="stt-ex-label">${esc(c.exchangeLabel)} · ${esc(c.channel)}</p>
+    <section class="stt-example" aria-label="The message">
       <div class="stt-message" id="stt-message">
 ${msgs}
       </div>

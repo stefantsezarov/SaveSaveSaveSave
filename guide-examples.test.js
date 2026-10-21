@@ -570,7 +570,7 @@ if (fs.existsSync(guidePath)) {
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
     'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html',
-    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-delivery-update.html'];
+    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-job-link.html'];
 
   for (const f of SUBPAGES) {
     const fp = path.join(__dirname, f);
@@ -668,7 +668,7 @@ if (fs.existsSync(guidePath)) {
       'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
       'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
     'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html',
-    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-delivery-update.html'];
+    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-job-link.html'];
     const referenced = new Set();
     for (const f of PAGES) {
       const fp = path.join(__dirname, f);
@@ -728,7 +728,7 @@ if (fs.existsSync(guidePath)) {
     'privacy.html', 'terms.html', 'honeypot-tokens.html', 'invisible-characters.html',
     'prompt-injection.html', 'seed-phrase-phishing.html', 'disguised-links.html',
     'sanctioned-addresses.html', 'address-poisoning.html', 'ai-leftovers.html', 'agent-second-opinion.html', 'support.html', 'tools.html', 'agents.html', 'about.html',
-    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-delivery-update.html'];
+    'spot-the-trap.html', 'spot-the-trap-deposit-job.html', 'spot-the-trap-safe-account.html', 'spot-the-trap-human-check.html', 'spot-the-trap-job-link.html'];
 
   for (const f of PAGES) {
     const fp = path.join(__dirname, f);

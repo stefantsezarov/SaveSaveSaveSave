@@ -129,33 +129,42 @@ const CHALLENGES = [
     approvedHash: '4e9b8f911420d57c',
   },
   {
-    id: 'delivery-update',
+    id: 'job-link',
     version: 1,
-    title: 'The delivery update that needs checking',
-    channel: 'Text message',
-    scene: 'You are expecting a parcel today. A delivery update arrives by text.',
+    title: 'The job offer with a link to sign in',
+    channel: 'Email',
+    scene: 'You have been applying for jobs online. An email arrives from a recruiter you do not recognise.',
     exchangeLabel: 'Invented message',
+    // The address is written as plain text on a .example domain. The page
+    // never makes it a link (challenge.test.js checks).
     messages: [
-      { from: 'Delivery update', parts: ['Your parcel is due today between 14:00 and 16:00. Tracking reference: EXAMPLE-2048. You can check its progress in the delivery app.'] },
+      { from: 'Talent team', parts: ['Congratulations! ', { mark: 1, text: 'You have been selected for a remote assistant role, no interview needed.' }, ' ', { mark: 2, text: 'To accept, sign in at hr-onboarding.example/start with your email address and email password.' }, ' ', { mark: 3, text: 'Then download and open the attached offer file.' }, ' ', { mark: 4, text: 'Add your bank card details so we can set up your first salary payment.' }, ' ', { mark: 5, text: 'This offer expires in 24 hours.' }] },
     ],
     choices: [
-      { key: 'A', text: 'Assume it is fake because delivery messages are often scams.', feedback: 'There is not enough here to decide that. Looking ordinary does not verify a message, and arriving by text does not make it fraudulent.' },
-      { key: 'B', text: 'Open the delivery app I already use and compare the tracking details with my order.', recommended: true, feedback: 'Check the order through a channel you already use. Matching details can confirm the delivery update; a new payment or information request still needs its own check.' },
-      { key: 'C', text: 'Reply with my address to confirm the delivery.', feedback: "The message has not established who would receive your reply. Use the delivery company's established channel instead." },
+      { key: 'A', text: 'Follow the link and sign in to secure the job.', feedback: 'A sign-in page reached from an unexpected message can be a copy built to capture your password. A job offer does not make the link safe.' },
+      { key: 'B', text: 'Open the attachment first to read the offer.', feedback: 'An attachment from a sender you have not verified can install malware. Opening it gives the sender what they want before you know who they are.' },
+      { key: 'C', text: 'Reply and ask the recruiter whether the link is safe.', feedback: 'The sender cannot confirm their own link. Any reassurance comes from the same unverified source.' },
+      { key: 'D', text: 'Leave the link and attachment alone, and check the role on the company website I find myself.', recommended: true, feedback: 'Check through a route you find yourself. A real employer will still have the role, or a way to reach the recruiter, there.' },
     ],
-    detailsHeading: 'What to check',
-    details: [],
-    note: 'You were expecting a parcel, the message requests no payment, and it offers no link to follow. Those details make the update plausible. They do not verify its sender. The next step is comparison with your actual order.',
-    remember: 'Check an ordinary-looking message too. You do not have to decide whether it is genuine from its appearance alone.',
+    detailsHeading: 'Details to notice',
+    details: [
+      'A job offered without an interview or any checking of you needs checking itself.',
+      'The link asks for your email password, which no employer needs.',
+      'An unexpected attachment can carry malware.',
+      'Card details are requested before you have verified the employer.',
+      'The short deadline discourages time to check.',
+    ],
+    note: null,
+    remember: 'Do not click links, open attachments or share passwords or card details from a job offer until you have checked the employer yourself.',
     source: {
-      text: 'FTC guidance covers fake delivery notifications and recommends contacting a company through a known website or phone number. It does not authenticate this invented notice.',
-      label: 'FTC: Recognising and reporting spam texts',
-      url: 'https://consumer.ftc.gov/articles/how-recognize-and-report-spam-text-messages',
+      text: 'The FTC explains how phishing messages use links and attachments to steal passwords and account details, and how to check a message through a source you trust.',
+      label: 'FTC: How to recognize and avoid phishing scams',
+      url: 'https://consumer.ftc.gov/articles/how-recognize-avoid-phishing-scams',
     },
-    // Approved by Stefan on 21 October 2026 (content and source). The hash
-    // is the wording approved; any material change needs a new review.
-    reviewed: '2026-10-21',
-    approvedHash: 'c49bcfe464ba5faf',
+    // Draft. Not approved: a release build refuses to run until Stefan
+    // reviews this scenario and its source.
+    reviewed: null,
+    approvedHash: null,
   },
 ];
 

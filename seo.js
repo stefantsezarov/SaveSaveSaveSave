@@ -69,7 +69,7 @@ const PAGES = {
   'spot-the-trap-deposit-job.html': { type: 'page', crumb: 'Spot the Trap: The job that asks for a deposit', image: 'spot-the-trap-deposit-job.png', imageAlt: 'Would you spot the trap? The job that asks for a deposit' },
   'spot-the-trap-safe-account.html': { type: 'page', crumb: 'Spot the Trap: The call about a safe account', image: 'spot-the-trap-safe-account.png', imageAlt: 'Would you spot the trap? The call about a safe account' },
   'spot-the-trap-human-check.html': { type: 'page', crumb: 'Spot the Trap: The human check that asks you to run something', image: 'spot-the-trap-human-check.png', imageAlt: 'Would you spot the trap? The human check that asks you to run something' },
-  'spot-the-trap-delivery-update.html': { type: 'page', crumb: 'Spot the Trap: The delivery update that needs checking', image: 'spot-the-trap-delivery-update.png', imageAlt: 'Would you spot the trap? The delivery update that needs checking' },
+  'spot-the-trap-job-link.html': { type: 'page', crumb: 'Spot the Trap: The job offer with a link to sign in', image: 'spot-the-trap-job-link.png', imageAlt: 'Would you spot the trap? The job offer with a link to sign in' },
 };
 
 const GUIDE_ORDER = [

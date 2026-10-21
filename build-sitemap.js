@@ -59,7 +59,7 @@ const PAGES = [
   { file: 'spot-the-trap-deposit-job.html', loc: '/spot-the-trap-deposit-job', changefreq: 'monthly', priority: '0.5' },
   { file: 'spot-the-trap-safe-account.html', loc: '/spot-the-trap-safe-account', changefreq: 'monthly', priority: '0.5' },
   { file: 'spot-the-trap-human-check.html', loc: '/spot-the-trap-human-check', changefreq: 'monthly', priority: '0.5' },
-  { file: 'spot-the-trap-delivery-update.html', loc: '/spot-the-trap-delivery-update', changefreq: 'monthly', priority: '0.5' },
+  { file: 'spot-the-trap-job-link.html', loc: '/spot-the-trap-job-link', changefreq: 'monthly', priority: '0.5' },
 ];
 
 function lastCommitDate(file) {

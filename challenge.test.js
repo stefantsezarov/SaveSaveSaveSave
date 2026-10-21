@@ -30,7 +30,7 @@ const marksOf = (c) => c.messages.flatMap(m => [m.from].concat(m.parts)).filter(
 const BRANDS = /\b(binance|coinbase|metamask|paypal|dhl|ups|fedex|amazon|microsoft|google|apple|whatsapp|telegram|revolut|wise|visa|mastercard|hsbc|barclays|chase|dsk|unicredit|fibank|ftc)\b/i;
 
 console.log('== Scenario content ==');
-check('there are four starter scenarios', CHALLENGES.length === 4, String(CHALLENGES.length));
+check('there are four scenarios', CHALLENGES.length === 4, String(CHALLENGES.length));
 check('ids are unique', new Set(CHALLENGES.map(c => c.id)).size === CHALLENGES.length);
 for (const c of CHALLENGES) {
   const id = c.id;
@@ -59,10 +59,6 @@ for (const c of CHALLENGES) {
 }
 check('the recommended answer is not always in the same position',
   new Set(CHALLENGES.map(c => c.choices.find(x => x.recommended).key)).size > 1);
-check('at least one ordinary-looking round with nothing to highlight',
-  CHALLENGES.some(c => c.details.length === 0 && marksOf(c).length === 0));
-check('the ordinary-looking round is not called genuine',
-  CHALLENGES.filter(c => c.details.length === 0).every(c => !/\bgenuine\b/i.test(c.title + c.scene + c.exchangeLabel)));
 
 console.log('\n== Generated pages ==');
 let upToDate = true;
@@ -178,6 +174,8 @@ for (const f of pages) {
 console.log('\n== Layout: verdict, collapsible detail, learn more ==');
 for (const c of CHALLENGES) {
   const h = read('spot-the-trap-' + c.id + '.html');
+  check(c.id + ': no "Invented …" label above the message', !h.includes(c.exchangeLabel + ' · '));
+  check(c.id + ': no web address in the message is a link', !/<a [^>]*href="[^"]*\.example/.test(h));
   check(c.id + ': details and source are collapsed by default',
     /<details class="stt-more">\s*<summary>About this pattern<\/summary>/.test(h) && !/<details[^>]* open/.test(h)
     && h.includes('<summary>' + c.detailsHeading + '</summary>'));
