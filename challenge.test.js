@@ -175,6 +175,17 @@ for (const f of pages) {
   }
 }
 
+console.log('\n== Layout: verdict, collapsible detail, learn more ==');
+for (const c of CHALLENGES) {
+  const h = read('spot-the-trap-' + c.id + '.html');
+  check(c.id + ': details and source are collapsed by default',
+    /<details class="stt-more">\s*<summary>About this pattern<\/summary>/.test(h) && !/<details[^>]* open/.test(h)
+    && h.includes('<summary>' + c.detailsHeading + '</summary>'));
+  const m = h.match(/href="(https:\/\/www\.google\.com\/search\?q=[^"]+)" target="_blank" rel="noopener noreferrer"/);
+  check(c.id + ': learn-more opens a Google search in a new tab, with no tracking parameters', !!m && !/[&]/.test(m[1]));
+  check(c.id + ': share section has its own bordered block', /<section class="paper stt-share" id="stt-share-section"[^>]*hidden>/.test(h));
+}
+
 console.log('\n== The script, run ==');
 // A small stand-in DOM, enough for spot-the-trap.js. The real script runs
 // against it: this checks what the code does, not how it reads.
@@ -186,15 +197,15 @@ function runRound(c) {
     addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     focus() { focused = this.id; },
-    classList: { _s: new Set(), add(x) { this._s.add(x); }, contains(x) { return this._s.has(x); } } }, extra || {});
+    classList: { _s: new Set(), add(x) { this._s.add(x); }, remove(x) { this._s.delete(x); }, contains(x) { return this._s.has(x); } } }, extra || {});
   let focused = null;
   const radios = c.choices.map(ch => ({ value: ch.key, checked: false }));
-  const items = c.choices.map(ch => el(null, { attrs: { 'data-key': ch.key, 'data-feedback': ch.feedback, 'data-recommended': ch.recommended ? 'true' : 'false' } }));
+  const items = c.choices.map(ch => el(null, { attrs: { 'data-key': ch.key, 'data-feedback': ch.feedback, 'data-choice': ch.text, 'data-recommended': ch.recommended ? 'true' : 'false' } }));
   const signs = marksOf(c).map(() => el(null, { hidden: true }));
   const nodes = {
     'stt-form': el('stt-form', { querySelector: () => radios.find(r => r.checked) || null }),
     'stt-reveal': el('stt-reveal'), 'stt-need': el('stt-need'), 'stt-expl-heading': el('stt-expl-heading'),
-    'stt-your-choice': el('stt-your-choice'), 'stt-change-status': el('stt-change-status'),
+    'stt-your-choice': el('stt-your-choice'), 'stt-verdict': el('stt-verdict'), 'stt-share-section': el('stt-share-section', { hidden: true }), 'stt-change-status': el('stt-change-status'),
     'stt-message': el('stt-message', { querySelectorAll: () => signs }),
     'stt-explanation': el('stt-explanation', { hidden: true, querySelector: (sel) => {
       const m = /data-key="([A-D])"\](\[data-recommended="true"\])?/.exec(sel);
@@ -229,6 +240,16 @@ for (const c of CHALLENGES) {
   check(c.id + ': changing the answer updates the feedback and posts a short status',
     r.nodes['stt-your-choice'].textContent.includes(c.choices.find(x => x.key === other).feedback)
     && r.nodes['stt-change-status'].textContent === 'Feedback updated for answer ' + other + '.');
+  check(c.id + ': a wrong answer turns the panel red, says so in words and names the safer step',
+    r.nodes['stt-verdict'].classList.contains('is-wrong') && !r.nodes['stt-verdict'].classList.contains('is-right')
+    && /Risky choice/.test(r.nodes['stt-expl-heading'].textContent)
+    && r.nodes['stt-your-choice'].textContent.includes('Safer step: ' + rec + '. ' + c.choices.find(x => x.recommended).text));
+  check(c.id + ': the share section appears after the reveal', r.nodes['stt-share-section'].hidden === false);
+  r.pick(rec);
+  check(c.id + ': the recommended answer turns the panel green and says so in words',
+    r.nodes['stt-verdict'].classList.contains('is-right') && !r.nodes['stt-verdict'].classList.contains('is-wrong')
+    && /Safe choice/.test(r.nodes['stt-expl-heading'].textContent));
+  r.pick(other);
   check(c.id + ': changing the answer does not move focus', r.focused() === 'stt-expl-heading');
   check(c.id + ': no storage or network touched during the round', !r.touched.some(t => /fetch|getItem|setItem|sendBeacon/.test(t)));
 }
