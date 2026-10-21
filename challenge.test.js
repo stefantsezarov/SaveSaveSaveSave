@@ -133,24 +133,27 @@ check('trap-cards.py draws only the title, never choices or feedback', !/choice|
 
 console.log('\n== Release gate and review dates ==');
 const B = require('./build-challenges.js');
-const fx = (reviewed) => Object.assign({}, CHALLENGES[0], { reviewed });
+const fx = (reviewed) => { const c = Object.assign({}, CHALLENGES[0], { reviewed }); c.approvedHash = B.contentHash(c); return c; };
 check('an unapproved scenario cannot be released', B.releaseProblems([fx(null)], '2026-10-21').length === 1);
 check('a date-shaped but impossible date is refused', B.releaseProblems([fx('2026-02-30')], '2026-10-21').length === 1);
 check('a future review date is refused', B.releaseProblems([fx('2026-12-01')], '2026-10-21').length === 1);
 check('a real past review date is accepted', B.releaseProblems([fx('2026-10-20')], '2026-10-21').length === 0);
-check('the four real scenarios are still unapproved (no date filled in on anyone\'s behalf)',
-  CHALLENGES.every(c => c.reviewed === null) && B.releaseProblems(CHALLENGES).length === 4);
-let gateFails = false;
-try { execFileSync('node', ['build-challenges.js', '--release', '--check'], { cwd: __dirname, stdio: 'pipe' }); } catch (_) { gateFails = true; }
-check('the release command fails closed while scenarios are unapproved', gateFails);
+check('the four scenarios carry the approval of 21 October 2026', CHALLENGES.every(c => c.reviewed === '2026-10-21'));
+check('every approval matches the approved wording', B.releaseProblems(CHALLENGES).length === 0, B.releaseProblems(CHALLENGES).join('; '));
+const edited = Object.assign({}, CHALLENGES[0], { remember: CHALLENGES[0].remember + ' Edited.' });
+check('a material change after approval needs a new review', /content changed since it was approved/.test(B.releaseProblems([edited]).join()));
+check('...and the page goes back to Draft', /Draft — awaiting content review/.test(B.reviewLine(edited)));
+let gatePasses = true;
+try { execFileSync('node', ['build-challenges.js', '--release', '--check'], { cwd: __dirname, stdio: 'pipe' }); } catch (_) { gatePasses = false; }
+check('the release command passes for the approved, current pages', gatePasses);
 const draftPage = B.scenarioPage(fx(null), 0, null);
 const approvedPage = B.scenarioPage(fx('2026-10-20'), 0, null);
 check('an unapproved page says it is a draft and shows its version',
   /Version 1 · Draft — awaiting content review/.test(draftPage) && !/last reviewed/.test(draftPage));
 check('an approved page shows the review date to readers',
   /Version 1 · content last reviewed <time datetime="2026-10-20">20 October 2026<\/time>/.test(approvedPage) && !/Draft —/.test(approvedPage));
-for (const c of CHALLENGES) check('spot-the-trap-' + c.id + '.html: shows its current review state',
-  read('spot-the-trap-' + c.id + '.html').includes('Version ' + c.version + ' · Draft — awaiting content review'));
+for (const c of CHALLENGES) check('spot-the-trap-' + c.id + '.html: shows its approved review date',
+  read('spot-the-trap-' + c.id + '.html').includes('Version ' + c.version + ' · content last reviewed <time datetime="2026-10-21">21 October 2026</time>'));
 const wf = read('.github/workflows/tests.yml');
 check('CI runs the release gate on pull requests into main and on main',
   /spot-the-trap-release:[\s\S]*github\.base_ref == 'main'[\s\S]*node build-challenges\.js --release --check/.test(wf));

@@ -13,9 +13,10 @@
    a message cannot silently move a highlight onto the wrong words.
 
    `reviewed` stays null until a person has approved the scenario's copy
-   and its source. Source checking is not approval. A release build
-   (`node build-challenges.js --release`) refuses to run while any
-   scenario is unreviewed.
+   and its source. Source checking is not approval. `approvedHash`
+   records exactly what was approved (contentHash in build-challenges.js).
+   A release build (`node build-challenges.js --release`) refuses to run
+   while any scenario is unreviewed or has changed since approval.
    ===================================================================== */
 
 const CHALLENGES = [
@@ -52,7 +53,10 @@ const CHALLENGES = [
       label: 'FTC: Task scams create the illusion of making money',
       url: 'https://consumer.ftc.gov/consumer-alerts/2024/11/task-scams-create-illusion-making-money',
     },
-    reviewed: null,
+    // Approved by Stefan on 21 October 2026 (content and source). The hash
+    // is the wording approved; any material change needs a new review.
+    reviewed: '2026-10-21',
+    approvedHash: 'bee5a40cc68e95c9',
   },
   {
     id: 'safe-account',
@@ -83,7 +87,10 @@ const CHALLENGES = [
       label: 'FTC: Text scams that may target your business',
       url: 'https://www.ftc.gov/business-guidance/blog/2025/04/new-ftc-data-spotlight-highlights-text-scams-may-target-your-business',
     },
-    reviewed: null,
+    // Approved by Stefan on 21 October 2026 (content and source). The hash
+    // is the wording approved; any material change needs a new review.
+    reviewed: '2026-10-21',
+    approvedHash: '9809765d9db047e8',
   },
   {
     id: 'human-check',
@@ -116,7 +123,10 @@ const CHALLENGES = [
       label: 'Microsoft: Think before you Click(Fix)',
       url: 'https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/',
     },
-    reviewed: null,
+    // Approved by Stefan on 21 October 2026 (content and source). The hash
+    // is the wording approved; any material change needs a new review.
+    reviewed: '2026-10-21',
+    approvedHash: '4e9b8f911420d57c',
   },
   {
     id: 'delivery-update',
@@ -142,7 +152,10 @@ const CHALLENGES = [
       label: 'FTC: Recognising and reporting spam texts',
       url: 'https://consumer.ftc.gov/articles/how-recognize-and-report-spam-text-messages',
     },
-    reviewed: null,
+    // Approved by Stefan on 21 October 2026 (content and source). The hash
+    // is the wording approved; any material change needs a new review.
+    reviewed: '2026-10-21',
+    approvedHash: 'c49bcfe464ba5faf',
   },
 ];
 

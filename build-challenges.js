@@ -128,18 +128,27 @@ function validReviewDate(d, today) {
   if (isNaN(t) || t.toISOString().slice(0, 10) !== d) return false;
   return d <= (today || new Date().toISOString().slice(0, 10));
 }
+// Fingerprint of everything a visitor reads in a scenario. An approval
+// records it; if the wording, choices, feedback or source change later,
+// the fingerprint no longer matches and the approval does not carry over.
+function contentHash(c) {
+  const copy = Object.assign({}, c);
+  delete copy.reviewed; delete copy.approvedHash;
+  return require('crypto').createHash('sha256').update(JSON.stringify(copy)).digest('hex').slice(0, 16);
+}
 // Every reason a set of scenarios may not be released. Empty = releasable.
 function releaseProblems(list, today) {
   const out = [];
   for (const c of list) {
     if (c.reviewed === null || c.reviewed === undefined) out.push(c.id + ': not approved (reviewed: null)');
     else if (!validReviewDate(c.reviewed, today)) out.push(c.id + ': reviewed is not a real past date (' + c.reviewed + ')');
+    else if (c.approvedHash !== contentHash(c)) out.push(c.id + ': content changed since it was approved (needs a new review)');
   }
   return out;
 }
 const HUMAN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function reviewLine(c) {
-  if (c.reviewed && validReviewDate(c.reviewed)) {
+  if (c.reviewed && validReviewDate(c.reviewed) && c.approvedHash === contentHash(c)) {
     const [y, m, d] = c.reviewed.split('-').map(Number);
     return 'Version ' + c.version + ' · content last reviewed <time datetime="' + c.reviewed + '">' + d + ' ' + HUMAN_MONTHS[m - 1] + ' ' + y + '</time>';
   }
@@ -250,7 +259,7 @@ ${list}
 ` + foot(false);
 }
 
-module.exports = { scenarioPage, indexPage, reviewLine, validReviewDate, releaseProblems };
+module.exports = { scenarioPage, indexPage, reviewLine, validReviewDate, releaseProblems, contentHash };
 if (require.main !== module) return;
 
 // ---------------------------------------------------------------------
