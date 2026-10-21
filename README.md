@@ -53,13 +53,14 @@ An **MCP server**, **CLI** and **Node library** in [`agent/`](agent/) give agent
 
 ## Tests
 
-Over 1,000 checks across 10 suites. They run on every push (`.github/workflows/tests.yml`), followed by a check of the live site after each deploy.
+Over 1,000 checks across 11 suites. They run on every push (`.github/workflows/tests.yml`), followed by a check of the live site after each deploy.
 
 ```
 node verify_embedded.js              # page engine == core.js
 node savesavesavesave.regression.test.js
 node scanmodel.test.js
 node goplus-routing.test.js
+node challenge.test.js               # Spot the Trap content and pages
 node promptscan.test.js
 node promptscan.ui.test.js           # includes XSS tests
 node scanconsole.test.js

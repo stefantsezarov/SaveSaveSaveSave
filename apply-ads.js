@@ -85,6 +85,11 @@ const AD_POLICY = {
   'seed-phrase-phishing.html':  { enabled: false, reason: 'The highest-harm guide on the site. Someone may be reading it while being robbed. Nothing commercial belongs on it.' },
   'disguised-links.html':       { enabled: false, reason: 'Phishing and disguised destinations. An unreviewed advertisement beside an article about unsafe links is the exact confusion the article warns about.' },
   'sanctioned-addresses.html': { enabled: false, reason: 'Read by people whose funds may have just been frozen -- the exact audience that recovery scammers buy ads to reach. Decided by Stefan, 23 September 2026.' },
+  'spot-the-trap.html':         { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-deposit-job.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-safe-account.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-human-check.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-delivery-update.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
 };
 
 const PAGES = Object.keys(AD_POLICY);
@@ -322,6 +327,25 @@ const scannerHeaders = '# BEGIN GENERATED SCANNER CSP\n'
   + '\n# END GENERATED SCANNER CSP\n';
 headers = headers.replace(/\n?# BEGIN GENERATED SCANNER CSP[\s\S]*?# END GENERATED SCANNER CSP\n?/, '\n');
 headers = headers.trimEnd() + '\n\n' + scannerHeaders;
+// Spot the Trap pages get the same response-level protection as the
+// scanner: their own restrictive policy as a header, so the site-wide
+// policy (which permits ad and analytics hosts for the guides) cannot
+// grant them scripts, connections or frames. Every served address of
+// each page is listed: /name, /name.html.
+const challengeFiles = fs.readdirSync(__dirname).filter(f => /^spot-the-trap(-[a-z0-9-]+)?\.html$/.test(f)).sort();
+const challengeBlocks = challengeFiles.map(f => {
+  const html = fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const policy = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
+  if (!policy || !/script-src 'self';/.test(policy) || !/connect-src 'none'/.test(policy) || !/frame-src 'none'/.test(policy)) {
+    throw new Error(f + ' requires its restrictive meta policy before generating response headers.');
+  }
+  const base = '/' + f.replace(/\.html$/, '');
+  return [base, base + '.html'].map(route => route + "\n  Content-Security-Policy: " + policy + " frame-ancestors 'none';").join('\n\n');
+});
+headers = headers.replace(/\n?# BEGIN GENERATED SPOT THE TRAP CSP[\s\S]*?# END GENERATED SPOT THE TRAP CSP\n?/, '\n');
+if (challengeBlocks.length) {
+  headers = headers.trimEnd() + '\n\n# BEGIN GENERATED SPOT THE TRAP CSP\n' + challengeBlocks.join('\n\n') + '\n# END GENERATED SPOT THE TRAP CSP\n';
+}
 fs.writeFileSync(hp, headers, 'utf8');
 
 console.log(`\n${on} page(s) carry advertising, ${off} deliberately do not. ${changed} file(s) rewritten.`);

@@ -65,6 +65,11 @@ const PAGES = {
   'agents.html':             { type: 'page',    crumb: 'For agents' },
   'terms.html':              { type: 'page',    crumb: 'Terms' },
   'about.html':              { type: 'page',    crumb: 'About the author' },
+  'spot-the-trap.html':      { type: 'page',    crumb: 'Spot the Trap', image: 'spot-the-trap.png', imageAlt: 'Spot the Trap — short challenges from SaveSaveSaveSave' },
+  'spot-the-trap-deposit-job.html': { type: 'page', crumb: 'Spot the Trap: The job that asks for a deposit', image: 'spot-the-trap-deposit-job.png', imageAlt: 'Would you spot the trap? The job that asks for a deposit' },
+  'spot-the-trap-safe-account.html': { type: 'page', crumb: 'Spot the Trap: The call about a safe account', image: 'spot-the-trap-safe-account.png', imageAlt: 'Would you spot the trap? The call about a safe account' },
+  'spot-the-trap-human-check.html': { type: 'page', crumb: 'Spot the Trap: The human check that asks you to run something', image: 'spot-the-trap-human-check.png', imageAlt: 'Would you spot the trap? The human check that asks you to run something' },
+  'spot-the-trap-delivery-update.html': { type: 'page', crumb: 'Spot the Trap: The delivery update that needs checking', image: 'spot-the-trap-delivery-update.png', imageAlt: 'Would you spot the trap? The delivery update that needs checking' },
 };
 
 const GUIDE_ORDER = [
@@ -317,10 +322,10 @@ function buildBlock(file, cfg, all) {
     '<meta property="og:url" content="' + canonical + '">',
     '<meta property="og:title" content="' + attr(socialTitle) + '">',
     '<meta property="og:description" content="' + attr(snippet) + '">',
-    '<meta property="og:image" content="' + OG_IMAGE + '">',
+    '<meta property="og:image" content="' + (cfg.image ? SITE + '/' + cfg.image : OG_IMAGE) + '">',
     '<meta property="og:image:width" content="1200">',
     '<meta property="og:image:height" content="630">',
-    '<meta property="og:image:alt" content="SaveSaveSaveSave — free risk screening for crypto messages and addresses">',
+    '<meta property="og:image:alt" content="' + attr(cfg.imageAlt || 'SaveSaveSaveSave — free risk screening for crypto messages and addresses') + '">',
   ];
   if (isArticle) {
     lines.push('<meta property="article:published_time" content="' + published + '">');
@@ -331,7 +336,7 @@ function buildBlock(file, cfg, all) {
   lines.push('<meta name="twitter:card" content="summary_large_image">');
   lines.push('<meta name="twitter:title" content="' + attr(socialTitle) + '">');
   lines.push('<meta name="twitter:description" content="' + attr(snippet) + '">');
-  lines.push('<meta name="twitter:image" content="' + OG_IMAGE + '">');
+  lines.push('<meta name="twitter:image" content="' + (cfg.image ? SITE + '/' + cfg.image : OG_IMAGE) + '">');
   lines.push('<script type="application/ld+json">');
   lines.push(ld({ '@context': 'https://schema.org', '@graph': graph }));
   lines.push('</script>');

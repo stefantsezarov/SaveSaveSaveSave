@@ -52,6 +52,8 @@ jobs:
         run: node scanmodel.test.js
       - name: Provider routing
         run: node goplus-routing.test.js
+      - name: Spot the Trap content, pages and script
+        run: node challenge.test.js
       - name: Published guides still match the engine
         run: node guide-examples.test.js
       - name: Red team
@@ -96,3 +98,19 @@ jobs:
           path: .github/action-fixtures/bad
       - name: The bad fixture really failed
         run: test "${{ steps.bad.outcome }}" = "failure"
+
+  # Spot the Trap release gate. Fails while any scenario is unapproved
+  # (reviewed: null) or carries a date that is not a real past date.
+  # Runs on pull requests INTO main and on main itself only, so feature
+  # branches and their previews can still carry draft scenarios for
+  # review. It blocks a merge only if branch protection requires it.
+  spot-the-trap-release:
+    if: github.event_name == 'push' || github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Every published scenario is approved and the pages are current
+        run: node build-challenges.js --release --check
