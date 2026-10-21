@@ -89,7 +89,7 @@ const AD_POLICY = {
   'spot-the-trap-deposit-job.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
   'spot-the-trap-safe-account.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
   'spot-the-trap-human-check.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
-  'spot-the-trap-delivery-update.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-job-link.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
 };
 
 const PAGES = Object.keys(AD_POLICY);

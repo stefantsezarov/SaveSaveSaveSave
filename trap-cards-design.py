@@ -53,14 +53,13 @@ ILLU = {
   <rect x="120" y="196" width="160" height="40" rx="8" fill="none" stroke="{M}" stroke-width="3"/>
   <rect x="90" y="312" width="220" height="74" rx="10" fill="none" stroke="{C}" stroke-width="3"/>
   ''' + ''.join(f'<rect x="{106 + i*40}" y="{326 + r*24}" width="28" height="16" rx="3" fill="none" stroke="{C}" stroke-width="2"/>' for r in range(2) for i in range(5)),
- 'delivery-update': f'''
-  <path d="M30 170 l100 -50 l100 50 l-100 50 z" fill="none" stroke="{P}" stroke-width="3"/>
-  <path d="M30 170 v110 l100 50 v-110" fill="none" stroke="{P}" stroke-width="3"/>
-  <path d="M230 170 v110 l-100 50" fill="none" stroke="{P}" stroke-width="3"/>
-  <path d="M80 145 l100 50" fill="none" stroke="{P}" stroke-width="3"/>
-  <rect x="170" y="40" width="220" height="110" rx="12" fill="none" stroke="{C}" stroke-width="3"/>
-  {t(190, 82, 'Delivery update', 22, C, family='PM')}
-  {t(190, 126, '14:00–16:00', 34, T, family='SG')}''',
+ 'job-link': f'''
+  <rect x="10" y="60" width="300" height="200" rx="12" fill="none" stroke="{P}" stroke-width="3"/>
+  <path d="M10 72 l150 104 l150 -104" fill="none" stroke="{P}" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="120" y="240" width="270" height="64" rx="12" fill="#08080C" stroke="{C}" stroke-width="3"/>
+  {t(142, 280, 'Sign in to accept', 22, C, family='PM')}
+  <rect x="40" y="320" width="150" height="56" rx="8" fill="none" stroke="{M}" stroke-width="3"/>
+  {t(60, 356, 'offer file', 20, M, family='PM')}''',
 }
 
 def wrap(s, n):

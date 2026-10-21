@@ -90,7 +90,7 @@ const ADS_OFF = ['/index.html', '/about.html', '/privacy.html', '/terms.html', '
                  '/prompt-injection.html', '/seed-phrase-phishing.html',
                  '/disguised-links.html', '/sanctioned-addresses.html',
                  '/spot-the-trap.html', '/spot-the-trap-deposit-job.html', '/spot-the-trap-safe-account.html',
-                 '/spot-the-trap-human-check.html', '/spot-the-trap-delivery-update.html'];
+                 '/spot-the-trap-human-check.html', '/spot-the-trap-job-link.html'];
 
 // Must not be reachable. The .git paths are the ones that made an
 // exclusion list decorative; the rest are documents and source that the
@@ -154,7 +154,7 @@ const MUST_404 = [
 
   section('Spot the Trap pages run no third-party code');
   {
-    const SCENARIOS = ['deposit-job', 'safe-account', 'human-check', 'delivery-update'];
+    const SCENARIOS = ['deposit-job', 'safe-account', 'human-check', 'job-link'];
     const pagesStt = ['/spot-the-trap'].concat(SCENARIOS.map(id => '/spot-the-trap-' + id));
     for (const base of pagesStt) {
       for (const p of [base, base + '.html']) {
