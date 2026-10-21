@@ -66,6 +66,9 @@ build-sitemap.js
 build-challenges.js
 challenges.js
 trap-cards.py
+trap-cards-design.py
+design
+design/**
 build-ofac.js
 build-suffixes.js
 seo.js

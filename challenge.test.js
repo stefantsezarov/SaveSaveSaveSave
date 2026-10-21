@@ -129,6 +129,10 @@ check('spot-the-trap.js: the shared text is read from the fixed button attribute
   /getAttribute\('data-text'\)/.test(code) && !/data-text[^\n]*chosen\(/.test(code));
 check('spot-the-trap.js is published; challenges.js and the builders are not',
   (() => { const ig = read('.assetsignore'); return !/^spot-the-trap\.js$/m.test(ig) && /^challenges\.js$/m.test(ig) && /^build-challenges\.js$/m.test(ig) && /^trap-cards\.py$/m.test(ig); })());
+check('share-card concepts are kept out of the deploy until approved',
+  (() => { const ig = read('.assetsignore'); return /^design$/m.test(ig) && /^design\/\*\*$/m.test(ig) && /^trap-cards-design\.py$/m.test(ig); })());
+check('the concept generator draws no answer, tick, cross or score',
+  !/choices|feedback|recommended|remember|✓|✔|✗|✘|score/i.test(read('trap-cards-design.py').replace(/^"""[\s\S]*?"""/m, '')));
 check('trap-cards.py draws only the title, never choices or feedback', !/choice|feedback|recommended|remember/i.test(read('trap-cards.py').replace(/^"""[\s\S]*?"""/m, '')));
 
 console.log('\n== Release gate and review dates ==');
