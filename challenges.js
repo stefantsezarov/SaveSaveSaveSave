@@ -161,10 +161,10 @@ const CHALLENGES = [
       label: 'FTC: How to recognize and avoid phishing scams',
       url: 'https://consumer.ftc.gov/articles/how-recognize-avoid-phishing-scams',
     },
-    // Draft. Not approved: a release build refuses to run until Stefan
-    // reviews this scenario and its source.
-    reviewed: null,
-    approvedHash: null,
+    // Approved by Stefan on 21 October 2026 (content and source). The hash
+    // is the wording approved; any material change needs a new review.
+    reviewed: '2026-10-21',
+    approvedHash: 'd8527775840358ac',
   },
 ];
 
