@@ -15,6 +15,8 @@
   var heading = document.getElementById('stt-expl-heading');
   var yours = document.getElementById('stt-your-choice');
   var message = document.getElementById('stt-message');
+  var verdict = document.getElementById('stt-verdict');
+  var shareSection = document.getElementById('stt-share-section');
   var revealed = false;
 
   function chosen() {
@@ -24,10 +26,18 @@
 
   // Copies the feedback for the chosen answer from the full list, which
   // is already in the page as text. Built with textContent only.
+  // Green panel for the recommended step, red for any other. The verdict
+  // is also in words, so colour is never the only signal.
   function showYours(key) {
     var src = expl.querySelector('li[data-key="' + key + '"]');
     yours.textContent = '';
     if (!src) return;
+    var right = src.getAttribute('data-recommended') === 'true';
+    if (verdict) {
+      verdict.classList.remove(right ? 'is-wrong' : 'is-right');
+      verdict.classList.add(right ? 'is-right' : 'is-wrong');
+    }
+    heading.textContent = right ? '\u2713 Safe choice' : '\u2717 Risky choice';
     var label = document.createElement('p');
     label.className = 'stt-yours-label';
     label.textContent = 'You chose ' + key + '.';
@@ -35,11 +45,22 @@
     text.textContent = src.getAttribute('data-feedback');
     yours.appendChild(label);
     yours.appendChild(text);
-    if (src.getAttribute('data-recommended') === 'true') {
-      var rec = document.createElement('p');
-      rec.className = 'stt-yours-rec';
-      rec.textContent = 'This is the recommended next step.';
-      yours.appendChild(rec);
+    if (right) {
+      var ok = document.createElement('p');
+      ok.className = 'stt-yours-rec';
+      ok.textContent = 'This is the recommended next step.';
+      yours.appendChild(ok);
+    } else {
+      var keys = ['A', 'B', 'C', 'D'];
+      for (var i = 0; i < keys.length; i++) {
+        var best = expl.querySelector('li[data-key="' + keys[i] + '"][data-recommended="true"]');
+        if (!best) continue;
+        var rec = document.createElement('p');
+        rec.className = 'stt-yours-rec';
+        rec.textContent = 'Safer step: ' + keys[i] + '. ' + best.getAttribute('data-choice') + ' ' + best.getAttribute('data-feedback');
+        yours.appendChild(rec);
+        break;
+      }
     }
   }
 
@@ -54,6 +75,7 @@
     if (!revealed) {
       revealed = true;
       expl.hidden = false;
+      if (shareSection) shareSection.hidden = false;
       if (message) {
         message.classList.add('revealed');
         var ns = message.querySelectorAll('.sign-n');

@@ -62,7 +62,20 @@ const STYLE = `<style>
   .stt-need{min-height:1.4em; margin:6px 0 0;}
   .stt-explanation{margin-top:26px;}
   #stt-expl-heading:focus{outline:none;}
-  .stt-yours{border-left:3px solid var(--paper-accent); padding:4px 0 4px 16px; margin:0 0 20px;}
+  .stt-verdict{border:2px solid var(--paper-rule, #d9d6cc); padding:16px 20px; margin:0 0 20px;}
+  .stt-verdict h2{margin-top:0;}
+  .stt-verdict.is-right{background:#e7f6ea; border-color:#2e7d32; color:#123d17;}
+  .stt-verdict.is-wrong{background:#fdeaea; border-color:#c62828; color:#5a1010;}
+  .stt-verdict .rule-box{margin-bottom:0;}
+  .stt-yours{margin:0 0 14px;}
+  .stt-more{border:1px solid var(--paper-rule, #d9d6cc); padding:10px 16px; margin:0 0 10px;}
+  .stt-more summary{font-weight:700; cursor:pointer; min-height:28px;}
+  .stt-more[open] summary{margin-bottom:8px;}
+  .stt-learn{margin:24px 0 0;}
+  .stt-learn-btn{display:inline-block; text-decoration:none;}
+  .stt-learn-note{font-size:0.85rem;}
+  .stt-share{margin-top:18px;}
+  .stt-share h2{margin-top:0;}
   .stt-yours p{margin:0 0 6px;}
   .stt-yours-label{font-weight:700;}
   .stt-options li, .stt-details li{margin-bottom:8px;}
@@ -73,7 +86,7 @@ const STYLE = `<style>
   .stt-review{font-family:'IBM Plex Mono',monospace; font-size:0.8rem;}
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 </style>
-<noscript><style>.stt-explanation[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>`;
+<noscript><style>.stt-explanation[hidden],.stt-share[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>`;
 
 function head(title, desc, canonical, existing) {
   const seo = (() => {
@@ -160,6 +173,16 @@ function partsHtml(parts) {
     : '<span class="sign">' + esc(p.text) + '<sup class="sign-n" hidden>' + p.mark + '</sup></span>').join('');
 }
 
+// Search phrase behind each challenge's "Learn more" button. Kept here,
+// not in challenges.js, so it does not alter the approved content hash.
+const LEARN_MORE = {
+  'deposit-job': 'scam and fake job proposals',
+  'safe-account': 'safe account bank impersonation scam',
+  'human-check': 'fake CAPTCHA verification run command scam',
+  'delivery-update': 'fake delivery text message scam',
+};
+const searchOf = c => 'https://www.google.com/search?q=' + encodeURIComponent(LEARN_MORE[c.id]).replace(/%20/g, '+');
+
 function scenarioPage(c, i, existing) {
   const n = CHALLENGES.length;
   const next = CHALLENGES[(i + 1) % n];
@@ -168,7 +191,7 @@ function scenarioPage(c, i, existing) {
     + (m.from ? '<p class="stt-from">' + (typeof m.from === 'string' ? esc(m.from) : partsHtml([m.from])) + '</p>' : '')
     + '<p>' + partsHtml(m.parts) + '</p></div>').join('\n');
   const opts = c.choices.map(ch => `        <label class="stt-opt"><input type="radio" name="stt-choice" value="${ch.key}"> <span><span class="stt-key">${ch.key}.</span> ${esc(ch.text)}</span></label>`).join('\n');
-  const feedback = c.choices.map(ch => `      <li data-key="${ch.key}" data-recommended="${ch.recommended ? 'true' : 'false'}" data-feedback="${esc(ch.feedback)}"><strong>${ch.key}${ch.recommended ? ' — recommended' : ''}:</strong> ${esc(ch.feedback)}</li>`).join('\n');
+  const feedback = c.choices.map(ch => `      <li data-key="${ch.key}" data-recommended="${ch.recommended ? 'true' : 'false'}" data-choice="${esc(ch.text)}" data-feedback="${esc(ch.feedback)}"><strong>${ch.key}${ch.recommended ? ' — recommended' : ''}:</strong> ${esc(ch.feedback)}</li>`).join('\n');
   const details = c.details.length ? '    <ol class="stt-details">\n' + c.details.map(d => '      <li>' + esc(d) + '</li>').join('\n') + '\n    </ol>\n' : '';
   return head(c.title + ' — Spot the Trap — SaveSaveSaveSave', desc, urlOf(c), existing) + `
 <div class="paper-wrap">
@@ -196,29 +219,40 @@ ${opts}
     </form>
 
     <section class="stt-explanation" id="stt-explanation" aria-labelledby="stt-expl-heading" hidden>
-    <h2 id="stt-expl-heading" tabindex="-1">The explanation</h2>
-    <div class="stt-yours" id="stt-your-choice"></div>
+    <div class="stt-verdict" id="stt-verdict">
+      <h2 id="stt-expl-heading" tabindex="-1">Your answer</h2>
+      <div class="stt-yours" id="stt-your-choice"></div>
+      <div class="rule-box"><p><strong>Next time:</strong> ${esc(c.remember)}</p></div>
+    </div>
     <p class="sr-only" id="stt-change-status" role="status" aria-live="polite"></p>
-    <h3>Each option</h3>
+    <details class="stt-more">
+      <summary>Each option explained</summary>
     <ul class="stt-options">
 ${feedback}
     </ul>
-    <h3>${esc(c.detailsHeading)}</h3>
-${details}${c.note ? '    <p>' + esc(c.note) + '</p>\n' : ''}    <div class="rule-box"><p><strong>Remember:</strong> ${esc(c.remember)}</p></div>
-    <h3>About this pattern</h3>
+    </details>
+    <details class="stt-more">
+      <summary>${esc(c.detailsHeading)}</summary>
+${details}${c.note ? '    <p>' + esc(c.note) + '</p>\n' : ''}    </details>
+    <details class="stt-more">
+      <summary>About this pattern</summary>
     <p>${esc(c.source.text)} <a href="${esc(c.source.url)}" rel="noopener noreferrer">${esc(c.source.label)}</a></p>
     <p>The source documents the technique, not this invented example.</p>
     <p class="stt-review">${reviewLine(c)}</p>
     <p>Have a message of your own? <a href="index.html">The message checker</a> looks for specific warning patterns. It cannot confirm who sent it or whether a request is genuine.</p>
-    <h3>Share or try another</h3>
+    </details>
+    </section>
+    <p class="stt-learn"><a class="stt-btn stt-learn-btn" href="${searchOf(c)}" target="_blank" rel="noopener noreferrer">Learn more: search “${esc(LEARN_MORE[c.id])}”</a><br><span class="stt-learn-note">Opens a Google search in a new tab. Results are not checked by this site.</span></p>
+  </article>
+  <section class="paper stt-share" id="stt-share-section" aria-labelledby="stt-share-heading" hidden>
+    <h2 id="stt-share-heading">Share or try another</h2>
     <div class="stt-share-row">
       <button type="button" class="stt-btn" id="stt-share" data-url="${urlOf(c)}" data-text="${esc(SHARE_TEXT(c))}">Share this challenge</button>
       <a href="${cardOf(c)}" download>Download the card</a>
       <span id="stt-share-status" aria-live="polite"></span>
     </div>
     <p>Next: <a href="${fileOf(next)}">${esc(next.title)}</a> · <a href="spot-the-trap.html">All challenges</a></p>
-    </section>
-  </article>
+  </section>
 </div>
 ` + foot(true);
 }

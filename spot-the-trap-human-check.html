@@ -115,7 +115,20 @@
   .stt-need{min-height:1.4em; margin:6px 0 0;}
   .stt-explanation{margin-top:26px;}
   #stt-expl-heading:focus{outline:none;}
-  .stt-yours{border-left:3px solid var(--paper-accent); padding:4px 0 4px 16px; margin:0 0 20px;}
+  .stt-verdict{border:2px solid var(--paper-rule, #d9d6cc); padding:16px 20px; margin:0 0 20px;}
+  .stt-verdict h2{margin-top:0;}
+  .stt-verdict.is-right{background:#e7f6ea; border-color:#2e7d32; color:#123d17;}
+  .stt-verdict.is-wrong{background:#fdeaea; border-color:#c62828; color:#5a1010;}
+  .stt-verdict .rule-box{margin-bottom:0;}
+  .stt-yours{margin:0 0 14px;}
+  .stt-more{border:1px solid var(--paper-rule, #d9d6cc); padding:10px 16px; margin:0 0 10px;}
+  .stt-more summary{font-weight:700; cursor:pointer; min-height:28px;}
+  .stt-more[open] summary{margin-bottom:8px;}
+  .stt-learn{margin:24px 0 0;}
+  .stt-learn-btn{display:inline-block; text-decoration:none;}
+  .stt-learn-note{font-size:0.85rem;}
+  .stt-share{margin-top:18px;}
+  .stt-share h2{margin-top:0;}
   .stt-yours p{margin:0 0 6px;}
   .stt-yours-label{font-weight:700;}
   .stt-options li, .stt-details li{margin-bottom:8px;}
@@ -126,7 +139,7 @@
   .stt-review{font-family:'IBM Plex Mono',monospace; font-size:0.8rem;}
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 </style>
-<noscript><style>.stt-explanation[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>
+<noscript><style>.stt-explanation[hidden],.stt-share[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>
 </head>
 <body>
 
@@ -164,29 +177,41 @@
     </form>
 
     <section class="stt-explanation" id="stt-explanation" aria-labelledby="stt-expl-heading" hidden>
-    <h2 id="stt-expl-heading" tabindex="-1">The explanation</h2>
-    <div class="stt-yours" id="stt-your-choice"></div>
+    <div class="stt-verdict" id="stt-verdict">
+      <h2 id="stt-expl-heading" tabindex="-1">Your answer</h2>
+      <div class="stt-yours" id="stt-your-choice"></div>
+      <div class="rule-box"><p><strong>Next time:</strong> Do not run a command to prove you are human.</p></div>
+    </div>
     <p class="sr-only" id="stt-change-status" role="status" aria-live="polite"></p>
-    <h3>Each option</h3>
+    <details class="stt-more">
+      <summary>Each option explained</summary>
     <ul class="stt-options">
-      <li data-key="A" data-recommended="false" data-feedback="The page is asking you to run something on your computer. A verification label does not make that action safe."><strong>A:</strong> The page is asking you to run something on your computer. A verification label does not make that action safe.</li>
-      <li data-key="B" data-recommended="false" data-feedback="Changing browsers does not resolve the request to execute an unknown command."><strong>B:</strong> Changing browsers does not resolve the request to execute an unknown command.</li>
-      <li data-key="C" data-recommended="true" data-feedback="Stop before running anything and check the request independently."><strong>C — recommended:</strong> Stop before running anything and check the request independently.</li>
+      <li data-key="A" data-recommended="false" data-choice="Follow the instructions to open the document." data-feedback="The page is asking you to run something on your computer. A verification label does not make that action safe."><strong>A:</strong> The page is asking you to run something on your computer. A verification label does not make that action safe.</li>
+      <li data-key="B" data-recommended="false" data-choice="Repeat the instructions in another browser." data-feedback="Changing browsers does not resolve the request to execute an unknown command."><strong>B:</strong> Changing browsers does not resolve the request to execute an unknown command.</li>
+      <li data-key="C" data-recommended="true" data-choice="Close the page and contact the person who sent the document through a channel I already trust." data-feedback="Stop before running anything and check the request independently."><strong>C — recommended:</strong> Stop before running anything and check the request independently.</li>
     </ul>
-    <h3>Details to notice</h3>
+    </details>
+    <details class="stt-more">
+      <summary>Details to notice</summary>
     <ol class="stt-details">
       <li>The instructions leave the website and open a system tool.</li>
       <li>They ask you to paste and execute content without explaining it.</li>
       <li>Access to the document depends on complying.</li>
     </ol>
     <p>Some attacks copy a command during an earlier interaction. These instructions alone do not prove what is currently on your clipboard.</p>
-    <div class="rule-box"><p><strong>Remember:</strong> Do not run a command to prove you are human.</p></div>
-    <h3>About this pattern</h3>
+    </details>
+    <details class="stt-more">
+      <summary>About this pattern</summary>
     <p>Microsoft documents ClickFix attacks that use apparent verification or troubleshooting instructions to get people to run malicious commands. <a href="https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/" rel="noopener noreferrer">Microsoft: Think before you Click(Fix)</a></p>
     <p>The source documents the technique, not this invented example.</p>
     <p class="stt-review">Version 1 · content last reviewed <time datetime="2026-10-21">21 October 2026</time></p>
     <p>Have a message of your own? <a href="index.html">The message checker</a> looks for specific warning patterns. It cannot confirm who sent it or whether a request is genuine.</p>
-    <h3>Share or try another</h3>
+    </details>
+    </section>
+    <p class="stt-learn"><a class="stt-btn stt-learn-btn" href="https://www.google.com/search?q=fake+CAPTCHA+verification+run+command+scam" target="_blank" rel="noopener noreferrer">Learn more: search “fake CAPTCHA verification run command scam”</a><br><span class="stt-learn-note">Opens a Google search in a new tab. Results are not checked by this site.</span></p>
+  </article>
+  <section class="paper stt-share" id="stt-share-section" aria-labelledby="stt-share-heading" hidden>
+    <h2 id="stt-share-heading">Share or try another</h2>
     <div class="stt-share-row">
       <button type="button" class="stt-btn" id="stt-share" data-url="https://savesavesavesave.xyz/spot-the-trap-human-check" data-text="Would you spot the trap?
 The human check that asks you to run something
@@ -195,8 +220,7 @@ Try the challenge at SaveSaveSaveSave.">Share this challenge</button>
       <span id="stt-share-status" aria-live="polite"></span>
     </div>
     <p>Next: <a href="spot-the-trap-delivery-update.html">The delivery update that needs checking</a> · <a href="spot-the-trap.html">All challenges</a></p>
-    </section>
-  </article>
+  </section>
 </div>
 
 <footer class="site-footer">

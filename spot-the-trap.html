@@ -115,7 +115,20 @@
   .stt-need{min-height:1.4em; margin:6px 0 0;}
   .stt-explanation{margin-top:26px;}
   #stt-expl-heading:focus{outline:none;}
-  .stt-yours{border-left:3px solid var(--paper-accent); padding:4px 0 4px 16px; margin:0 0 20px;}
+  .stt-verdict{border:2px solid var(--paper-rule, #d9d6cc); padding:16px 20px; margin:0 0 20px;}
+  .stt-verdict h2{margin-top:0;}
+  .stt-verdict.is-right{background:#e7f6ea; border-color:#2e7d32; color:#123d17;}
+  .stt-verdict.is-wrong{background:#fdeaea; border-color:#c62828; color:#5a1010;}
+  .stt-verdict .rule-box{margin-bottom:0;}
+  .stt-yours{margin:0 0 14px;}
+  .stt-more{border:1px solid var(--paper-rule, #d9d6cc); padding:10px 16px; margin:0 0 10px;}
+  .stt-more summary{font-weight:700; cursor:pointer; min-height:28px;}
+  .stt-more[open] summary{margin-bottom:8px;}
+  .stt-learn{margin:24px 0 0;}
+  .stt-learn-btn{display:inline-block; text-decoration:none;}
+  .stt-learn-note{font-size:0.85rem;}
+  .stt-share{margin-top:18px;}
+  .stt-share h2{margin-top:0;}
   .stt-yours p{margin:0 0 6px;}
   .stt-yours-label{font-weight:700;}
   .stt-options li, .stt-details li{margin-bottom:8px;}
@@ -126,7 +139,7 @@
   .stt-review{font-family:'IBM Plex Mono',monospace; font-size:0.8rem;}
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
 </style>
-<noscript><style>.stt-explanation[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>
+<noscript><style>.stt-explanation[hidden],.stt-share[hidden]{display:block} .sign-n[hidden]{display:inline} .stt-reveal-row{display:none}</style></noscript>
 </head>
 <body>
 
