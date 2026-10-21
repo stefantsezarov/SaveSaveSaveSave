@@ -85,6 +85,11 @@ const AD_POLICY = {
   'seed-phrase-phishing.html':  { enabled: false, reason: 'The highest-harm guide on the site. Someone may be reading it while being robbed. Nothing commercial belongs on it.' },
   'disguised-links.html':       { enabled: false, reason: 'Phishing and disguised destinations. An unreviewed advertisement beside an article about unsafe links is the exact confusion the article warns about.' },
   'sanctioned-addresses.html': { enabled: false, reason: 'Read by people whose funds may have just been frozen -- the exact audience that recovery scammers buy ads to reach. Decided by Stefan, 23 September 2026.' },
+  'spot-the-trap.html':         { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-deposit-job.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-safe-account.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-human-check.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
+  'spot-the-trap-delivery-update.html': { enabled: false, reason: 'Spot the Trap challenge. No advertising, analytics or third-party script on pages that teach people to distrust what a message shows them. Decided 21 October 2026.' },
 };
 
 const PAGES = Object.keys(AD_POLICY);
