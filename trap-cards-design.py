@@ -10,7 +10,8 @@ Rules held: question and title only; no answer letters, ticks, crosses,
 scores or "you solved it"; no real brand, logo, account number, payment
 address or runnable command. Run:  python3 trap-cards-design.py
 """
-import html, json, pathlib, subprocess
+import html, json, pathlib, subprocess, sys
+LIVE = '--live' in sys.argv  # approved 21 Oct 2026: write the published scenario cards
 from playwright.sync_api import sync_playwright
 
 root = pathlib.Path(__file__).resolve().parent
@@ -95,6 +96,7 @@ with sync_playwright() as p:
         tmp.write_text(card(cid, title), encoding='utf-8')
         pg.goto(tmp.as_uri()); pg.wait_for_timeout(300)
         pg.screenshot(path=str(out / f'{cid}-concept.png')); print('wrote', cid)
+        if LIVE: pg.screenshot(path=str(root / f'spot-the-trap-{cid}.png')); print('published card', cid)
     # Phone preview: each card at 340 px wide, as a feed would show it.
     imgs = ''.join(f'<figure><img src="{(out / (cid + "-concept.png")).as_uri()}"><figcaption>{html.escape(t_)}</figcaption></figure>' for cid, t_ in data.items())
     tmp.write_text(f"""<!doctype html><html><head><meta charset="utf-8"><style>
