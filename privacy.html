@@ -40,7 +40,7 @@
       "url": "https://savesavesavesave.xyz/privacy",
       "inLanguage": "en",
       "datePublished": "2026-09-17",
-      "dateModified": "2026-10-21",
+      "dateModified": "2026-10-22",
       "publisher": {
         "@type": "Organization",
         "@id": "https://savesavesavesave.xyz/#publisher",
@@ -106,7 +106,7 @@
 
 <div class="paper-wrap">
   <article class="paper">
-    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 4 October 2026</p>
+    <p class="eyebrow">Privacy · Cookies · Advertising · Updated 22 October 2026</p>
     <h1 class="title">What this site collects</h1>
     <p class="subtitle">Short version: almost nothing, and you can verify that yourself.</p>
 
@@ -118,7 +118,7 @@
     </div>
 
     <h2>1. Who runs this site</h2>
-    <p>SaveSaveSaveSave (<code>savesavesavesave.xyz</code>) is operated by Stefan Tsezarov as an independent project. Contact is through the project's public issue tracker, linked at the end of this page.</p>
+    <p>SaveSaveSaveSave (<code>savesavesavesave.xyz</code>) is operated by Stefan Tsezarov, Bulgaria, as an independent project. He decides what this site processes and why, and is the controller of that processing under the EU General Data Protection Regulation (GDPR). Contact for anything in this policy: <a href="mailto:savesavesavesave@tuta.io">savesavesavesave@tuta.io</a>.</p>
 
     <h2>2. Scanning a message or prompt</h2>
     <p>When you paste text into the message scanner, the analysis runs entirely in JavaScript inside your own browser. The text is not uploaded, not logged, not stored, and not shown to anyone. When you close the tab it is gone.</p>
@@ -147,7 +147,8 @@
       <tr><td><strong>Google AdSense</strong><br><code>pagead2.googlesyndication.com</code>, <code>*.g.doubleclick.net</code> and related Google ad hosts</td><td>On page load, on the guide pages that carry ads (section 7) — never on the scanner</td><td>Page URL, your IP and user-agent, and Google's own advertising cookies</td></tr>
       <tr><td><strong>Google consent tool</strong><br><code>fundingchoicesmessages.google.com</code></td><td>On page load, on the pages that carry ads, to show the EU/EEA consent message</td><td>Your IP and user-agent, and your consent choice</td></tr>
     </table>
-    <p>Each of these operates under its own privacy policy, which this site does not control.</p>
+    <p><strong>Who is responsible for what.</strong> Cloudflare (site delivery, our Worker, Web Analytics) processes request data for this site on the operator's behalf, under Cloudflare's data processing terms; requests about that data come to us (section 9). GoPlus, PublicNode, npm, OSV.dev and Google receive a request directly from your browser, or from our Worker for the checks you start, and decide for themselves what they keep; each does so under its own privacy policy, which this site does not control.</p>
+    <p><strong>Transfers outside the EU.</strong> Several of these providers are established, or process data, outside the European Economic Area, including in the United States. Where the operator transfers data to a provider acting on its behalf, the transfer relies on that provider's data processing terms, which include the European Commission's standard contractual clauses, or on the EU&ndash;US Data Privacy Framework where the provider is certified under it.</p>
 
     <h2>5. Analytics</h2>
     <p>This site uses Cloudflare Web Analytics to count page views on every page except the scanner. Cloudflare describes it as setting no cookies and not tracking you across sites. It records page URL, referrer, approximate country, browser and device type, and page-load timing.</p>
@@ -193,7 +194,7 @@
       <p>An earlier version of this page promised it would be updated to name the ad provider <em>before</em> any ad code was deployed. The ad code went live on 18 September 2026 and this page was updated a few hours later, not before. The order was wrong and the promise was broken, by us, and this note stays here so the record is accurate.</p>
     </div>
 
-    <h2>8. What is stored, and for how long</h2>
+    <h2>8. What is stored, why, and for how long</h2>
     <p>There is no account system, no scan history and no email list. What is kept, and by whom:</p>
     <ul>
       <li><strong>Message text:</strong> never sent, so never stored.</li>
@@ -203,9 +204,21 @@
       <li><strong>Third parties</strong> in section 4 keep what they receive under their own policies.</li>
     </ul>
 
+    <p><strong>Why each kind of processing happens (legal basis under GDPR Article 6):</strong></p>
+    <ul>
+      <li><strong>Delivering pages and protecting the site and Worker</strong> (request data at Cloudflare, including your IP address): legitimate interests, Article 6(1)(f). A website cannot be delivered or defended against abuse without it.</li>
+      <li><strong>Address, wallet, token and package checks you start</strong>: legitimate interests, Article 6(1)(f), in giving you the result you asked for. Nothing is sent until you press a check.</li>
+      <li><strong>Scan counts and Cloudflare Web Analytics</strong>: legitimate interests, Article 6(1)(f), in knowing in aggregate whether the site is used. A browser sending Global Privacy Control does not send the scan count.</li>
+      <li><strong>Advertising cookies and personalised advertising</strong> on guide pages: your consent, collected by Google's consent tool where the law requires it. You can withdraw it at any time through the same dialogue; withdrawing does not affect anything before it.</li>
+      <li><strong>Emails you send us</strong>: legitimate interests in answering you; for a data-protection request, the legal obligation to respond, Article 6(1)(c). Emails are deleted 12 months after the matter is closed, unless they are needed to establish or defend a legal claim.</li>
+    </ul>
+    <p>No decision with legal or similarly significant effect is made about you by automated means. A verdict describes an address, package or message, not you.</p>
+
     <h2>9. Your rights</h2>
-    <p>For questions or requests concerning personal data, including historical Cloudflare request logs and the storage described in section 8, contact the operator using the details below. Do not include a recovery phrase, password, private key or authentication code in your request.</p>
-    <p>Requests concerning data held by the third parties in section 4 have to be made to those companies, which this site cannot do on your behalf.</p>
+    <p>Under the GDPR you have the right to ask for access to your personal data, its correction or erasure, restriction of its processing, and a portable copy where that applies. You can object at any time to processing based on legitimate interests (section 8), and withdraw consent at any time where processing relies on it.</p>
+    <p>Send requests to <a href="mailto:savesavesavesave@tuta.io">savesavesavesave@tuta.io</a>. You will get an answer without undue delay and within one month; if a request is complex and needs longer, you will be told why within that month. We will only ask for information needed to find the data concerned, never an identity document by default. Because the site has no accounts, we may need details such as the address you checked and the approximate time to find any record. Do not include a recovery phrase, password, private key or authentication code in your request.</p>
+    <p>This covers data processed for this site by Cloudflare on our behalf, including historical Worker request logs: we handle the request and obtain Cloudflare's help where needed. Data that a provider in section 4 received directly and holds as its own controller is outside our access; we will tell you which provider holds it and how to contact them.</p>
+    <p>You also have the right to complain to a data-protection authority. In Bulgaria that is the Commission for Personal Data Protection (<a href="https://www.cpdp.bg/">cpdp.bg</a>); you can also complain in the EU country where you live or work.</p>
 
     <h2>10. Children</h2>
     <p>This site is not directed at children. The request metadata and storage described above can nevertheless include personal data, so the absence of an account system does not mean that no personal data is processed.</p>
