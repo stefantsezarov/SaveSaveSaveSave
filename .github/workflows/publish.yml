@@ -26,15 +26,15 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0   # the on-main check below needs history
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       # Trusted publishing needs npm 11.5.1 or later; staging is newer still.
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@11.21.1   # pinned: this job holds id-token; bump deliberately
       - name: Tag, package.json and server.json agree on the version
         run: |
           TAG="${GITHUB_REF_NAME#v}"

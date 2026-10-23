@@ -306,6 +306,17 @@ const MUST_404 = [
       'a key file whose contents do not match is a 403 on every submission');
   }
 
+  // RFC 9116 security contact. Its Expires field is mandatory and makes
+  // the file invalid once passed, so the date is checked, not just the URL.
+  {
+    const r = await get('/.well-known/security.txt');
+    check('security.txt is served', r.status === 200, 'got ' + r.status);
+    check('...with a mailto Contact', /^Contact: mailto:\S+@\S+$/m.test(r.body || ''));
+    const exp = Date.parse(((r.body || '').match(/^Expires: (\S+)$/m) || [])[1] || '');
+    check('...whose Expires is at least 30 days away', exp > Date.now() + 30 * 864e5,
+      'renew the Expires line in .well-known/security.txt');
+  }
+
   // The logo is the way home from every page but the scanner, where it
   // would discard a message somebody had just pasted.
   const guide = await get('/disguised-links.html');
