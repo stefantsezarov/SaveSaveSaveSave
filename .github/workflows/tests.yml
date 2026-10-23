@@ -56,6 +56,8 @@ jobs:
         run: node scanmodel.test.js
       - name: Provider routing
         run: node goplus-routing.test.js
+      - name: Proxy Worker deploy config keeps logging off
+        run: node proxy-config.test.js
       - name: Spot the Trap content, pages and script
         run: node challenge.test.js
       - name: Published guides still match the engine
