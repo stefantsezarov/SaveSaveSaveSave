@@ -1,0 +1,8 @@
+# Security contact for savesavesavesave.xyz (RFC 9116).
+# Please report vulnerabilities privately by email, not in public GitHub
+# issues. Do not include real recovery phrases, private keys or other
+# secrets in a report; a synthetic example is enough.
+Contact: mailto:savesavesavesave@tuta.io
+Expires: 2027-10-22T00:00:00.000Z
+Preferred-Languages: en, bg
+Canonical: https://savesavesavesave.xyz/.well-known/security.txt

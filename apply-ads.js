@@ -325,7 +325,12 @@ const scannerHeaders = '# BEGIN GENERATED SCANNER CSP\n'
   + ['/', '/index', '/index.html'].map(route => route + '\n  Content-Security-Policy: '
     + scannerPolicy + " frame-ancestors 'none';").join('\n\n')
   + '\n# END GENERATED SCANNER CSP\n';
-headers = headers.replace(/\n?# BEGIN GENERATED SCANNER CSP[\s\S]*?# END GENERATED SCANNER CSP\n?/, '\n');
+// Both generated blocks are removed before either is appended. Removing
+// them one at a time left a blank line behind on every run, so the file
+// grew and the CI idempotence check below could never pass.
+headers = headers
+  .replace(/\n*# BEGIN GENERATED SCANNER CSP[\s\S]*?# END GENERATED SCANNER CSP\n?/, '\n')
+  .replace(/\n*# BEGIN GENERATED SPOT THE TRAP CSP[\s\S]*?# END GENERATED SPOT THE TRAP CSP\n?/, '\n');
 headers = headers.trimEnd() + '\n\n' + scannerHeaders;
 // Spot the Trap pages get the same response-level protection as the
 // scanner: their own restrictive policy as a header, so the site-wide
@@ -342,7 +347,6 @@ const challengeBlocks = challengeFiles.map(f => {
   const base = '/' + f.replace(/\.html$/, '');
   return [base, base + '.html'].map(route => route + "\n  Content-Security-Policy: " + policy + " frame-ancestors 'none';").join('\n\n');
 });
-headers = headers.replace(/\n?# BEGIN GENERATED SPOT THE TRAP CSP[\s\S]*?# END GENERATED SPOT THE TRAP CSP\n?/, '\n');
 if (challengeBlocks.length) {
   headers = headers.trimEnd() + '\n\n# BEGIN GENERATED SPOT THE TRAP CSP\n' + challengeBlocks.join('\n\n') + '\n# END GENERATED SPOT THE TRAP CSP\n';
 }

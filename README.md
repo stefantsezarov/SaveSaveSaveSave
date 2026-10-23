@@ -69,7 +69,7 @@ node guide-examples.test.js
 node seo.test.js
 ```
 
-No dependencies: Node 20 (the version CI uses) is enough.
+No dependencies: Node 22 or later (CI runs Node 24, the current LTS).
 
 ## Found a miss or a false alarm?
 
