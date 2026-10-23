@@ -107,3 +107,4 @@ action.yml
 
 # Deployment configuration is not a public site asset.
 wrangler.preview.jsonc
+wrangler.proxy.jsonc
